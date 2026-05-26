@@ -79,6 +79,10 @@ __pycache__/
 # Editor settings
 .vscode/
 
+# System files
+.DS_Store
+Thumbs.db
+
 # Local datasets can be very large
 ai-service/dataset/*.csv
 

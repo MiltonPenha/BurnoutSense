@@ -19,9 +19,22 @@ function MetricCard({ icon, label, note, value }) {
 }
 
 export default function DashboardPage() {
-  const { latestRecord, profile, records } = useBurnoutStore();
+  const { latestRecord, profile, ready, records } = useBurnoutStore();
   const risk = latestRecord ? calculateRisk(latestRecord) : null;
   const alerts = latestRecord ? buildAlerts(latestRecord) : [];
+
+  if (!ready) {
+    return (
+      <section className="page">
+        <header className="page-header">
+          <div>
+            <h1 className="page-title">Carregando...</h1>
+            <p className="page-kicker">Preparando seu painel.</p>
+          </div>
+        </header>
+      </section>
+    );
+  }
 
   return (
     <section className="page">

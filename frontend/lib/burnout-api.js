@@ -288,6 +288,21 @@ export async function getProfile() {
 }
 
 export async function updateProfile(profile) {
+  if (hasBackend()) {
+    const user = await request("/users/me", {
+      method: "PATCH",
+      body: JSON.stringify({
+        name: profile.name,
+        emailAlerts: profile.emailAlerts,
+        dailyReminder: profile.dailyReminder
+      })
+    });
+    const normalizedProfile = normalizeProfile(user);
+
+    writeJson(STORAGE_KEYS.profile, normalizedProfile);
+    return normalizedProfile;
+  }
+
   writeJson(STORAGE_KEYS.profile, profile);
   return profile;
 }

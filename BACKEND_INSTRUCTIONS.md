@@ -1,19 +1,19 @@
-# Instruções do Backend
+# Instrucoes do Backend
 
 Este documento orienta os colaboradores a rodar e testar o backend NestJS do BurnoutSense.
 
-O backend usa autenticação própria com access token JWT e refresh token opaco com rotação e revogação.
+O backend usa autenticacao propria com access token JWT e refresh token opaco com rotacao e revogacao. A classificacao de risco agora vem do microsservico FastAPI em `ai-service/`; o backend nao calcula mais o `riskLevel` com regra mockada.
 
 ## Estrutura
 
 - `AuthModule`: registro, login, refresh token e logout
-- `UsersModule`: perfil autenticado e exclusão de conta
-- `AssessmentsModule`: criação e histórico das avaliações
-- `ResultsModule`: consulta dos resultados de predição
-- `AiModule`: simulador de classificação para o TCC1
+- `UsersModule`: perfil autenticado e exclusao de conta
+- `AssessmentsModule`: criacao e historico das avaliacoes
+- `ResultsModule`: consulta dos resultados de predicao
+- `AiModule`: integracao com o microsservico FastAPI de IA
 - `PrismaModule`: acesso ao PostgreSQL
 
-## Variáveis de ambiente
+## Variaveis de ambiente
 
 Crie `backend/.env` a partir de `backend/.env.example`:
 
@@ -51,17 +51,30 @@ No Windows PowerShell, crie o `.env` assim:
 Copy-Item .env.example .env
 ```
 
-A API ficará em `http://localhost:3001`.
+A API ficara em `http://localhost:3001`.
 
-## Fluxo de autenticação
+## Como rodar o microsservico de IA
 
-1. `POST /auth/register` cria o usuário, salva `passwordHash` e retorna tokens.
+Antes de criar uma avaliacao em `POST /assessments`, o `ai-service` precisa estar rodando e com o modelo treinado em `ai-service/saved_models/burnout_model.pkl`.
+
+```bash
+cd ai-service
+pip install -r requirements.txt
+python -m training.train_model
+uvicorn app.main:app --reload
+```
+
+Se o modelo ainda nao existir, o backend retornara erro ao tentar gerar a predicao. Isso e intencional para evitar usar classificacao mockada sem perceber.
+
+## Fluxo de autenticacao
+
+1. `POST /auth/register` cria o usuario, salva `passwordHash` e retorna tokens.
 2. `POST /auth/login` valida senha e retorna tokens.
 3. O frontend envia `Authorization: Bearer <accessToken>` nas rotas protegidas.
-4. `POST /auth/refresh` recebe o refresh token, revoga a sessão antiga e emite novos tokens.
-5. `POST /auth/logout` revoga a sessão atual ou todas as sessões do usuário.
+4. `POST /auth/refresh` recebe o refresh token, revoga a sessao antiga e emite novos tokens.
+5. `POST /auth/logout` revoga a sessao atual ou todas as sessoes do usuario.
 
-O refresh token não é salvo em texto puro. O banco guarda apenas `refreshTokenHash` em `auth_sessions`.
+O refresh token nao e salvo em texto puro. O banco guarda apenas `refreshTokenHash` em `auth_sessions`.
 
 ## Endpoints
 
@@ -75,7 +88,10 @@ O refresh token não é salvo em texto puro. O banco guarda apenas `refreshToken
 ### Users
 
 - `GET /users/me`
+- `PATCH /users/me`
 - `DELETE /users/me`
+
+`PATCH /users/me` permite atualizar `name`, `emailAlerts` e `dailyReminder`. O e-mail de login nao e alterado por esse endpoint.
 
 ### Assessments
 
@@ -91,19 +107,21 @@ O refresh token não é salvo em texto puro. O banco guarda apenas `refreshToken
 
 - `POST /ai/predict`
 
-## Segurança e LGPD no protótipo
+O endpoint `POST /ai/predict` usa o mesmo fluxo do backend: envia os indicadores para `AI_SERVICE_URL/predict`, normaliza o `risk_level` para `LOW`, `MEDIUM` ou `HIGH` e retorna fatores explicativos derivados dos indicadores enviados.
 
-- Senhas são armazenadas com hash bcrypt.
-- Access token tem expiração curta.
-- Refresh token é opaco, rotacionado e revogável.
-- Helmet é usado para headers básicos de segurança.
-- CORS é restrito por `FRONTEND_URL`.
-- Login/register/refresh têm rate limit.
-- `passwordHash`, tokens e senhas não devem aparecer em logs ou respostas.
-- Cada usuário acessa apenas suas próprias avaliações e resultados.
+## Seguranca e LGPD no prototipo
+
+- Senhas sao armazenadas com hash bcrypt.
+- Access token tem expiracao curta.
+- Refresh token e opaco, rotacionado e revogavel.
+- Helmet e usado para headers basicos de seguranca.
+- CORS e restrito por `FRONTEND_URL`.
+- Login/register/refresh tem rate limit.
+- `passwordHash`, tokens e senhas nao devem aparecer em logs ou respostas.
+- Cada usuario acessa apenas suas proprias avaliacoes e resultados.
 - `DELETE /users/me` remove a conta e dados relacionados por cascata.
-- O sistema coleta apenas dados necessários ao protótipo: nome, e-mail, senha e indicadores da avaliação.
-- A classificação é uma estimativa preventiva, não diagnóstico clínico.
+- O sistema coleta apenas dados necessarios ao prototipo: nome, e-mail, senha e indicadores da avaliacao.
+- A classificacao e uma estimativa preventiva, nao diagnostico clinico.
 
 ## Testes manuais
 

@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { BadGatewayException, Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { RiskLevel } from '@prisma/client';
 import { PredictBurnoutDto } from './dto/predict-burnout.dto';
 
@@ -12,38 +13,98 @@ export interface PredictionOutput {
 
 @Injectable()
 export class AiService {
-  private readonly simulatedModelVersion = 'mock-v1';
   private readonly preventiveDisclaimer =
     'This result is a preventive computational estimate and is not a clinical diagnosis.';
 
-  predict(indicators: PredictBurnoutDto): PredictionOutput {
+  constructor(private readonly configService: ConfigService) {}
+
+  async predict(indicators: PredictBurnoutDto): Promise<PredictionOutput> {
+    const aiServiceUrl = this.configService.get<string>('AI_SERVICE_URL');
+
+    if (!aiServiceUrl) {
+      throw new ServiceUnavailableException('AI_SERVICE_URL is not configured.');
+    }
+
+    const prediction = await this.requestPrediction(aiServiceUrl, indicators);
+    const riskLevel = this.normalizeRiskLevel(prediction.risk_level);
     const mainFactors = this.getMainFactors(indicators);
-    const riskLevel = this.getRiskLevel(indicators);
-    const confidence = this.getConfidence(mainFactors.length, riskLevel);
+    const confidence = await this.getModelConfidence(aiServiceUrl, prediction.risk_level);
 
     return {
       riskLevel,
       confidence,
       mainFactors,
-      modelVersion: this.simulatedModelVersion,
+      modelVersion: prediction.model_used,
       disclaimer: this.preventiveDisclaimer,
     };
   }
 
-  private getRiskLevel(indicators: PredictBurnoutDto): RiskLevel {
-    if (
-      indicators.stressLevel >= 8 &&
-      indicators.sleepQuality <= 4 &&
-      indicators.socialSupport <= 4
-    ) {
-      return RiskLevel.HIGH;
+  private async requestPrediction(aiServiceUrl: string, indicators: PredictBurnoutDto) {
+    try {
+      const response = await fetch(`${aiServiceUrl}/predict`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(this.toAiServicePayload(indicators)),
+        signal: AbortSignal.timeout(10_000),
+      });
+
+      if (!response.ok) {
+        throw new BadGatewayException(`AI service prediction failed with status ${response.status}.`);
+      }
+
+      return (await response.json()) as AiPredictionResponse;
+    } catch (error) {
+      if (error instanceof BadGatewayException) {
+        throw error;
+      }
+
+      throw new ServiceUnavailableException('AI service is unavailable.');
+    }
+  }
+
+  private toAiServicePayload(indicators: PredictBurnoutDto): AiPredictionRequest {
+    return {
+      study_hours: indicators.studyHours,
+      sleep_quality: indicators.sleepQuality,
+      stress_level: indicators.stressLevel,
+      screen_time: indicators.screenTime,
+      social_support: indicators.socialSupport,
+      financial_stress: indicators.financialStress,
+      academic_performance: indicators.academicPerformance,
+      anxiety_score: indicators.anxietyLevel,
+      physical_activity: indicators.physicalActivity,
+    };
+  }
+
+  private normalizeRiskLevel(riskLevel: string): RiskLevel {
+    const normalizedRiskLevel = riskLevel.toUpperCase();
+
+    if (!Object.values(RiskLevel).includes(normalizedRiskLevel as RiskLevel)) {
+      throw new BadGatewayException(`AI service returned an unknown risk level: ${riskLevel}.`);
     }
 
-    if (indicators.stressLevel >= 6 || indicators.anxietyLevel >= 6 || indicators.sleepQuality <= 5) {
-      return RiskLevel.MEDIUM;
-    }
+    return normalizedRiskLevel as RiskLevel;
+  }
 
-    return RiskLevel.LOW;
+  private async getModelConfidence(aiServiceUrl: string, riskLevel: string): Promise<number> {
+    try {
+      const response = await fetch(`${aiServiceUrl}/model-metrics`, {
+        signal: AbortSignal.timeout(5_000),
+      });
+
+      if (!response.ok) {
+        return 0;
+      }
+
+      const metrics = (await response.json()) as AiModelMetricsResponse;
+      const classMetric = metrics.per_class_metrics?.[riskLevel.toLowerCase()]?.f1_score;
+      const summaryMetric = metrics.metrics_summary?.f1_score;
+      const confidence = classMetric ?? summaryMetric ?? 0;
+
+      return Number(Math.min(Math.max(confidence, 0), 1).toFixed(4));
+    } catch {
+      return 0;
+    }
   }
 
   private getMainFactors(indicators: PredictBurnoutDto): string[] {
@@ -88,14 +149,33 @@ export class AiService {
     return factors.length > 0 ? factors : ['indicadores dentro de uma faixa menos critica'];
   }
 
-  private getConfidence(factorCount: number, riskLevel: RiskLevel): number {
-    const baseConfidenceByRisk: Record<RiskLevel, number> = {
-      [RiskLevel.LOW]: 0.62,
-      [RiskLevel.MEDIUM]: 0.7,
-      [RiskLevel.HIGH]: 0.78,
-    };
+}
 
-    const confidence = baseConfidenceByRisk[riskLevel] + Math.min(factorCount, 5) * 0.04;
-    return Number(Math.min(confidence, 0.95).toFixed(2));
-  }
+interface AiPredictionRequest {
+  study_hours: number;
+  sleep_quality: number;
+  stress_level: number;
+  screen_time: number;
+  social_support: number;
+  financial_stress: number;
+  academic_performance: number;
+  anxiety_score: number;
+  physical_activity: number;
+}
+
+interface AiPredictionResponse {
+  risk_level: string;
+  model_used: string;
+}
+
+interface AiModelMetricsResponse {
+  metrics_summary?: {
+    f1_score?: number;
+  };
+  per_class_metrics?: Record<
+    string,
+    {
+      f1_score?: number;
+    }
+  >;
 }

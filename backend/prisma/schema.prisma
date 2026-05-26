@@ -24,6 +24,8 @@ model User {
   email        String       @unique
   passwordHash String
   role         UserRole     @default(STUDENT)
+  emailAlerts  Boolean      @default(true)
+  dailyReminder Boolean     @default(true)
   assessments  Assessment[]
   sessions     AuthSession[]
   createdAt    DateTime     @default(now())

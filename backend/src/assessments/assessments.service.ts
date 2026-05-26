@@ -11,7 +11,7 @@ export class AssessmentsService {
   ) {}
 
   async create(userId: string, createAssessmentDto: CreateAssessmentDto) {
-    const prediction = this.aiService.predict(createAssessmentDto);
+    const prediction = await this.aiService.predict(createAssessmentDto);
 
     const assessment = await this.prisma.assessment.create({
       data: {

@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, User } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { UpdateCurrentUserDto } from './dto/update-current-user.dto';
 
 @Injectable()
 export class UsersService {
@@ -34,6 +35,29 @@ export class UsersService {
     return {
       message: 'Account and related data deleted successfully.',
     };
+  }
+
+  async updateOwnProfile(id: string, data: UpdateCurrentUserDto) {
+    const updateData: Prisma.UserUpdateInput = {};
+
+    if (data.name !== undefined) {
+      updateData.name = data.name.trim();
+    }
+
+    if (data.emailAlerts !== undefined) {
+      updateData.emailAlerts = data.emailAlerts;
+    }
+
+    if (data.dailyReminder !== undefined) {
+      updateData.dailyReminder = data.dailyReminder;
+    }
+
+    const user = await this.prisma.user.update({
+      where: { id },
+      data: updateData,
+    });
+
+    return this.toSafeUser(user);
   }
 
   toSafeUser(user: User) {

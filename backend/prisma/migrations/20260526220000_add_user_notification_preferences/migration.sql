@@ -1,0 +1,2 @@
+ALTER TABLE "users" ADD COLUMN "emailAlerts" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "users" ADD COLUMN "dailyReminder" BOOLEAN NOT NULL DEFAULT true;

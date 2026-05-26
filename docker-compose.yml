@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: burnoutsense-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: burnoutsense
+      POSTGRES_PASSWORD: burnoutsense
+      POSTGRES_DB: burnoutsense
+    ports:
+      - "5432:5432"
+    volumes:
+      - burnoutsense_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  burnoutsense_postgres_data:

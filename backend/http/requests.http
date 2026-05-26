@@ -1,0 +1,96 @@
+@baseUrl = http://localhost:3001
+@accessToken = paste-access-token-here
+@refreshToken = paste-refresh-token-here
+@assessmentId = paste-assessment-id-here
+
+### Register
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "name": "Mateus Nauhan",
+  "email": "mateus@example.com",
+  "password": "Mateus123"
+}
+
+### Login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "mateus@example.com",
+  "password": "Mateus123"
+}
+
+### Refresh tokens
+POST {{baseUrl}}/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### Logout
+POST {{baseUrl}}/auth/logout
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### Current user
+GET {{baseUrl}}/users/me
+Authorization: Bearer {{accessToken}}
+
+### Delete current user and related data
+DELETE {{baseUrl}}/users/me
+Authorization: Bearer {{accessToken}}
+
+### Create assessment
+POST {{baseUrl}}/assessments
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "studyHours": 8,
+  "sleepQuality": 3,
+  "stressLevel": 9,
+  "anxietyLevel": 7,
+  "academicPerformance": 5,
+  "screenTime": 9,
+  "socialSupport": 3,
+  "financialStress": 6,
+  "physicalActivity": 1,
+  "motivationLevel": 4
+}
+
+### List assessment history
+GET {{baseUrl}}/assessments
+Authorization: Bearer {{accessToken}}
+
+### Find one assessment
+GET {{baseUrl}}/assessments/{{assessmentId}}
+Authorization: Bearer {{accessToken}}
+
+### Find prediction result
+GET {{baseUrl}}/results/{{assessmentId}}
+Authorization: Bearer {{accessToken}}
+
+### Simulated AI prediction
+POST {{baseUrl}}/ai/predict
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "studyHours": 6,
+  "sleepQuality": 6,
+  "stressLevel": 6,
+  "anxietyLevel": 5,
+  "academicPerformance": 7,
+  "screenTime": 5,
+  "socialSupport": 7,
+  "financialStress": 4,
+  "physicalActivity": 3,
+  "motivationLevel": 7
+}

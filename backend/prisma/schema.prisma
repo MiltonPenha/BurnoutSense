@@ -1,0 +1,84 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  STUDENT
+  ADMIN
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model User {
+  id           String       @id @default(uuid())
+  name         String
+  email        String       @unique
+  passwordHash String
+  role         UserRole     @default(STUDENT)
+  assessments  Assessment[]
+  sessions     AuthSession[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@map("users")
+}
+
+model AuthSession {
+  id               String    @id @default(uuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokenHash String
+  userAgent        String?
+  ipAddress        String?
+  revokedAt        DateTime?
+  expiresAt        DateTime
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("auth_sessions")
+}
+
+model Assessment {
+  id                  String            @id @default(uuid())
+  userId              String
+  user                User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studyHours          Float
+  sleepQuality        Int
+  stressLevel         Int
+  anxietyLevel        Int
+  academicPerformance Int
+  screenTime          Float
+  socialSupport       Int
+  financialStress     Int
+  physicalActivity    Int
+  motivationLevel     Int
+  result              PredictionResult?
+  createdAt           DateTime          @default(now())
+
+  @@index([userId])
+  @@map("assessments")
+}
+
+model PredictionResult {
+  id           String     @id @default(uuid())
+  assessmentId String     @unique
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  riskLevel    RiskLevel
+  confidence   Float
+  mainFactors  Json
+  modelVersion String
+  createdAt    DateTime   @default(now())
+
+  @@map("prediction_results")
+}

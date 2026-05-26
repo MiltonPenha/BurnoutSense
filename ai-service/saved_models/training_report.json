@@ -1,0 +1,219 @@
+{
+  "dataset_source": "dataset\\student_mental_health_burnout_1M.csv",
+  "training_records": 1000000,
+  "training_strategy": "custom_class_sampling",
+  "train_distribution_before_balance": {
+    "low": 574984,
+    "medium": 163706,
+    "high": 11310
+  },
+  "train_distribution_after_balance": {
+    "low": 100000,
+    "medium": 50000,
+    "high": 11000
+  },
+  "eda": {
+    "records": 1000000,
+    "columns": [
+      "age",
+      "gender",
+      "academic_year",
+      "study_hours_per_day",
+      "exam_pressure",
+      "academic_performance",
+      "stress_level",
+      "anxiety_score",
+      "depression_score",
+      "sleep_hours",
+      "physical_activity",
+      "social_support",
+      "screen_time",
+      "internet_usage",
+      "financial_stress",
+      "family_expectation",
+      "burnout_score",
+      "mental_health_index",
+      "risk_level",
+      "dropout_risk"
+    ],
+    "dtypes": {
+      "age": "int64",
+      "gender": "object",
+      "academic_year": "int64",
+      "study_hours_per_day": "float64",
+      "exam_pressure": "float64",
+      "academic_performance": "float64",
+      "stress_level": "float64",
+      "anxiety_score": "float64",
+      "depression_score": "float64",
+      "sleep_hours": "float64",
+      "physical_activity": "float64",
+      "social_support": "float64",
+      "screen_time": "float64",
+      "internet_usage": "float64",
+      "financial_stress": "float64",
+      "family_expectation": "float64",
+      "burnout_score": "float64",
+      "mental_health_index": "float64",
+      "risk_level": "object",
+      "dropout_risk": "float64"
+    },
+    "missing_values": {
+      "age": 0,
+      "gender": 0,
+      "academic_year": 0,
+      "study_hours_per_day": 0,
+      "exam_pressure": 0,
+      "academic_performance": 0,
+      "stress_level": 0,
+      "anxiety_score": 0,
+      "depression_score": 0,
+      "sleep_hours": 0,
+      "physical_activity": 0,
+      "social_support": 0,
+      "screen_time": 0,
+      "internet_usage": 0,
+      "financial_stress": 0,
+      "family_expectation": 0,
+      "burnout_score": 0,
+      "mental_health_index": 0,
+      "risk_level": 0,
+      "dropout_risk": 0
+    },
+    "target_column": "risk_level",
+    "target_distribution": {
+      "Low": 766645,
+      "Medium": 218275,
+      "High": 15080
+    },
+    "risk_classes": [
+      "High",
+      "Low",
+      "Medium"
+    ]
+  },
+  "feature_names": [
+    "study_hours",
+    "academic_performance",
+    "exam_pressure",
+    "stress_level",
+    "anxiety_score",
+    "depression_score",
+    "sleep_quality",
+    "physical_activity",
+    "screen_time",
+    "internet_usage",
+    "social_support",
+    "family_expectation",
+    "financial_stress",
+    "dropout_risk"
+  ],
+  "selected_model": "Random Forest",
+  "target_column": "risk_level",
+  "risk_classes": [
+    "high",
+    "low",
+    "medium"
+  ],
+  "trained_at": "2026-05-26T01:06:57.778162+00:00",
+  "metrics": {
+    "Random Forest": {
+      "accuracy": 0.865188,
+      "precision": 0.8703563235025509,
+      "recall": 0.865188,
+      "f1_score": 0.8673971892675872,
+      "confusion_matrix": [
+        [
+          2078,
+          1,
+          1691
+        ],
+        [
+          8,
+          174217,
+          17436
+        ],
+        [
+          1979,
+          12588,
+          40002
+        ]
+      ],
+      "confusion_matrix_labels": [
+        "high",
+        "low",
+        "medium"
+      ],
+      "per_class_metrics": {
+        "high": {
+          "precision": 0.5112,
+          "recall": 0.5512,
+          "f1_score": 0.5304,
+          "support": 3770
+        },
+        "low": {
+          "precision": 0.9326,
+          "recall": 0.909,
+          "f1_score": 0.9206,
+          "support": 191661
+        },
+        "medium": {
+          "precision": 0.6765,
+          "recall": 0.7331,
+          "f1_score": 0.7037,
+          "support": 54569
+        }
+      },
+      "classification_report": "              precision    recall  f1-score   support\n\n        high       0.51      0.55      0.53      3770\n         low       0.93      0.91      0.92    191661\n      medium       0.68      0.73      0.70     54569\n\n    accuracy                           0.87    250000\n   macro avg       0.71      0.73      0.72    250000\nweighted avg       0.87      0.87      0.87    250000\n"
+    },
+    "SVM": {
+      "accuracy": 0.86522,
+      "precision": 0.8720741949344839,
+      "recall": 0.86522,
+      "f1_score": 0.8680853281147054,
+      "confusion_matrix": [
+        [
+          2459,
+          1,
+          1310
+        ],
+        [
+          15,
+          174273,
+          17373
+        ],
+        [
+          2907,
+          12089,
+          39573
+        ]
+      ],
+      "confusion_matrix_labels": [
+        "high",
+        "low",
+        "medium"
+      ],
+      "per_class_metrics": {
+        "high": {
+          "precision": 0.457,
+          "recall": 0.6523,
+          "f1_score": 0.5374,
+          "support": 3770
+        },
+        "low": {
+          "precision": 0.9351,
+          "recall": 0.9093,
+          "f1_score": 0.922,
+          "support": 191661
+        },
+        "medium": {
+          "precision": 0.6793,
+          "recall": 0.7252,
+          "f1_score": 0.7015,
+          "support": 54569
+        }
+      },
+      "classification_report": "              precision    recall  f1-score   support\n\n        high       0.46      0.65      0.54      3770\n         low       0.94      0.91      0.92    191661\n      medium       0.68      0.73      0.70     54569\n\n    accuracy                           0.87    250000\n   macro avg       0.69      0.76      0.72    250000\nweighted avg       0.87      0.87      0.87    250000\n"
+    }
+  }
+}

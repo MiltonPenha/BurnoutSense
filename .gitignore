@@ -70,6 +70,18 @@ web_modules/
 .env.*
 !.env.example
 
+# Python virtual environments
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# Local datasets can be very large
+ai-service/dataset/*.csv
+
+# Trained model artifacts are generated locally and may exceed GitHub size limits
+ai-service/saved_models/*.pkl
+
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache

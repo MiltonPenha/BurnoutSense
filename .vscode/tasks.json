@@ -1,0 +1,38 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run BurnoutSense AI Service",
+      "type": "shell",
+      "command": "${workspaceFolder}\\ai-service\\.venv\\Scripts\\python.exe",
+      "args": [
+        "-m",
+        "uvicorn",
+        "app.main:app",
+        "--reload"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}\\ai-service"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Train BurnoutSense Model",
+      "type": "shell",
+      "command": "${workspaceFolder}\\ai-service\\.venv\\Scripts\\python.exe",
+      "args": [
+        "-m",
+        "training.train_model",
+        "--dataset",
+        "dataset\\student_mental_health_burnout_1M.csv",
+        "--balance-train",
+        "--class-sample-sizes",
+        "high=11000,medium=50000,low=100000"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}\\ai-service"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

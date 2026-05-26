@@ -76,6 +76,9 @@ venv/
 __pycache__/
 *.py[cod]
 
+# Editor settings
+.vscode/
+
 # Local datasets can be very large
 ai-service/dataset/*.csv
 

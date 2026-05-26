@@ -62,10 +62,17 @@ function writeToken(key, value) {
   }
 }
 
+function notifyAuthChange() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("burnoutsense-auth-change"));
+  }
+}
+
 function clearAuthTokens() {
   if (typeof window !== "undefined") {
     window.localStorage.removeItem(AUTH_KEYS.accessToken);
     window.localStorage.removeItem(AUTH_KEYS.refreshToken);
+    notifyAuthChange();
   }
 }
 
@@ -76,6 +83,8 @@ function persistAuthResponse(authResponse) {
   if (authResponse.user) {
     writeJson(STORAGE_KEYS.profile, normalizeProfile(authResponse.user));
   }
+
+  notifyAuthChange();
 
   return authResponse;
 }
@@ -90,6 +99,14 @@ function authHeaders() {
   return {
     Authorization: `Bearer ${accessToken}`
   };
+}
+
+export function isAuthenticated() {
+  if (!hasBackend()) {
+    return true;
+  }
+
+  return Boolean(readToken(AUTH_KEYS.accessToken));
 }
 
 async function request(path, options = {}) {

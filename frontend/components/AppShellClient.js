@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import { isAuthenticated, logoutUser } from "@/lib/burnout-api";
 
 const navItems = [
@@ -17,10 +17,29 @@ export function AppShellClient({ children }) {
   const pathname = usePathname();
   const router = useRouter();
   const authRoute = pathname === "/login" || pathname === "/cadastro";
-  const authState = useSyncExternalStore(subscribeToAuthChanges, getAuthSnapshot, getServerAuthSnapshot);
+  const [authState, setAuthState] = useState("checking");
   const loggedIn = authState === "authenticated";
 
   useEffect(() => {
+    function refreshAuthState() {
+      setAuthState(isAuthenticated() ? "authenticated" : "anonymous");
+    }
+
+    refreshAuthState();
+    window.addEventListener("storage", refreshAuthState);
+    window.addEventListener("burnoutsense-auth-change", refreshAuthState);
+
+    return () => {
+      window.removeEventListener("storage", refreshAuthState);
+      window.removeEventListener("burnoutsense-auth-change", refreshAuthState);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (authState === "checking") {
+      return;
+    }
+
     if (!loggedIn && !authRoute) {
       router.replace("/login");
     }
@@ -28,7 +47,7 @@ export function AppShellClient({ children }) {
     if (loggedIn && authRoute) {
       router.replace("/dashboard");
     }
-  }, [authRoute, loggedIn, pathname, router]);
+  }, [authRoute, authState, loggedIn, pathname, router]);
 
   async function handleLogout() {
     await logoutUser();
@@ -84,22 +103,4 @@ export function AppShellClient({ children }) {
       <main className="main">{children}</main>
     </div>
   );
-}
-
-function getAuthSnapshot() {
-  return isAuthenticated() ? "authenticated" : "anonymous";
-}
-
-function getServerAuthSnapshot() {
-  return "anonymous";
-}
-
-function subscribeToAuthChanges(callback) {
-  window.addEventListener("storage", callback);
-  window.addEventListener("burnoutsense-auth-change", callback);
-
-  return () => {
-    window.removeEventListener("storage", callback);
-    window.removeEventListener("burnoutsense-auth-change", callback);
-  };
 }

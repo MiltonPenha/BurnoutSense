@@ -425,6 +425,93 @@ button {
   padding: 0 14px;
 }
 
+.password-field {
+  position: relative;
+}
+
+.password-field .input {
+  padding-right: 46px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  transform: translateY(-50%);
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 17px;
+  line-height: 1;
+}
+
+.password-toggle:hover,
+.password-toggle:focus-visible {
+  background: rgba(96, 165, 250, 0.14);
+  color: var(--primary-dark);
+  outline: none;
+}
+
+.password-toggle-icon {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.password-rules {
+  display: grid;
+  gap: 6px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+}
+
+.password-rules li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  transition: color 160ms ease;
+}
+
+.password-rules span:first-child {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.password-rules .valid {
+  color: #047857;
+}
+
+.password-rules .valid span:first-child {
+  background: rgba(52, 211, 153, 0.2);
+}
+
+.password-rules .invalid {
+  color: #b45309;
+}
+
+.password-rules .invalid span:first-child {
+  background: rgba(251, 191, 36, 0.18);
+}
+
 .textarea {
   min-height: 124px;
   resize: vertical;

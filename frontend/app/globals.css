@@ -238,6 +238,58 @@ button {
   background: #f7fbfc;
 }
 
+.button.danger {
+  background: #fb7185;
+  color: #ffffff;
+}
+
+.button.danger:hover {
+  background: #e11d48;
+}
+
+.toast {
+  position: fixed;
+  top: 82px;
+  right: 24px;
+  z-index: 80;
+  width: min(360px, calc(100vw - 32px));
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 14px 16px;
+  display: grid;
+  gap: 4px;
+  background: #ffffff;
+  box-shadow: 0 18px 40px rgba(35, 55, 80, 0.16);
+}
+
+.toast strong {
+  font-size: 13px;
+}
+
+.toast span {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.toast-warning {
+  border-color: var(--warning-line);
+  background: var(--warning-bg);
+}
+
+.inline-notice {
+  border-radius: 16px;
+  padding: 13px 16px;
+  margin-bottom: 18px;
+  font-weight: 800;
+}
+
+.inline-notice.success {
+  border: 1px solid var(--mint);
+  background: var(--mint-soft);
+  color: #047857;
+}
+
 .risk-banner {
   border: 1px solid var(--warning-line);
   border-radius: 22px;
@@ -693,6 +745,44 @@ button {
   outline: none;
 }
 
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  padding: 24px;
+  display: grid;
+  place-items: center;
+  background: rgba(16, 32, 51, 0.38);
+}
+
+.confirm-dialog {
+  width: min(100%, 440px);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 26px;
+  background: #ffffff;
+  box-shadow: 0 22px 56px rgba(16, 32, 51, 0.22);
+}
+
+.confirm-title {
+  margin: 6px 0 8px;
+  font-size: 22px;
+  line-height: 1.15;
+}
+
+.confirm-copy {
+  margin: 0 0 18px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
 .history-date {
   color: #24475d;
   font-weight: 700;
@@ -918,6 +1008,11 @@ button {
     padding: 28px 18px 58px;
   }
 
+  .toast {
+    top: 18px;
+    right: 16px;
+  }
+
   .page-header,
   .risk-banner,
   .empty-state {
@@ -948,6 +1043,10 @@ button {
     min-height: 42px;
     border-top: 1px solid var(--line);
     border-left: 0;
+  }
+
+  .confirm-actions {
+    flex-direction: column-reverse;
   }
 }
 

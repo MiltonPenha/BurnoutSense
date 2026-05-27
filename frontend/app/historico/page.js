@@ -1,23 +1,34 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { useBurnoutStore } from "@/hooks/useBurnoutStore";
 import { calculateRisk, formatDateShort } from "@/lib/burnout-data";
 
 export default function HistoricoPage() {
   const { deleteRecord, records } = useBurnoutStore();
+  const [recordToDelete, setRecordToDelete] = useState(null);
+  const [deleteError, setDeleteError] = useState("");
 
-  async function handleDelete(event, recordId) {
+  function requestDelete(event, record) {
     event.preventDefault();
     event.stopPropagation();
+    setDeleteError("");
+    setRecordToDelete(record);
+  }
 
-    const confirmed = window.confirm("Deseja excluir este registro? Essa ação não pode ser desfeita.");
-
-    if (!confirmed) {
+  async function confirmDelete() {
+    if (!recordToDelete) {
       return;
     }
 
-    await deleteRecord(recordId);
+    try {
+      await deleteRecord(recordToDelete.id);
+      setRecordToDelete(null);
+      setDeleteError("");
+    } catch {
+      setDeleteError("Nao foi possivel excluir o registro. Tente novamente.");
+    }
   }
 
   return (
@@ -63,7 +74,7 @@ export default function HistoricoPage() {
                   </div>
                   <span className="chevron" aria-hidden="true">{">"}</span>
                 </Link>
-                <button className="history-delete" type="button" onClick={(event) => handleDelete(event, record.id)}>
+                <button className="history-delete" type="button" onClick={(event) => requestDelete(event, record)}>
                   Excluir
                 </button>
               </article>
@@ -73,6 +84,27 @@ export default function HistoricoPage() {
       )}
 
       <p className="footer-note" style={{ marginTop: 60 }}>BurnoutSense e uma ferramenta de apoio preventivo e nao substitui acompanhamento medico ou psicologico.</p>
+
+      {recordToDelete ? (
+        <div className="modal-backdrop" role="presentation">
+          <section className="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-record-title">
+            <p className="overline">Exclusao de registro</p>
+            <h2 className="confirm-title" id="delete-record-title">Excluir este registro?</h2>
+            <p className="confirm-copy">
+              O registro de {formatDateShort(recordToDelete.date)} sera removido do seu historico junto com o resultado associado.
+            </p>
+            {deleteError ? <p className="form-error">{deleteError}</p> : null}
+            <div className="confirm-actions">
+              <button className="button secondary" type="button" onClick={() => setRecordToDelete(null)}>
+                Cancelar
+              </button>
+              <button className="button danger" type="button" onClick={confirmDelete}>
+                Excluir registro
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </section>
   );
 }

@@ -121,7 +121,7 @@ export class AuthService {
     const signOptions: JwtSignOptions = {
       secret: this.configService.getOrThrow<string>('JWT_ACCESS_SECRET'),
       expiresIn: (this.configService.get<string>('JWT_ACCESS_EXPIRES_IN') ??
-        '15m') as JwtSignOptions['expiresIn'],
+        '30m') as JwtSignOptions['expiresIn'],
     };
 
     return this.jwtService.signAsync(

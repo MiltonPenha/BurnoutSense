@@ -79,9 +79,10 @@ export function useBurnoutStore() {
     try {
       await removeRecord(id);
       setError(null);
-    } catch {
+    } catch (error) {
       setRecords(previousRecords);
       setError("Nao foi possivel excluir o registro.");
+      throw error;
     }
   }, [records]);
 
@@ -95,7 +96,7 @@ export function useBurnoutStore() {
       return savedProfile;
     } catch {
       setError("Não foi possível salvar o perfil.");
-      return nextProfile;
+      throw new Error("Profile update failed.");
     }
   }, []);
 

@@ -7,6 +7,8 @@ const AUTH_KEYS = {
   refreshToken: "burnoutsense.auth.refreshToken"
 };
 
+export const SESSION_TIMEOUT_MINUTES = 30;
+
 function hasBackend() {
   return Boolean(API_URL);
 }
@@ -68,10 +70,19 @@ function notifyAuthChange() {
   }
 }
 
-function clearAuthTokens() {
+function notifySessionExpired(reason = "expired") {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("burnoutsense-session-ended", { detail: { reason } }));
+  }
+}
+
+function clearAuthTokens(reason) {
   if (typeof window !== "undefined") {
     window.localStorage.removeItem(AUTH_KEYS.accessToken);
     window.localStorage.removeItem(AUTH_KEYS.refreshToken);
+    if (reason) {
+      notifySessionExpired(reason);
+    }
     notifyAuthChange();
   }
 }
@@ -120,7 +131,7 @@ async function request(path, options = {}) {
   });
 
   if (response.status === 401) {
-    clearAuthTokens();
+    clearAuthTokens("expired");
   }
 
   if (!response.ok) {
@@ -374,4 +385,8 @@ export async function logoutUser() {
   } finally {
     clearAuthTokens();
   }
+}
+
+export function endSession(reason = "expired") {
+  clearAuthTokens(reason);
 }

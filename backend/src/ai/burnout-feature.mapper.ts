@@ -95,7 +95,7 @@ export class BurnoutFeatureMapper {
       screenTime: clampNumber(indicators.screenTime ?? studyHours + workHours, 0, 24),
       socialSupport: clampInt(indicators.socialSupport ?? deriveSocialSupport(indicators.mood), 0, 10),
       financialStress: clampInt(indicators.financialStress ?? deriveFinancialStress(workHours), 0, 10),
-      physicalActivity: clampInt(indicators.physicalActivity ?? derivePhysicalActivity(tirednessLevel), 0, 7),
+      physicalActivity: clampInt(indicators.physicalActivity ?? derivePhysicalActivity(tirednessLevel), 0, 10),
       motivationLevel: clampInt(indicators.motivationLevel ?? deriveMotivationLevel(indicators.mood, tirednessLevel), 0, 10),
     };
   }
@@ -227,7 +227,7 @@ function deriveFinancialStress(workHours: number): number {
 }
 
 function derivePhysicalActivity(tirednessLevel: number): number {
-  return tirednessLevel >= 8 ? 1 : 3;
+  return tirednessLevel >= 8 ? 1 : 5;
 }
 
 function deriveMotivationLevel(mood: string | undefined, tirednessLevel: number): number {

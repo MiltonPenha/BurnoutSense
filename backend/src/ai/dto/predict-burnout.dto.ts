@@ -112,7 +112,7 @@ export class PredictBurnoutDto {
   @IsOptional()
   @IsInt()
   @Min(0)
-  @Max(7)
+  @Max(10)
   @Type(() => Number)
   physicalActivity?: number;
 

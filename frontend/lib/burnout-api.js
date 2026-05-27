@@ -199,7 +199,7 @@ export function recordToAssessmentDto(record) {
     screenTime: clampNumber(record.screenTime ?? studyHours, 0, 24),
     socialSupport: clampInt(record.socialSupport ?? (["Feliz", "Calmo"].includes(record.mood) ? 8 : 5), 0, 10),
     financialStress: clampInt(record.financialStress ?? 3, 0, 10),
-    physicalActivity: clampInt(record.physicalActivity ?? (tiredness >= 8 ? 1 : 3), 0, 7),
+    physicalActivity: clampInt(record.physicalActivity ?? (tiredness >= 8 ? 1 : 5), 0, 10),
     mood: record.mood,
     dailyDescription: record.notes
   };
@@ -225,7 +225,7 @@ export function assessmentToRecord(assessment, fallback = {}) {
     sleepQuality: assessment.sleepQuality ?? fallback.sleepQuality ?? 7,
     stress: assessment.stressLevel ?? fallback.stress ?? 5,
     tiredness: fallback.tiredness ?? tiredness,
-    physicalActivity: assessment.physicalActivity ?? fallback.physicalActivity ?? 3,
+    physicalActivity: assessment.physicalActivity ?? fallback.physicalActivity ?? 5,
     socialSupport: assessment.socialSupport ?? fallback.socialSupport ?? 6,
     financialStress: assessment.financialStress ?? fallback.financialStress ?? 3,
     mood: fallback.mood ?? moodFromAssessment(assessment),

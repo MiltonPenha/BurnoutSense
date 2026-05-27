@@ -26,7 +26,7 @@ export default function RegistroPage() {
     sleepQuality: valueFromLatest(latestRecord, "sleepQuality", 7),
     stress: valueFromLatest(latestRecord, "stress", 5),
     tiredness: valueFromLatest(latestRecord, "tiredness", 5),
-    physicalActivity: valueFromLatest(latestRecord, "physicalActivity", 3),
+    physicalActivity: valueFromLatest(latestRecord, "physicalActivity", 5),
     socialSupport: valueFromLatest(latestRecord, "socialSupport", 6),
     financialStress: valueFromLatest(latestRecord, "financialStress", 3),
     mood: valueFromLatest(latestRecord, "mood", "Calmo"),
@@ -126,9 +126,9 @@ export default function RegistroPage() {
             <div className="range-row" key={field}>
               <div className="range-head">
                 <label htmlFor={field}>{label}</label>
-                <span className="range-value">{form[field]}/{field === "physicalActivity" ? "7" : "10"}</span>
+                <span className="range-value">{form[field]}/10</span>
               </div>
-              <input className="range" id={field} min="0" max={field === "physicalActivity" ? "7" : "10"} type="range" value={form[field]} onChange={(event) => updateField(field, event.target.value)} />
+              <input className="range" id={field} min="0" max="10" type="range" value={form[field]} onChange={(event) => updateField(field, event.target.value)} />
             </div>
           ))}
 

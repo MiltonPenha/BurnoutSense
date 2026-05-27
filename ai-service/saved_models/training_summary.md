@@ -12,7 +12,7 @@ The model predicts the target column `risk_level` using academic, emotional and 
 - Total records identified during EDA: 1000000
 - Records used in this training run: 1000000
 - Training strategy: `custom_class_sampling`
-- Training timestamp: `2026-05-26T01:06:57.778162+00:00`
+- Training timestamp: `2026-05-27T22:05:38.865883+00:00`
 
 ## Target
 

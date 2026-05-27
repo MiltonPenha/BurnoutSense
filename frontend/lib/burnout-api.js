@@ -278,6 +278,18 @@ export async function createRecord(record) {
   return record;
 }
 
+export async function deleteRecord(id) {
+  if (hasBackend()) {
+    await request(`/assessments/${id}`, {
+      method: "DELETE"
+    });
+    return;
+  }
+
+  const records = readJson(STORAGE_KEYS.records, defaultRecords);
+  writeJson(STORAGE_KEYS.records, records.filter((record) => record.id !== id));
+}
+
 export async function getProfile() {
   if (hasBackend()) {
     const user = await request("/users/me");

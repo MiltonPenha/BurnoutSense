@@ -9,7 +9,7 @@ import { isAuthenticated, logoutUser } from "@/lib/burnout-api";
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: "\u2318" },
   { href: "/registro", label: "Novo registro", icon: "+" },
-  { href: "/historico", label: "Historico", icon: "\u21ba" },
+  { href: "/historico", label: "Historico de registros", icon: "\u21ba" },
   { href: "/perfil", label: "Perfil", icon: "\u25ce" }
 ];
 

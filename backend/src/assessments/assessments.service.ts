@@ -57,4 +57,17 @@ export class AssessmentsService {
 
     return assessment;
   }
+
+  async deleteByUser(userId: string, id: string) {
+    const assessment = await this.prisma.assessment.findFirst({
+      where: { id, userId },
+      select: { id: true },
+    });
+
+    if (!assessment) {
+      throw new NotFoundException('Assessment not found.');
+    }
+
+    await this.prisma.assessment.delete({ where: { id } });
+  }
 }

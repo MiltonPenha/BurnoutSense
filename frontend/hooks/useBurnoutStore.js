@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { createRecord, getProfile, getRecordById, getRecords, updateProfile as saveProfile } from "@/lib/burnout-api";
+import { createRecord, deleteRecord as removeRecord, getProfile, getRecordById, getRecords, updateProfile as saveProfile } from "@/lib/burnout-api";
 import { defaultProfile, defaultRecords, sortRecords } from "@/lib/burnout-data";
 
 export function useBurnoutStore() {
@@ -72,6 +72,19 @@ export function useBurnoutStore() {
     }
   }, [records]);
 
+  const deleteRecord = useCallback(async (id) => {
+    const previousRecords = records;
+    setRecords((current) => current.filter((record) => record.id !== id));
+
+    try {
+      await removeRecord(id);
+      setError(null);
+    } catch {
+      setRecords(previousRecords);
+      setError("Nao foi possivel excluir o registro.");
+    }
+  }, [records]);
+
   const updateProfile = useCallback(async (nextProfile) => {
     setProfile(nextProfile);
 
@@ -90,6 +103,7 @@ export function useBurnoutStore() {
 
   return {
     addRecord,
+    deleteRecord,
     error,
     findRecord,
     latestRecord: orderedRecords[0] ?? null,

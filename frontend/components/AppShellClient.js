@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useSyncExternalStore } from "react";
 import { isAuthenticated, logoutUser } from "@/lib/burnout-api";
@@ -52,7 +53,9 @@ export function AppShellClient({ children }) {
       <header className="topbar">
         <div className="topbar-inner">
           <Link className="brand" href="/dashboard" aria-label="Ir para o dashboard">
-            <span className="brand-mark">{"\u2661"}</span>
+            <span className="brand-mark">
+              <Image className="brand-logo" src="/imgs/logo-BurnoutSense.svg" alt="" width={34} height={34} />
+            </span>
             <span className="brand-copy">
               <span className="brand-name">BurnoutSense</span>
               <span className="brand-tagline">Apoio preventivo ao estudante</span>

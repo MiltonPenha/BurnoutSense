@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { loginUser } from "@/lib/burnout-api";
@@ -32,7 +33,9 @@ export default function LoginPage() {
   return (
     <section className="auth-panel">
       <div className="auth-brand">
-        <span className="brand-mark">♡</span>
+        <span className="brand-mark">
+          <Image className="brand-logo" src="/imgs/logo-BurnoutSense.svg" alt="" width={48} height={48} />
+        </span>
         <div>
           <h1 className="auth-title">BurnoutSense</h1>
           <p className="auth-subtitle">Apoio preventivo para acompanhar sua rotina academica com mais leveza.</p>

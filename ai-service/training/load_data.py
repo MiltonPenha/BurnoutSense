@@ -4,14 +4,16 @@ import numpy as np
 import pandas as pd
 
 
-DEFAULT_DATASET_PATH = Path(__file__).resolve().parents[1] / "dataset" / "student_health.csv"
+DEFAULT_DATASET_PATH = Path(__file__).resolve().parents[1] / "dataset" / "student_mental_health_burnout_1M.csv"
 
 
 def load_dataset(dataset_path: str | Path = DEFAULT_DATASET_PATH) -> pd.DataFrame:
     path = Path(dataset_path)
     if not path.exists():
         raise FileNotFoundError(
-            f"Dataset nao encontrado em {path}. Baixe o CSV do Kaggle e salve como dataset/student_health.csv."
+            "Dataset nao encontrado em "
+            f"{path}. Baixe o CSV do Kaggle e salve como "
+            "dataset/student_mental_health_burnout_1M.csv."
         )
 
     return pd.read_csv(path)

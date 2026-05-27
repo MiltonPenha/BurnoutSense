@@ -19,7 +19,7 @@ ai-service/
     evaluate_model.py
     train_model.py
   dataset/
-    student_health.csv
+    student_mental_health_burnout_1M.csv
   saved_models/
     burnout_model.pkl
     training_report.json
@@ -37,8 +37,12 @@ https://www.kaggle.com/datasets/ayeshasiddiqa123/student-health
 Baixe o CSV e salve em:
 
 ```text
-ai-service/dataset/student_health.csv
+ai-service/dataset/student_mental_health_burnout_1M.csv
 ```
+
+O arquivo CSV nao fica versionado no Git porque e grande. A pasta `ai-service/dataset/` fica no repositorio com um README e um `.gitkeep`, mas cada pessoa precisa baixar o CSV localmente ou usar Git LFS caso o grupo decida versionar o arquivo grande.
+
+O modelo treinado `ai-service/saved_models/burnout_model.pkl` tambem nao fica versionado por padrao, pois e gerado pelo treinamento e pode exceder o limite de tamanho do GitHub. Depois de baixar o dataset, execute o treinamento para gerar esse arquivo localmente.
 
 Neste prototipo tambem e possivel usar outro nome de arquivo, informando o caminho no comando de treinamento.
 
@@ -68,6 +72,12 @@ Treine o modelo com o CSV real:
 
 ```bash
 python -m training.train_model
+```
+
+O comando acima usa por padrao:
+
+```text
+dataset/student_mental_health_burnout_1M.csv
 ```
 
 Para o arquivo de 1 milhao de linhas usado neste projeto, uma execucao rapida de prototipo pode usar amostragem:

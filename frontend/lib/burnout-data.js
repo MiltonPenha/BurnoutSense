@@ -27,9 +27,9 @@ export function calculateRisk(record) {
   const tirednessWeight = record.tiredness * 0.22;
   const sleepPenalty = Math.max(0, 7 - record.sleepHours) * 0.55;
   const qualityPenalty = Math.max(0, 7 - record.sleepQuality) * 0.24;
-  const taskPenalty = Math.min(record.pendingTasks, 6) * 0.22;
-  const deliveryPenalty = record.importantDelivery ? 0.9 : 0;
-  const score = Math.round(stressWeight + tirednessWeight + sleepPenalty + qualityPenalty + taskPenalty + deliveryPenalty);
+  const academicPressure = Math.max(0, (record.examPressure ?? 5) - 5) * 0.35;
+  const screenPenalty = Math.max(0, (record.screenTime ?? 0) - 8) * 0.18;
+  const score = Math.round(stressWeight + tirednessWeight + sleepPenalty + qualityPenalty + academicPressure + screenPenalty);
 
   if (score >= 8) {
     return { score, label: "Risco alto", tone: "danger" };
@@ -75,6 +75,14 @@ export function buildAlerts(record) {
 
   if (record.pendingTasks >= 4) {
     alerts.push("Muitas tarefas academicas pendentes");
+  }
+
+  if ((record.examPressure ?? 0) >= 8) {
+    alerts.push("Pressao academica elevada");
+  }
+
+  if ((record.socialSupport ?? 6) <= 3) {
+    alerts.push("Baixo suporte social percebido");
   }
 
   return alerts.length ? alerts : ["Nenhum alerta preventivo para o registro mais recente"];

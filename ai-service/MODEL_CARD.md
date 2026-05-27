@@ -65,6 +65,11 @@ O prototipo atual utiliza os seguintes indicadores quando disponiveis:
 - `financial_stress`
 - `dropout_risk`
 
+Nota de compatibilidade: a feature salva como `sleep_quality` recebe a coluna
+`sleep_hours` do dataset durante o preprocessamento. O backend mantem esse nome
+para nao quebrar o modelo `.pkl` ja treinado, mas envia horas de sono para essa
+feature.
+
 ## Modelos Avaliados
 
 O script de treinamento avalia:

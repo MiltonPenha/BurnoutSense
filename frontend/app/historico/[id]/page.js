@@ -49,11 +49,11 @@ export default function HistoricoDetalhePage() {
       <section className="page page-narrow">
         <header className="page-header">
           <div>
-            <h1 className="page-title">Registro nao encontrado</h1>
-            <p className="page-kicker">Esse item pode ter sido removido ou ainda nao existe no backend.</p>
+            <h1 className="page-title">Registro não encontrado</h1>
+            <p className="page-kicker">Esse item pode ter sido removido ou ainda não existe no backend.</p>
           </div>
         </header>
-        <Link className="button secondary" href="/historico">Voltar ao historico</Link>
+        <Link className="button secondary" href="/historico">Voltar ao histórico</Link>
       </section>
     );
   }
@@ -66,16 +66,16 @@ export default function HistoricoDetalhePage() {
       <header className="page-header">
         <div>
           <h1 className="page-title">Detalhe do registro</h1>
-          <p className="page-kicker">Analise preventiva do dia {formatDateLong(record.date)}.</p>
+          <p className="page-kicker">Análise preventiva do dia {formatDateLong(record.date)}.</p>
         </div>
         <Link className="button secondary" href="/historico">Voltar</Link>
       </header>
 
       <section className="risk-banner detail-risk">
         <div>
-          <p className="overline">Classificacao preventiva</p>
+          <p className="overline">Classificação preventiva</p>
           <h2 className="risk-title">{risk.label}</h2>
-          <p className="risk-meta">Pontuacao: {risk.score} pts</p>
+          <p className="risk-meta">Pontuação: {risk.score} pts</p>
         </div>
       </section>
 
@@ -90,17 +90,17 @@ export default function HistoricoDetalhePage() {
           <div>
             <span className="detail-label">Estresse</span>
             <strong>{record.stress}/10</strong>
-            <small>Cansaco {record.tiredness}/10</small>
+            <small>Cansaço {record.tiredness}/10</small>
           </div>
           <div>
-            <span className="detail-label">Estudos</span>
+            <span className="detail-label">Carga acadêmica</span>
             <strong>{record.studyHours}h</strong>
-            <small>{record.pendingTasks} tarefas pendentes</small>
+            <small>Pressão {record.examPressure ?? 5}/10</small>
           </div>
           <div>
-            <span className="detail-label">Humor</span>
+            <span className="detail-label">Contexto</span>
             <strong>{record.mood}</strong>
-            <small>{record.importantDelivery ? "Com entrega importante" : "Sem entrega importante"}</small>
+            <small>Tela {record.screenTime ?? 0}h · Suporte {record.socialSupport ?? 6}/10</small>
           </div>
         </div>
       </section>
@@ -113,8 +113,8 @@ export default function HistoricoDetalhePage() {
       </section>
 
       <section className="card detail-card">
-        <h2 className="section-title">Observacoes</h2>
-        <p className="detail-notes">{record.notes || "Nenhuma observacao registrada para este dia."}</p>
+        <h2 className="section-title">Observações</h2>
+        <p className="detail-notes">{record.notes || "Nenhuma observação registrada para este dia."}</p>
       </section>
     </section>
   );

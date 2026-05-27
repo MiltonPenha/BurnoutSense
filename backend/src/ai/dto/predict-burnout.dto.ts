@@ -1,53 +1,156 @@
-import { IsInt, IsNumber, Max, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsBoolean, IsDateString, IsInt, IsNumber, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 
 export class PredictBurnoutDto {
+  @IsOptional()
+  @IsDateString()
+  date?: string;
+
   @IsNumber()
   @Min(0)
   @Max(24)
+  @Type(() => Number)
   studyHours!: number;
 
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(24)
+  @Type(() => Number)
+  sleepHours?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(24)
+  @Type(() => Number)
+  workHours?: number;
+
+  @IsOptional()
   @IsInt()
-  @Min(1)
+  @Min(0)
+  @Max(30)
+  @Type(() => Number)
+  pendingTasks?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  hasImportantExamOrDelivery?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  importantDelivery?: boolean;
+
+  @IsInt()
+  @Min(0)
   @Max(10)
+  @Type(() => Number)
   sleepQuality!: number;
 
   @IsInt()
-  @Min(1)
+  @Min(0)
   @Max(10)
+  @Type(() => Number)
   stressLevel!: number;
 
+  @IsOptional()
   @IsInt()
-  @Min(1)
+  @Min(0)
   @Max(10)
-  anxietyLevel!: number;
+  @Type(() => Number)
+  tirednessLevel?: number;
 
+  @IsOptional()
   @IsInt()
-  @Min(1)
+  @Min(0)
   @Max(10)
-  academicPerformance!: number;
+  @Type(() => Number)
+  anxietyLevel?: number;
 
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(10)
+  @Type(() => Number)
+  depressionScore?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(10)
+  @Type(() => Number)
+  academicPerformance?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(10)
+  @Type(() => Number)
+  examPressure?: number;
+
+  @IsOptional()
   @IsNumber()
   @Min(0)
   @Max(24)
-  screenTime!: number;
+  @Type(() => Number)
+  screenTime?: number;
 
+  @IsOptional()
   @IsInt()
-  @Min(1)
+  @Min(0)
   @Max(10)
-  socialSupport!: number;
+  @Type(() => Number)
+  socialSupport?: number;
 
+  @IsOptional()
   @IsInt()
-  @Min(1)
+  @Min(0)
   @Max(10)
-  financialStress!: number;
+  @Type(() => Number)
+  financialStress?: number;
 
+  @IsOptional()
   @IsInt()
   @Min(0)
   @Max(7)
-  physicalActivity!: number;
+  @Type(() => Number)
+  physicalActivity?: number;
 
+  @IsOptional()
   @IsInt()
-  @Min(1)
+  @Min(0)
   @Max(10)
-  motivationLevel!: number;
+  @Type(() => Number)
+  motivationLevel?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(24)
+  @Type(() => Number)
+  internetUsage?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(10)
+  @Type(() => Number)
+  familyExpectation?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(10)
+  @Type(() => Number)
+  dropoutRisk?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  mood?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  dailyDescription?: string;
 }

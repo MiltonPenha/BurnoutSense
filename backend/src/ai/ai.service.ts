@@ -1,6 +1,7 @@
 import { BadGatewayException, Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { RiskLevel } from '@prisma/client';
+import { AiPredictionRequest, BurnoutFeatureMapper } from './burnout-feature.mapper';
 import { PredictBurnoutDto } from './dto/predict-burnout.dto';
 
 export interface PredictionOutput {
@@ -25,10 +26,11 @@ export class AiService {
       throw new ServiceUnavailableException('AI_SERVICE_URL is not configured.');
     }
 
-    const prediction = await this.requestPrediction(aiServiceUrl, indicators);
+    const aiPayload = BurnoutFeatureMapper.toAiServicePayload(indicators);
+    const prediction = await this.requestPrediction(aiServiceUrl, aiPayload);
     const riskLevel = this.normalizeRiskLevel(prediction.risk_level);
-    const mainFactors = this.getMainFactors(indicators);
-    const confidence = await this.getModelConfidence(aiServiceUrl, prediction.risk_level);
+    const mainFactors = prediction.main_factors?.length ? prediction.main_factors : BurnoutFeatureMapper.mainFactors(aiPayload);
+    const confidence = prediction.confidence ?? (await this.getModelConfidence(aiServiceUrl, prediction.risk_level));
 
     return {
       riskLevel,
@@ -39,13 +41,13 @@ export class AiService {
     };
   }
 
-  private async requestPrediction(aiServiceUrl: string, indicators: PredictBurnoutDto) {
+  private async requestPrediction(aiServiceUrl: string, indicators: AiPredictionRequest) {
     try {
       const response = await fetch(`${aiServiceUrl}/predict`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(this.toAiServicePayload(indicators)),
-        signal: AbortSignal.timeout(10_000),
+        body: JSON.stringify(indicators),
+        signal: AbortSignal.timeout(30_000),
       });
 
       if (!response.ok) {
@@ -60,20 +62,6 @@ export class AiService {
 
       throw new ServiceUnavailableException('AI service is unavailable.');
     }
-  }
-
-  private toAiServicePayload(indicators: PredictBurnoutDto): AiPredictionRequest {
-    return {
-      study_hours: indicators.studyHours,
-      sleep_quality: indicators.sleepQuality,
-      stress_level: indicators.stressLevel,
-      screen_time: indicators.screenTime,
-      social_support: indicators.socialSupport,
-      financial_stress: indicators.financialStress,
-      academic_performance: indicators.academicPerformance,
-      anxiety_score: indicators.anxietyLevel,
-      physical_activity: indicators.physicalActivity,
-    };
   }
 
   private normalizeRiskLevel(riskLevel: string): RiskLevel {
@@ -106,66 +94,13 @@ export class AiService {
       return 0;
     }
   }
-
-  private getMainFactors(indicators: PredictBurnoutDto): string[] {
-    const factors: string[] = [];
-
-    if (indicators.stressLevel >= 8) {
-      factors.push('alto nível de estresse');
-    }
-
-    if (indicators.anxietyLevel >= 7) {
-      factors.push('alto nível de ansiedade');
-    }
-
-    if (indicators.sleepQuality <= 4) {
-      factors.push('baixa qualidade do sono');
-    }
-
-    if (indicators.socialSupport <= 4) {
-      factors.push('baixo suporte social');
-    }
-
-    if (indicators.studyHours >= 8) {
-      factors.push('alta carga de estudos');
-    }
-
-    if (indicators.academicPerformance <= 5) {
-      factors.push('baixo desempenho acadêmico');
-    }
-
-    if (indicators.screenTime >= 8) {
-      factors.push('tempo de tela elevado');
-    }
-
-    if (indicators.financialStress >= 7) {
-      factors.push('alto estresse financeiro');
-    }
-
-    if (indicators.motivationLevel <= 4) {
-      factors.push('baixa motivação acadêmica');
-    }
-
-    return factors.length > 0 ? factors : ['indicadores dentro de uma faixa menos critica'];
-  }
-
-}
-
-interface AiPredictionRequest {
-  study_hours: number;
-  sleep_quality: number;
-  stress_level: number;
-  screen_time: number;
-  social_support: number;
-  financial_stress: number;
-  academic_performance: number;
-  anxiety_score: number;
-  physical_activity: number;
 }
 
 interface AiPredictionResponse {
   risk_level: string;
+  confidence?: number;
   model_used: string;
+  main_factors?: string[];
 }
 
 interface AiModelMetricsResponse {

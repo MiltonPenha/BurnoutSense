@@ -9,20 +9,27 @@ function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function valueFromLatest(latestRecord, key, fallback) {
+  return latestRecord?.[key] ?? fallback;
+}
+
 export default function RegistroPage() {
   const router = useRouter();
   const { addRecord, latestRecord } = useBurnoutStore();
   const [form, setForm] = useState({
     date: todayIso(),
-    sleepHours: latestRecord?.sleepHours ?? 7,
-    studyHours: latestRecord?.studyHours ?? 4,
-    workHours: latestRecord?.workHours ?? 0,
-    pendingTasks: latestRecord?.pendingTasks ?? 2,
-    importantDelivery: false,
-    sleepQuality: 7,
-    stress: 5,
-    tiredness: 5,
-    mood: "Calmo",
+    sleepHours: valueFromLatest(latestRecord, "sleepHours", 7),
+    studyHours: valueFromLatest(latestRecord, "studyHours", 4),
+    screenTime: valueFromLatest(latestRecord, "screenTime", 5),
+    academicPerformance: valueFromLatest(latestRecord, "academicPerformance", 7),
+    examPressure: valueFromLatest(latestRecord, "examPressure", latestRecord?.importantDelivery ? 8 : 5),
+    sleepQuality: valueFromLatest(latestRecord, "sleepQuality", 7),
+    stress: valueFromLatest(latestRecord, "stress", 5),
+    tiredness: valueFromLatest(latestRecord, "tiredness", 5),
+    physicalActivity: valueFromLatest(latestRecord, "physicalActivity", 3),
+    socialSupport: valueFromLatest(latestRecord, "socialSupport", 6),
+    financialStress: valueFromLatest(latestRecord, "financialStress", 3),
+    mood: valueFromLatest(latestRecord, "mood", "Calmo"),
     notes: ""
   });
 
@@ -35,16 +42,26 @@ export default function RegistroPage() {
   async function handleSubmit(event) {
     event.preventDefault();
 
+    const academicPerformance = Number(form.academicPerformance);
+    const examPressure = Number(form.examPressure);
+
     await addRecord({
       ...form,
       id: `record-${form.date}-${Date.now()}`,
       sleepHours: Number(form.sleepHours),
       studyHours: Number(form.studyHours),
-      workHours: Number(form.workHours),
-      pendingTasks: Number(form.pendingTasks),
+      screenTime: Number(form.screenTime),
+      academicPerformance,
+      examPressure,
+      workHours: 0,
+      pendingTasks: Math.max(0, 10 - academicPerformance),
+      importantDelivery: examPressure >= 7,
       sleepQuality: Number(form.sleepQuality),
       stress: Number(form.stress),
-      tiredness: Number(form.tiredness)
+      tiredness: Number(form.tiredness),
+      physicalActivity: Number(form.physicalActivity),
+      socialSupport: Number(form.socialSupport),
+      financialStress: Number(form.financialStress)
     });
 
     router.push("/dashboard");
@@ -61,7 +78,7 @@ export default function RegistroPage() {
 
       <form onSubmit={handleSubmit}>
         <section className="card form-card">
-          <h2 className="section-title">Dados do dia</h2>
+          <h2 className="section-title">Rotina acadêmica</h2>
           <div className="form-grid">
             <div className="field">
               <label htmlFor="date">Data do registro</label>
@@ -69,40 +86,21 @@ export default function RegistroPage() {
             </div>
             <div className="field">
               <label htmlFor="sleepHours">Horas de sono</label>
-              <input className="input" id="sleepHours" min="0" max="18" type="number" value={form.sleepHours} onChange={(event) => updateField("sleepHours", event.target.value)} />
+              <input className="input" id="sleepHours" min="0" max="18" step="0.5" type="number" value={form.sleepHours} onChange={(event) => updateField("sleepHours", event.target.value)} />
             </div>
             <div className="field">
               <label htmlFor="studyHours">Horas de estudo</label>
-              <input className="input" id="studyHours" min="0" max="18" type="number" value={form.studyHours} onChange={(event) => updateField("studyHours", event.target.value)} />
+              <input className="input" id="studyHours" min="0" max="18" step="0.5" type="number" value={form.studyHours} onChange={(event) => updateField("studyHours", event.target.value)} />
             </div>
             <div className="field">
-              <label htmlFor="workHours">Horas de trabalho</label>
-              <input className="input" id="workHours" min="0" max="18" type="number" value={form.workHours} onChange={(event) => updateField("workHours", event.target.value)} />
-            </div>
-            <div className="field">
-              <label htmlFor="pendingTasks">Tarefas acadêmicas pendentes</label>
-              <input className="input" id="pendingTasks" min="0" max="30" type="number" value={form.pendingTasks} onChange={(event) => updateField("pendingTasks", event.target.value)} />
-            </div>
-            <div className="field toggle-row">
-              <span className="field-label">Teve prova ou entrega importante?</span>
-              <label className="toggle-control">
-                <span className="switch">
-                  <input checked={form.importantDelivery} type="checkbox" onChange={(event) => updateField("importantDelivery", event.target.checked)} />
-                  <span className="switch-track" />
-                </span>
-                <span>{form.importantDelivery ? "Sim" : "Não"}</span>
-              </label>
+              <label htmlFor="screenTime">Tempo de tela</label>
+              <input className="input" id="screenTime" min="0" max="24" step="0.5" type="number" value={form.screenTime} onChange={(event) => updateField("screenTime", event.target.value)} />
             </div>
           </div>
-        </section>
-
-        <section className="card form-card">
-          <h2 className="section-title">Como você se sentiu</h2>
 
           {[
-            ["sleepQuality", "Qualidade do sono"],
-            ["stress", "Nível de estresse"],
-            ["tiredness", "Nível de cansaço"]
+            ["academicPerformance", "Desempenho acadêmico percebido"],
+            ["examPressure", "Pressão acadêmica"]
           ].map(([field, label]) => (
             <div className="range-row" key={field}>
               <div className="range-head">
@@ -110,6 +108,27 @@ export default function RegistroPage() {
                 <span className="range-value">{form[field]}/10</span>
               </div>
               <input className="range" id={field} min="0" max="10" type="range" value={form[field]} onChange={(event) => updateField(field, event.target.value)} />
+            </div>
+          ))}
+        </section>
+
+        <section className="card form-card">
+          <h2 className="section-title">Bem-estar e contexto</h2>
+
+          {[
+            ["sleepQuality", "Qualidade do sono"],
+            ["stress", "Nível de estresse"],
+            ["tiredness", "Nível de cansaço"],
+            ["physicalActivity", "Atividade física"],
+            ["socialSupport", "Suporte social"],
+            ["financialStress", "Estresse financeiro"]
+          ].map(([field, label]) => (
+            <div className="range-row" key={field}>
+              <div className="range-head">
+                <label htmlFor={field}>{label}</label>
+                <span className="range-value">{form[field]}/{field === "physicalActivity" ? "7" : "10"}</span>
+              </div>
+              <input className="range" id={field} min="0" max={field === "physicalActivity" ? "7" : "10"} type="range" value={form[field]} onChange={(event) => updateField(field, event.target.value)} />
             </div>
           ))}
 
@@ -135,7 +154,7 @@ export default function RegistroPage() {
             <textarea
               className="textarea"
               id="notes"
-              placeholder="Compartilhe seus sentimentos, dificuldades e situações que afetaram sua rotina..."
+              placeholder="Compartilhe sentimentos, dificuldades e situações que afetaram sua rotina..."
               value={form.notes}
               onChange={(event) => updateField("notes", event.target.value)}
             />

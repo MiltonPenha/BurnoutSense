@@ -22,7 +22,7 @@ class BurnoutPredictor:
             self._artifact = joblib.load(self.model_path)
         return self._artifact
 
-    def predict(self, payload: PredictionRequest) -> dict[str, str]:
+    def predict(self, payload: PredictionRequest) -> dict[str, Any]:
         artifact = self._load_artifact()
         model = artifact["model"]
         feature_names = artifact["feature_names"]
@@ -34,11 +34,17 @@ class BurnoutPredictor:
         input_data = input_data.apply(pd.to_numeric, errors="coerce")
         input_data = input_data.fillna(fill_values).fillna(0)
 
+        if not feature_names:
+            raise ValueError("Modelo sem lista de features esperadas.")
+
         risk_level = model.predict(input_data)[0]
+        confidence = self._prediction_confidence(model, input_data, str(risk_level))
 
         return {
             "risk_level": str(risk_level),
+            "confidence": confidence,
             "model_used": model_name,
+            "main_factors": self._main_factors(input_data.iloc[0].to_dict()),
         }
 
     def model_info(self) -> dict[str, Any]:
@@ -81,6 +87,40 @@ class BurnoutPredictor:
             "recall": _round_metric(metrics.get("recall")),
             "f1_score": _round_metric(metrics.get("f1_score")),
         }
+
+    @staticmethod
+    def _prediction_confidence(model: Any, input_data: pd.DataFrame, risk_level: str) -> float:
+        if not hasattr(model, "predict_proba"):
+            return 0.0
+
+        probabilities = model.predict_proba(input_data)[0]
+        classes = [str(label) for label in model.classes_]
+
+        if risk_level not in classes:
+            return 0.0
+
+        return round(float(probabilities[classes.index(risk_level)]), 4)
+
+    @staticmethod
+    def _main_factors(features: dict[str, float]) -> list[str]:
+        factors = []
+
+        if features.get("stress_level", 0) >= 8:
+            factors.append("Nivel de estresse elevado")
+        if features.get("sleep_quality", 24) < 6:
+            factors.append("Poucas horas de sono")
+        if features.get("exam_pressure", 0) >= 7 or features.get("study_hours", 0) >= 8:
+            factors.append("Alta carga academica")
+        if features.get("screen_time", 0) >= 8:
+            factors.append("Tempo de tela elevado")
+        if features.get("social_support", 10) <= 4:
+            factors.append("Baixo suporte social")
+        if features.get("financial_stress", 0) >= 7:
+            factors.append("Estresse financeiro elevado")
+        if features.get("physical_activity", 7) <= 1:
+            factors.append("Baixa atividade fisica")
+
+        return factors or ["Indicadores dentro de uma faixa menos critica"]
 
 
 def _round_metric(value: Any) -> float | None:

@@ -19,9 +19,9 @@ export default function HistoricoPage() {
       {records.length === 0 ? (
         <section className="card empty-state">
           <div>
-            <p className="overline">Historico vazio</p>
+            <p className="overline">Histórico vazio</p>
             <h2 className="risk-title">Nenhum registro criado</h2>
-            <p className="page-kicker">Os registros aparecerao aqui assim que voce preencher o formulario diario.</p>
+            <p className="page-kicker">Os registros aparecerão aqui assim que você preencher o formulário diário.</p>
           </div>
           <Link className="button" href="/registro">Criar registro</Link>
         </section>
@@ -44,6 +44,7 @@ export default function HistoricoPage() {
                     <span>☻ {record.mood.toLowerCase()}</span>
                     <span>⌁ estresse {record.stress}/10</span>
                     <span>◔ sono {record.sleepHours}h</span>
+                    <span>▱ pressão {record.examPressure ?? 5}/10</span>
                   </div>
                 </div>
                 <span className="chevron" aria-hidden="true">›</span>

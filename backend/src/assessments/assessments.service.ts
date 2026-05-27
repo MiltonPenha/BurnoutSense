@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { BurnoutFeatureMapper } from '../ai/burnout-feature.mapper';
 import { AiService } from '../ai/ai.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAssessmentDto } from './dto/create-assessment.dto';
@@ -12,11 +13,12 @@ export class AssessmentsService {
 
   async create(userId: string, createAssessmentDto: CreateAssessmentDto) {
     const prediction = await this.aiService.predict(createAssessmentDto);
+    const assessmentIndicators = BurnoutFeatureMapper.toStoredAssessment(createAssessmentDto);
 
     const assessment = await this.prisma.assessment.create({
       data: {
         userId,
-        ...createAssessmentDto,
+        ...assessmentIndicators,
         result: {
           create: {
             riskLevel: prediction.riskLevel,

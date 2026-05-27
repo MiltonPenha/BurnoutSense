@@ -146,35 +146,6 @@ function normalizeProfile(user) {
   };
 }
 
-function moodToAnxietyLevel(mood, stress, tiredness) {
-  const moodMap = {
-    Feliz: 2,
-    Calmo: 3,
-    Ansioso: Math.max(8, stress),
-    Triste: Math.max(6, tiredness),
-    Irritado: Math.max(7, stress),
-    Cansado: Math.max(5, tiredness),
-    Desmotivado: Math.max(6, tiredness)
-  };
-
-  return clampInt(moodMap[mood] ?? stress, 1, 10);
-}
-
-function moodToMotivationLevel(mood, tiredness) {
-  const moodMap = {
-    Feliz: 9,
-    Calmo: 8,
-    Ansioso: 5,
-    Triste: 4,
-    Irritado: 5,
-    Cansado: 4,
-    Desmotivado: 2
-  };
-
-  const base = moodMap[mood] ?? 6;
-  return clampInt(base - Math.max(0, tiredness - 7), 1, 10);
-}
-
 function moodFromAssessment(assessment) {
   if (assessment.anxietyLevel >= 8) {
     return "Ansioso";
@@ -211,21 +182,26 @@ export function recordToAssessmentDto(record) {
   const stress = clampInt(record.stress, 1, 10);
   const tiredness = clampInt(record.tiredness, 1, 10);
   const studyHours = clampNumber(record.studyHours, 0, 24);
-  const workHours = clampNumber(record.workHours, 0, 24);
   const pendingTasks = clampInt(record.pendingTasks, 0, 30);
-  const importantDeliveryPenalty = record.importantDelivery ? 1 : 0;
 
   return {
+    date: record.date,
     studyHours,
+    sleepHours: clampNumber(record.sleepHours, 0, 24),
+    workHours: clampNumber(record.workHours, 0, 24),
+    pendingTasks,
+    hasImportantExamOrDelivery: Boolean(record.importantDelivery),
     sleepQuality: clampInt(record.sleepQuality, 1, 10),
     stressLevel: stress,
-    anxietyLevel: moodToAnxietyLevel(record.mood, stress, tiredness),
-    academicPerformance: clampInt(10 - pendingTasks - importantDeliveryPenalty, 1, 10),
-    screenTime: clampNumber(studyHours + workHours, 0, 24),
-    socialSupport: ["Feliz", "Calmo"].includes(record.mood) ? 8 : 5,
-    financialStress: clampInt(workHours >= 8 ? 7 : workHours > 0 ? 5 : 3, 1, 10),
-    physicalActivity: clampInt(tiredness >= 8 ? 1 : 3, 0, 7),
-    motivationLevel: moodToMotivationLevel(record.mood, tiredness)
+    tirednessLevel: tiredness,
+    academicPerformance: clampInt(record.academicPerformance ?? Math.max(0, 10 - pendingTasks), 0, 10),
+    examPressure: clampInt(record.examPressure ?? (record.importantDelivery ? 8 : stress), 0, 10),
+    screenTime: clampNumber(record.screenTime ?? studyHours, 0, 24),
+    socialSupport: clampInt(record.socialSupport ?? (["Feliz", "Calmo"].includes(record.mood) ? 8 : 5), 0, 10),
+    financialStress: clampInt(record.financialStress ?? 3, 0, 10),
+    physicalActivity: clampInt(record.physicalActivity ?? (tiredness >= 8 ? 1 : 3), 0, 7),
+    mood: record.mood,
+    dailyDescription: record.notes
   };
 }
 
@@ -233,6 +209,7 @@ export function assessmentToRecord(assessment, fallback = {}) {
   const date = assessment.createdAt ? assessment.createdAt.slice(0, 10) : fallback.date;
   const estimatedPendingTasks = Math.max(0, 10 - Number(assessment.academicPerformance ?? 8));
   const tiredness = clampInt(Math.max(assessment.stressLevel ?? 5, 11 - (assessment.motivationLevel ?? 6)), 1, 10);
+  const examPressure = fallback.examPressure ?? (fallback.importantDelivery ? 8 : Math.max(5, assessment.stressLevel ?? 5));
 
   return {
     id: assessment.id ?? fallback.id,
@@ -241,10 +218,16 @@ export function assessmentToRecord(assessment, fallback = {}) {
     studyHours: assessment.studyHours ?? fallback.studyHours ?? 0,
     workHours: fallback.workHours ?? 0,
     pendingTasks: fallback.pendingTasks ?? estimatedPendingTasks,
-    importantDelivery: fallback.importantDelivery ?? false,
+    importantDelivery: fallback.importantDelivery ?? examPressure >= 7,
+    screenTime: assessment.screenTime ?? fallback.screenTime ?? 0,
+    academicPerformance: assessment.academicPerformance ?? fallback.academicPerformance ?? 7,
+    examPressure,
     sleepQuality: assessment.sleepQuality ?? fallback.sleepQuality ?? 7,
     stress: assessment.stressLevel ?? fallback.stress ?? 5,
     tiredness: fallback.tiredness ?? tiredness,
+    physicalActivity: assessment.physicalActivity ?? fallback.physicalActivity ?? 3,
+    socialSupport: assessment.socialSupport ?? fallback.socialSupport ?? 6,
+    financialStress: assessment.financialStress ?? fallback.financialStress ?? 3,
     mood: fallback.mood ?? moodFromAssessment(assessment),
     notes: fallback.notes ?? resultNotes(assessment.result),
     backendResult: assessment.result ?? null
@@ -364,15 +347,17 @@ export async function registerUser(payload) {
 }
 
 export async function logoutUser() {
-  if (hasBackend()) {
-    const refreshToken = readToken(AUTH_KEYS.refreshToken);
-    const body = refreshToken ? { refreshToken } : {};
+  try {
+    if (hasBackend()) {
+      const refreshToken = readToken(AUTH_KEYS.refreshToken);
+      const body = refreshToken ? { refreshToken } : {};
 
-    await request("/auth/logout", {
-      method: "POST",
-      body: JSON.stringify(body)
-    });
+      await request("/auth/logout", {
+        method: "POST",
+        body: JSON.stringify(body)
+      });
+    }
+  } finally {
+    clearAuthTokens();
   }
-
-  clearAuthTokens();
 }

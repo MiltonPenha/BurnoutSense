@@ -8,7 +8,7 @@ class HealthResponse(BaseModel):
 
 class PredictionRequest(BaseModel):
     study_hours: float = Field(..., ge=0, description="Daily study hours")
-    sleep_quality: float = Field(..., ge=0, le=10, description="Sleep quality score")
+    sleep_quality: float = Field(..., ge=0, le=24, description="Sleep hours from the dataset column mapped to the saved feature name")
     stress_level: float = Field(..., ge=0, le=10, description="Stress level score")
     screen_time: float = Field(..., ge=0, description="Daily screen time in hours")
     social_support: float = Field(..., ge=0, le=10, description="Social support score")
@@ -25,7 +25,9 @@ class PredictionRequest(BaseModel):
 
 class PredictionResponse(BaseModel):
     risk_level: str
+    confidence: float
     model_used: str
+    main_factors: list[str]
 
 
 class ModelMetricsSummary(BaseModel):

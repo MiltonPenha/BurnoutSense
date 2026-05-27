@@ -52,21 +52,30 @@ model AuthSession {
 }
 
 model Assessment {
-  id                  String            @id @default(uuid())
-  userId              String
-  user                User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  studyHours          Float
-  sleepQuality        Int
-  stressLevel         Int
-  anxietyLevel        Int
-  academicPerformance Int
-  screenTime          Float
-  socialSupport       Int
-  financialStress     Int
-  physicalActivity    Int
-  motivationLevel     Int
-  result              PredictionResult?
-  createdAt           DateTime          @default(now())
+  id                         String            @id @default(uuid())
+  userId                     String
+  user                       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date                       DateTime          @default(now())
+  studyHours                 Float
+  sleepHours                 Float             @default(7)
+  workHours                  Float             @default(0)
+  pendingTasks               Int               @default(0)
+  hasImportantExamOrDelivery Boolean           @default(false)
+  sleepQuality               Int
+  stressLevel                Int
+  tirednessLevel             Int               @default(5)
+  anxietyLevel               Int
+  academicPerformance        Int
+  examPressure               Int               @default(5)
+  screenTime                 Float
+  socialSupport              Int
+  financialStress            Int
+  physicalActivity           Int
+  motivationLevel            Int
+  mood                       String?
+  dailyDescription           String?
+  result                     PredictionResult?
+  createdAt                  DateTime          @default(now())
 
   @@index([userId])
   @@map("assessments")

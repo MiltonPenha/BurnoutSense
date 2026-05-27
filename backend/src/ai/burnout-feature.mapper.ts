@@ -18,16 +18,25 @@ export interface AiPredictionRequest {
 }
 
 export interface StoredAssessmentIndicators {
+  date: Date;
   studyHours: number;
+  sleepHours: number;
+  workHours: number;
+  pendingTasks: number;
+  hasImportantExamOrDelivery: boolean;
   sleepQuality: number;
   stressLevel: number;
+  tirednessLevel: number;
   anxietyLevel: number;
   academicPerformance: number;
+  examPressure: number;
   screenTime: number;
   socialSupport: number;
   financialStress: number;
   physicalActivity: number;
   motivationLevel: number;
+  mood?: string;
+  dailyDescription?: string;
 }
 
 const NEUTRAL_SCORE = 5;
@@ -87,16 +96,25 @@ export class BurnoutFeatureMapper {
     );
 
     return {
+      date: parseAssessmentDate(indicators.date),
       studyHours,
+      sleepHours: clampNumber(indicators.sleepHours ?? indicators.sleepQuality, 0, 24),
+      workHours,
+      pendingTasks,
+      hasImportantExamOrDelivery: hasImportantExamOrDelivery(indicators),
       sleepQuality: clampInt(indicators.sleepQuality ?? deriveSleepQuality(indicators.sleepHours), 0, 10),
       stressLevel,
+      tirednessLevel,
       anxietyLevel: clampInt(indicators.anxietyLevel ?? deriveAnxietyLevel(indicators.mood, stressLevel, tirednessLevel), 0, 10),
       academicPerformance,
+      examPressure: deriveExamPressure(indicators, stressLevel),
       screenTime: clampNumber(indicators.screenTime ?? studyHours + workHours, 0, 24),
       socialSupport: clampInt(indicators.socialSupport ?? deriveSocialSupport(indicators.mood), 0, 10),
       financialStress: clampInt(indicators.financialStress ?? deriveFinancialStress(workHours), 0, 10),
       physicalActivity: clampInt(indicators.physicalActivity ?? derivePhysicalActivity(tirednessLevel), 0, 10),
       motivationLevel: clampInt(indicators.motivationLevel ?? deriveMotivationLevel(indicators.mood, tirednessLevel), 0, 10),
+      mood: indicators.mood,
+      dailyDescription: indicators.dailyDescription,
     };
   }
 
@@ -151,6 +169,21 @@ function clampInt(value: number | undefined, min: number, max: number): number {
 
 function hasImportantExamOrDelivery(indicators: PredictBurnoutDto): boolean {
   return indicators.hasImportantExamOrDelivery ?? indicators.importantDelivery ?? false;
+}
+
+function parseAssessmentDate(date: string | undefined): Date {
+  if (!date) {
+    return new Date();
+  }
+
+  const dateValue = date.includes('T') ? date : `${date}T12:00:00.000Z`;
+  const parsedDate = new Date(dateValue);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return new Date();
+  }
+
+  return parsedDate;
 }
 
 function deriveAcademicPerformance(pendingTasks: number, importantDelivery: boolean): number {

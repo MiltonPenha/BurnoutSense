@@ -206,30 +206,32 @@ export function recordToAssessmentDto(record) {
 }
 
 export function assessmentToRecord(assessment, fallback = {}) {
-  const date = assessment.createdAt ? assessment.createdAt.slice(0, 10) : fallback.date;
+  const date = assessment.date ? assessment.date.slice(0, 10) : assessment.createdAt ? assessment.createdAt.slice(0, 10) : fallback.date;
   const estimatedPendingTasks = Math.max(0, 10 - Number(assessment.academicPerformance ?? 8));
-  const tiredness = clampInt(Math.max(assessment.stressLevel ?? 5, 11 - (assessment.motivationLevel ?? 6)), 1, 10);
-  const examPressure = fallback.examPressure ?? (fallback.importantDelivery ? 8 : Math.max(5, assessment.stressLevel ?? 5));
+  const tiredness = assessment.tirednessLevel ?? clampInt(Math.max(assessment.stressLevel ?? 5, 11 - (assessment.motivationLevel ?? 6)), 1, 10);
+  const examPressure = assessment.examPressure ?? fallback.examPressure ?? (fallback.importantDelivery ? 8 : Math.max(5, assessment.stressLevel ?? 5));
+  const importantDelivery =
+    assessment.hasImportantExamOrDelivery ?? fallback.importantDelivery ?? fallback.hasImportantExamOrDelivery ?? examPressure >= 7;
 
   return {
     id: assessment.id ?? fallback.id,
     date: date ?? new Date().toISOString().slice(0, 10),
-    sleepHours: fallback.sleepHours ?? 7,
+    sleepHours: assessment.sleepHours ?? fallback.sleepHours ?? 7,
     studyHours: assessment.studyHours ?? fallback.studyHours ?? 0,
-    workHours: fallback.workHours ?? 0,
-    pendingTasks: fallback.pendingTasks ?? estimatedPendingTasks,
-    importantDelivery: fallback.importantDelivery ?? examPressure >= 7,
+    workHours: assessment.workHours ?? fallback.workHours ?? 0,
+    pendingTasks: assessment.pendingTasks ?? fallback.pendingTasks ?? estimatedPendingTasks,
+    importantDelivery,
     screenTime: assessment.screenTime ?? fallback.screenTime ?? 0,
     academicPerformance: assessment.academicPerformance ?? fallback.academicPerformance ?? 7,
     examPressure,
     sleepQuality: assessment.sleepQuality ?? fallback.sleepQuality ?? 7,
     stress: assessment.stressLevel ?? fallback.stress ?? 5,
-    tiredness: fallback.tiredness ?? tiredness,
+    tiredness: tiredness ?? fallback.tiredness ?? 5,
     physicalActivity: assessment.physicalActivity ?? fallback.physicalActivity ?? 5,
     socialSupport: assessment.socialSupport ?? fallback.socialSupport ?? 6,
     financialStress: assessment.financialStress ?? fallback.financialStress ?? 3,
-    mood: fallback.mood ?? moodFromAssessment(assessment),
-    notes: fallback.notes ?? resultNotes(assessment.result),
+    mood: assessment.mood ?? fallback.mood ?? moodFromAssessment(assessment),
+    notes: assessment.dailyDescription ?? fallback.notes ?? resultNotes(assessment.result),
     backendResult: assessment.result ?? null
   };
 }

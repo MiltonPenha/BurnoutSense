@@ -18,5 +18,7 @@
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true
-  }
+  },
+  "include": ["src"],
+  "exclude": ["prisma"]
 }

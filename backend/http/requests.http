@@ -8,9 +8,9 @@ POST {{baseUrl}}/auth/register
 Content-Type: application/json
 
 {
-  "name": "Mateus Nauhan",
-  "email": "mateus@example.com",
-  "password": "Mateus123"
+  "name": "Student Name",
+  "email": "student@example.com",
+  "password": "Student123"
 }
 
 ### Login
@@ -18,8 +18,8 @@ POST {{baseUrl}}/auth/login
 Content-Type: application/json
 
 {
-  "email": "mateus@example.com",
-  "password": "Mateus123"
+  "email": "student@example.com",
+  "password": "Student123"
 }
 
 ### Refresh tokens
@@ -71,6 +71,10 @@ Authorization: Bearer {{accessToken}}
 
 ### Find one assessment
 GET {{baseUrl}}/assessments/{{assessmentId}}
+Authorization: Bearer {{accessToken}}
+
+### Delete one assessment
+DELETE {{baseUrl}}/assessments/{{assessmentId}}
 Authorization: Bearer {{accessToken}}
 
 ### Find prediction result

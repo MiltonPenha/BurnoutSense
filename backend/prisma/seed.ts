@@ -1,5 +1,4 @@
-import { PrismaClient, UserRole } from '@prisma/client';
-import * as bcrypt from 'bcrypt';
+import { PrismaClient } from '@prisma/client';
 import { existsSync, readFileSync } from 'fs';
 import { resolve } from 'path';
 
@@ -32,22 +31,7 @@ loadDatabaseUrlFromEnvFile();
 const prisma = new PrismaClient();
 
 async function main() {
-  const passwordHash = await bcrypt.hash('Mateus@123', 10);
-
-  await prisma.user.upsert({
-    where: { email: 'mateus@example.com' },
-    update: {
-      name: 'Mateus Nauhan',
-      passwordHash,
-      role: UserRole.STUDENT,
-    },
-    create: {
-      name: 'Mateus Nauhan',
-      email: 'mateus@example.com',
-      passwordHash,
-      role: UserRole.STUDENT,
-    },
-  });
+  // Seed intentionally empty: from now on, data should be created through the application flows.
 }
 
 main()

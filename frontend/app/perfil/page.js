@@ -47,8 +47,9 @@ export default function PerfilPage() {
       </header>
 
       {notice ? (
-        <div className={`inline-notice ${notice.tone}`} role="status">
-          {notice.message}
+        <div className={`toast toast-${notice.tone}`} role="status" style={{ "--toast-duration": notice.tone === "success" ? "4s" : "5s" }}>
+          <strong>{notice.tone === "success" ? "Alterações salvas" : "Erro ao salvar"}</strong>
+          <span>{notice.message}</span>
         </div>
       ) : null}
 

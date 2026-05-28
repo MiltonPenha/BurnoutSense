@@ -75,7 +75,7 @@ export default function DashboardPage() {
       </header>
 
       {recordNotice ? (
-        <div className="inline-notice success" role="status">
+        <div className="inline-notice success" role="status" style={{ "--notice-duration": "5s" }}>
           {recordNotice}
         </div>
       ) : null}

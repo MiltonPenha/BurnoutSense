@@ -171,7 +171,7 @@ function SessionNotice({ message }) {
   }
 
   return (
-    <div className="toast toast-warning" role="status">
+    <div className="toast toast-warning" role="status" style={{ "--toast-duration": "7s" }}>
       <strong>Sessão encerrada</strong>
       <span>{message}</span>
     </div>

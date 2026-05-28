@@ -5,12 +5,154 @@ import { useMemo, useState } from "react";
 import { moods } from "@/lib/burnout-data";
 import { useBurnoutStore } from "@/hooks/useBurnoutStore";
 
+const weekDays = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
 
 function valueFromLatest(latestRecord, key, fallback) {
   return latestRecord?.[key] ?? fallback;
+}
+
+function parseIsoDate(value) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function toIsoDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatDateLabel(value) {
+  return new Intl.DateTimeFormat("pt-BR").format(parseIsoDate(value));
+}
+
+function formatMonthLabel(date) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    month: "long",
+    year: "numeric"
+  }).format(date);
+}
+
+function addMonths(date, amount) {
+  return new Date(date.getFullYear(), date.getMonth() + amount, 1);
+}
+
+function buildCalendarDays(viewDate) {
+  const firstDay = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
+  const startOffset = (firstDay.getDay() + 6) % 7;
+  const gridStart = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1 - startOffset);
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(gridStart);
+    date.setDate(gridStart.getDate() + index);
+    return date;
+  });
+}
+
+function DatePicker({ value, onChange }) {
+  const selectedDate = parseIsoDate(value);
+  const [open, setOpen] = useState(false);
+  const [viewDate, setViewDate] = useState(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
+  const days = useMemo(() => buildCalendarDays(viewDate), [viewDate]);
+
+  function toggleCalendar() {
+    if (!open) {
+      const nextSelectedDate = parseIsoDate(value);
+      setViewDate(new Date(nextSelectedDate.getFullYear(), nextSelectedDate.getMonth(), 1));
+    }
+
+    setOpen((current) => !current);
+  }
+
+  function selectDate(date) {
+    onChange(toIsoDate(date));
+    setOpen(false);
+  }
+
+  function selectToday() {
+    const today = new Date();
+    onChange(toIsoDate(today));
+    setViewDate(new Date(today.getFullYear(), today.getMonth(), 1));
+    setOpen(false);
+  }
+
+  return (
+    <div className="date-picker">
+      <button className="date-trigger" type="button" onClick={toggleCalendar}>
+        <span>{formatDateLabel(value)}</span>
+        <span aria-hidden="true">📅</span>
+      </button>
+
+      {open ? (
+        <div className="calendar-popover" role="dialog" aria-label="Selecionar data do registro">
+          <div className="calendar-head">
+            <button aria-label="Mês anterior" className="calendar-nav" type="button" onClick={() => setViewDate((current) => addMonths(current, -1))}>
+              ‹
+            </button>
+            <strong>{formatMonthLabel(viewDate)}</strong>
+            <button aria-label="Próximo mês" className="calendar-nav" type="button" onClick={() => setViewDate((current) => addMonths(current, 1))}>
+              ›
+            </button>
+          </div>
+
+          <div className="calendar-weekdays">
+            {weekDays.map((day) => <span key={day}>{day}</span>)}
+          </div>
+
+          <div className="calendar-grid">
+            {days.map((date) => {
+              const isoDate = toIsoDate(date);
+              const outsideMonth = date.getMonth() !== viewDate.getMonth();
+              const selected = isoDate === value;
+              const today = isoDate === todayIso();
+
+              return (
+                <button
+                  className={`calendar-day ${outsideMonth ? "outside" : ""} ${selected ? "selected" : ""} ${today ? "today" : ""}`}
+                  key={isoDate}
+                  type="button"
+                  onClick={() => selectDate(date)}
+                >
+                  {date.getDate()}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="calendar-actions">
+            <button className="calendar-today" type="button" onClick={selectToday}>Hoje</button>
+            <button className="calendar-close" type="button" onClick={() => setOpen(false)}>Fechar</button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function RangeField({ field, label, value, onChange }) {
+  return (
+    <div className="range-row">
+      <div className="range-head">
+        <label htmlFor={field}>{label}</label>
+        <span className="range-value">{value}/10</span>
+      </div>
+      <input
+        className="range"
+        id={field}
+        min="0"
+        max="10"
+        style={{ "--range-progress": `${Number(value) * 10}%` }}
+        type="range"
+        value={value}
+        onChange={(event) => onChange(field, event.target.value)}
+      />
+    </div>
+  );
 }
 
 export default function RegistroPage() {
@@ -64,6 +206,7 @@ export default function RegistroPage() {
       financialStress: Number(form.financialStress)
     });
 
+    window.sessionStorage.setItem("burnoutsense.recordCreated", "true");
     router.push("/dashboard");
   }
 
@@ -82,7 +225,7 @@ export default function RegistroPage() {
           <div className="form-grid">
             <div className="field">
               <label htmlFor="date">Data do registro</label>
-              <input className="input" id="date" type="date" value={form.date} onChange={(event) => updateField("date", event.target.value)} />
+              <DatePicker value={form.date} onChange={(value) => updateField("date", value)} />
             </div>
             <div className="field">
               <label htmlFor="sleepHours">Horas de sono</label>
@@ -101,15 +244,7 @@ export default function RegistroPage() {
           {[
             ["academicPerformance", "Desempenho acadêmico percebido"],
             ["examPressure", "Pressão acadêmica"]
-          ].map(([field, label]) => (
-            <div className="range-row" key={field}>
-              <div className="range-head">
-                <label htmlFor={field}>{label}</label>
-                <span className="range-value">{form[field]}/10</span>
-              </div>
-              <input className="range" id={field} min="0" max="10" type="range" value={form[field]} onChange={(event) => updateField(field, event.target.value)} />
-            </div>
-          ))}
+          ].map(([field, label]) => <RangeField field={field} key={field} label={label} value={form[field]} onChange={updateField} />)}
         </section>
 
         <section className="card form-card">
@@ -122,15 +257,7 @@ export default function RegistroPage() {
             ["physicalActivity", "Atividade física"],
             ["socialSupport", "Suporte social"],
             ["financialStress", "Estresse financeiro"]
-          ].map(([field, label]) => (
-            <div className="range-row" key={field}>
-              <div className="range-head">
-                <label htmlFor={field}>{label}</label>
-                <span className="range-value">{form[field]}/10</span>
-              </div>
-              <input className="range" id={field} min="0" max="10" type="range" value={form[field]} onChange={(event) => updateField(field, event.target.value)} />
-            </div>
-          ))}
+          ].map(([field, label]) => <RangeField field={field} key={field} label={label} value={form[field]} onChange={updateField} />)}
 
           <div className="field">
             <span className="field-label">Humor predominante</span>

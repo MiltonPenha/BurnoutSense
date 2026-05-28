@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { TrendChart } from "@/components/TrendChart";
 import { useBurnoutStore } from "@/hooks/useBurnoutStore";
 import { buildAlerts, calculateRisk, formatDateLong } from "@/lib/burnout-data";
@@ -20,8 +21,26 @@ function MetricCard({ icon, label, note, value }) {
 
 export default function DashboardPage() {
   const { latestRecord, profile, ready, records } = useBurnoutStore();
+  const [recordNotice, setRecordNotice] = useState("");
   const risk = latestRecord ? calculateRisk(latestRecord) : null;
   const alerts = latestRecord ? buildAlerts(latestRecord) : [];
+
+  useEffect(() => {
+    if (window.sessionStorage.getItem("burnoutsense.recordCreated") !== "true") {
+      return undefined;
+    }
+
+    window.sessionStorage.removeItem("burnoutsense.recordCreated");
+    const showTimer = window.setTimeout(() => {
+      setRecordNotice("Registro criado com sucesso. Sua análise preventiva já foi atualizada.");
+    }, 0);
+
+    const hideTimer = window.setTimeout(() => setRecordNotice(""), 5000);
+    return () => {
+      window.clearTimeout(showTimer);
+      window.clearTimeout(hideTimer);
+    };
+  }, []);
 
   if (!ready) {
     return (
@@ -44,10 +63,16 @@ export default function DashboardPage() {
           <p className="page-kicker">Veja como está sua semana e registre seu dia.</p>
         </div>
         <Link className="button" href="/registro">
-          <span aria-hidden="true">+</span>
+          <span aria-hidden="true">➕</span>
           <span>Novo registro</span>
         </Link>
       </header>
+
+      {recordNotice ? (
+        <div className="inline-notice success" role="status">
+          {recordNotice}
+        </div>
+      ) : null}
 
       {!latestRecord ? (
         <section className="card empty-state">
@@ -60,7 +85,7 @@ export default function DashboardPage() {
         </section>
       ) : (
         <>
-          <div className="risk-banner">
+          <div className={`risk-banner tone-${risk.tone}`}>
             <div>
               <p className="overline">Nível atual de risco</p>
               <h2 className="risk-title">{risk.label}</h2>
@@ -70,10 +95,10 @@ export default function DashboardPage() {
           </div>
 
           <div className="metrics-grid">
-            <MetricCard icon="◔" label="Horas de sono" value={`${latestRecord.sleepHours}h`} note={`Qualidade ${latestRecord.sleepQuality}/10`} />
-            <MetricCard icon="⌁" label="Estresse" value={`${latestRecord.stress}/10`} note={`Cansaço ${latestRecord.tiredness}/10`} />
-            <MetricCard icon="▱" label="Carga acadêmica" value={`${latestRecord.studyHours}h`} note={`Pressão ${latestRecord.examPressure ?? 5}/10`} />
-            <MetricCard icon="☻" label="Contexto" value={latestRecord.mood} note={`Tela ${latestRecord.screenTime ?? 0}h`} />
+            <MetricCard icon="🌙" label="Horas de sono" value={`${latestRecord.sleepHours}h`} note={`Qualidade ${latestRecord.sleepQuality}/10`} />
+            <MetricCard icon="🧠" label="Estresse" value={`${latestRecord.stress}/10`} note={`Cansaço ${latestRecord.tiredness}/10`} />
+            <MetricCard icon="📚" label="Carga acadêmica" value={`${latestRecord.studyHours}h`} note={`Pressão ${latestRecord.examPressure ?? 5}/10`} />
+            <MetricCard icon="🙂" label="Contexto" value={latestRecord.mood} note={`Tela ${latestRecord.screenTime ?? 0}h`} />
           </div>
 
           <div className="charts-grid">
@@ -83,7 +108,7 @@ export default function DashboardPage() {
 
           <section className="card alert-card">
             <h2 className="alert-title">
-              <span aria-hidden="true">△</span>
+              <span aria-hidden="true">⚠️</span>
               <span>Alertas preventivos</span>
             </h2>
             <ul className="alert-list">

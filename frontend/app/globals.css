@@ -16,8 +16,15 @@
   --warning-bg: #FFF7ED;
   --warning-line: #FDBA74;
   --warning-ink: #7C4A1E;
-  --danger: #A78BFA;
+  --danger: #FB7185;
+  --danger-dark: #E11D48;
+  --danger-soft: #FFF1F2;
+  --danger-line: #FDA4AF;
+  --danger-ink: #9F1239;
   --success: #34D399;
+  --success-soft: #ECFDF5;
+  --success-line: #A7F3D0;
+  --success-ink: #047857;
   --shadow: 0 12px 28px rgba(60, 92, 128, 0.1);
   color-scheme: light;
 }
@@ -239,12 +246,12 @@ button {
 }
 
 .button.danger {
-  background: #fb7185;
+  background: var(--danger);
   color: #ffffff;
 }
 
 .button.danger:hover {
-  background: #e11d48;
+  background: var(--danger-dark);
 }
 
 .toast {
@@ -285,9 +292,15 @@ button {
 }
 
 .inline-notice.success {
-  border: 1px solid var(--mint);
-  background: var(--mint-soft);
-  color: #047857;
+  border: 1px solid var(--success-line);
+  background: var(--success-soft);
+  color: var(--success-ink);
+}
+
+.inline-notice.error {
+  border: 1px solid var(--danger-line);
+  background: var(--danger-soft);
+  color: var(--danger-ink);
 }
 
 .risk-banner {
@@ -304,11 +317,35 @@ button {
   box-shadow: var(--shadow);
 }
 
+.risk-banner.tone-danger {
+  border-color: var(--danger-line);
+  background: var(--danger-soft);
+  color: var(--danger-ink);
+}
+
+.risk-banner.tone-success {
+  border-color: var(--success-line);
+  background: var(--success-soft);
+  color: var(--success-ink);
+}
+
+.risk-banner.tone-warning {
+  border-color: var(--warning-line);
+  background: var(--warning-bg);
+  color: var(--warning-ink);
+}
+
 .overline {
   margin: 0 0 6px;
   color: #81531a;
   font-size: 11px;
   text-transform: uppercase;
+}
+
+.risk-banner .overline,
+.risk-banner .risk-title,
+.risk-banner .risk-meta {
+  color: inherit;
 }
 
 .risk-title {
@@ -441,7 +478,10 @@ button {
 
 .section-title {
   margin: 0 0 24px;
-  font-size: 16px;
+  color: var(--ink);
+  font-size: 19px;
+  line-height: 1.2;
+  font-weight: 900;
 }
 
 .form-grid {
@@ -566,7 +606,7 @@ button {
 
 .textarea {
   min-height: 124px;
-  resize: vertical;
+  resize: none;
   padding: 14px;
   line-height: 1.45;
 }
@@ -575,6 +615,146 @@ button {
 .textarea:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.18);
+}
+
+.date-picker {
+  position: relative;
+}
+
+.date-trigger {
+  width: 100%;
+  height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #ffffff;
+  color: var(--ink);
+  box-shadow: inset 0 1px 2px rgba(10, 35, 48, 0.04), 0 1px 4px rgba(10, 35, 48, 0.08);
+  text-align: left;
+}
+
+.date-trigger:hover,
+.date-trigger:focus-visible {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.16);
+  outline: none;
+}
+
+.calendar-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 25;
+  width: min(316px, calc(100vw - 48px));
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 14px;
+  background: #ffffff;
+  box-shadow: 0 22px 48px rgba(35, 55, 80, 0.18);
+}
+
+.calendar-head {
+  display: grid;
+  grid-template-columns: 34px 1fr 34px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  text-align: center;
+  text-transform: capitalize;
+}
+
+.calendar-nav {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+  background: var(--surface-soft);
+  color: var(--ink);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.calendar-nav:hover,
+.calendar-nav:focus-visible {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  outline: none;
+}
+
+.calendar-weekdays,
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.calendar-weekdays {
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.calendar-day {
+  aspect-ratio: 1;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.calendar-day:hover,
+.calendar-day:focus-visible {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  outline: none;
+}
+
+.calendar-day.outside {
+  color: #9aa9b8;
+}
+
+.calendar-day.today {
+  border-color: var(--mint);
+}
+
+.calendar-day.selected {
+  border-color: var(--primary-dark);
+  background: var(--primary);
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(96, 165, 250, 0.26);
+}
+
+.calendar-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.calendar-today,
+.calendar-close {
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: var(--surface-soft);
+  color: var(--primary-dark);
+  font-weight: 800;
+}
+
+.calendar-close {
+  color: var(--muted);
 }
 
 .toggle-row,
@@ -632,7 +812,13 @@ button {
 }
 
 .range-row {
-  margin-bottom: 24px;
+  display: grid;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.form-grid + .range-row {
+  margin-top: 22px;
 }
 
 .range-head {
@@ -640,7 +826,7 @@ button {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  margin-bottom: 10px;
+  margin-bottom: 0;
 }
 
 .range-value {
@@ -650,12 +836,64 @@ button {
 
 .range {
   width: 100%;
-  accent-color: var(--primary);
+  height: 22px;
+  margin: 0;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.range::-webkit-slider-runnable-track {
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--primary) var(--range-progress), #d9e2ec var(--range-progress));
+  box-shadow: inset 0 1px 2px rgba(10, 35, 48, 0.12);
+}
+
+.range::-webkit-slider-thumb {
+  width: 22px;
+  height: 22px;
+  margin-top: -6px;
+  appearance: none;
+  border: 4px solid #ffffff;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 5px 14px rgba(59, 130, 246, 0.3);
+}
+
+.range::-moz-range-track {
+  height: 10px;
+  border-radius: 999px;
+  background: #d9e2ec;
+  box-shadow: inset 0 1px 2px rgba(10, 35, 48, 0.12);
+}
+
+.range::-moz-range-progress {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--primary);
+}
+
+.range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 4px solid #ffffff;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 5px 14px rgba(59, 130, 246, 0.3);
+}
+
+.range:focus-visible {
+  outline: none;
+}
+
+.range:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 5px rgba(96, 165, 250, 0.18), 0 5px 14px rgba(59, 130, 246, 0.3);
 }
 
 .mood-grid {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
   gap: 10px;
   margin-bottom: 24px;
 }
@@ -663,8 +901,8 @@ button {
 .mood-option {
   border: 1px solid var(--line);
   border-radius: 18px;
-  min-height: 76px;
-  padding: 10px 6px;
+  min-height: 82px;
+  padding: 10px 8px;
   display: grid;
   place-items: center;
   gap: 5px;
@@ -685,6 +923,8 @@ button {
 
 .mood-name {
   font-size: 12px;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
 }
 
 .form-actions {
@@ -731,17 +971,18 @@ button {
   border: 0;
   border-left: 1px solid var(--line);
   padding: 0 18px;
-  background: #fff7ed;
-  color: #7c2d12;
+  background: var(--danger-soft);
+  color: var(--danger-ink);
   font-weight: 800;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 7px;
 }
 
 .history-delete:hover,
 .history-delete:focus-visible {
-  background: #fed7aa;
+  background: #FFE4E6;
   outline: none;
 }
 
@@ -807,6 +1048,24 @@ button {
   color: var(--warning-ink);
   font-size: 12px;
   font-weight: 700;
+}
+
+.risk-pill.tone-danger {
+  border-color: var(--danger-line);
+  background: var(--danger-soft);
+  color: var(--danger-ink);
+}
+
+.risk-pill.tone-success {
+  border-color: var(--success-line);
+  background: var(--success-soft);
+  color: var(--success-ink);
+}
+
+.risk-pill.tone-warning {
+  border-color: var(--warning-line);
+  background: var(--warning-bg);
+  color: var(--warning-ink);
 }
 
 .auth-main {

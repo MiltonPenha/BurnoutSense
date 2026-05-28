@@ -81,7 +81,7 @@ export function useBurnoutStore() {
       setError(null);
     } catch (error) {
       setRecords(previousRecords);
-      setError("Nao foi possivel excluir o registro.");
+      setError("Não foi possível excluir o registro.");
       throw error;
     }
   }, [records]);

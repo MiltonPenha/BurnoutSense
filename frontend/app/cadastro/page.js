@@ -78,7 +78,7 @@ export default function CadastroPage() {
       setError("");
       router.push("/dashboard");
     } catch {
-      setError("Nao foi possivel criar a conta. Tente novamente.");
+      setError("Não foi possível criar a conta. Tente novamente.");
     }
   }
 
@@ -90,14 +90,14 @@ export default function CadastroPage() {
         </span>
         <div>
           <h1 className="auth-title">Criar conta</h1>
-          <p className="auth-subtitle">Monte seu espaco pessoal para registrar sono, estresse, humor e rotina de estudos.</p>
+          <p className="auth-subtitle">Monte seu espaço pessoal para registrar sono, estresse, humor e rotina de estudos.</p>
         </div>
       </div>
 
       <form className="card auth-card auth-form" onSubmit={handleSubmit}>
         <div>
           <h2 className="section-title">Dados de acesso</h2>
-          <p className="page-kicker">Use informacoes simples para iniciar o acompanhamento.</p>
+          <p className="page-kicker">Use informações simples para iniciar o acompanhamento.</p>
         </div>
 
         <div className="field">
@@ -178,7 +178,7 @@ export default function CadastroPage() {
           {error ? <p className="form-error">{error}</p> : null}
           <button className="button" type="submit">Cadastrar</button>
           <div className="auth-link-row">
-            Ja tem conta? <Link className="auth-link" href="/login">Entrar</Link>
+            Já tem conta? <Link className="auth-link" href="/login">Entrar</Link>
           </div>
         </div>
       </form>

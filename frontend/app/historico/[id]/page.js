@@ -71,7 +71,7 @@ export default function HistoricoDetalhePage() {
         <Link className="button secondary" href="/historico">Voltar</Link>
       </header>
 
-      <section className="risk-banner detail-risk">
+      <section className={`risk-banner detail-risk tone-${risk.tone}`}>
         <div>
           <p className="overline">Classificação preventiva</p>
           <h2 className="risk-title">{risk.label}</h2>

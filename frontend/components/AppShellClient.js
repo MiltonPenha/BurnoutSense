@@ -7,10 +7,10 @@ import { useEffect, useState } from "react";
 import { endSession, isAuthenticated, logoutUser, SESSION_TIMEOUT_MINUTES } from "@/lib/burnout-api";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: "\u2318" },
-  { href: "/registro", label: "Novo registro", icon: "+" },
-  { href: "/historico", label: "Historico de registros", icon: "\u21ba" },
-  { href: "/perfil", label: "Perfil", icon: "\u25ce" }
+  { href: "/dashboard", label: "Dashboard", icon: "📊" },
+  { href: "/registro", label: "Novo registro", icon: "➕" },
+  { href: "/historico", label: "Histórico", icon: "🕘" },
+  { href: "/perfil", label: "Perfil", icon: "👤" }
 ];
 
 export function AppShellClient({ children }) {
@@ -55,8 +55,8 @@ export function AppShellClient({ children }) {
       const reason = event.detail?.reason;
       const message =
         reason === "idle"
-          ? `Sua sessao foi encerrada apos ${SESSION_TIMEOUT_MINUTES} minutos de inatividade.`
-          : "Sua sessao expirou. Entre novamente para continuar.";
+          ? `Sua sessão foi encerrada após ${SESSION_TIMEOUT_MINUTES} minutos de inatividade.`
+          : "Sua sessão expirou. Entre novamente para continuar.";
 
       setSessionNotice(message);
       window.setTimeout(() => setSessionNotice(""), 7000);
@@ -141,7 +141,7 @@ export function AppShellClient({ children }) {
             </span>
           </Link>
 
-          <nav className="nav" aria-label="Navegacao principal">
+          <nav className="nav" aria-label="Navegação principal">
             {navItems.map((item) => {
               const active = pathname === item.href;
               return (
@@ -154,7 +154,7 @@ export function AppShellClient({ children }) {
           </nav>
 
           <button className="logout-link" type="button" onClick={handleLogout}>
-            <span aria-hidden="true">{"\u21aa"}</span>
+            <span aria-hidden="true">↪</span>
             <span>Sair</span>
           </button>
         </div>
@@ -172,7 +172,7 @@ function SessionNotice({ message }) {
 
   return (
     <div className="toast toast-warning" role="status">
-      <strong>Sessao encerrada</strong>
+      <strong>Sessão encerrada</strong>
       <span>{message}</span>
     </div>
   );

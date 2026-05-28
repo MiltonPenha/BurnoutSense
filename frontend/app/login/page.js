@@ -26,7 +26,7 @@ export default function LoginPage() {
       setError("");
       router.push("/dashboard");
     } catch {
-      setError("Nao foi possivel entrar. Confira seus dados e tente novamente.");
+      setError("Não foi possível entrar. Confira seus dados e tente novamente.");
     }
   }
 
@@ -38,14 +38,14 @@ export default function LoginPage() {
         </span>
         <div>
           <h1 className="auth-title">BurnoutSense</h1>
-          <p className="auth-subtitle">Apoio preventivo para acompanhar sua rotina academica com mais leveza.</p>
+          <p className="auth-subtitle">Apoio preventivo para acompanhar sua rotina acadêmica com mais leveza.</p>
         </div>
       </div>
 
       <form className="card auth-card auth-form" onSubmit={handleSubmit}>
         <div>
           <h2 className="section-title">Entrar na conta</h2>
-          <p className="page-kicker">Acesse seu painel e continue seus registros diarios.</p>
+          <p className="page-kicker">Acesse seu painel e continue seus registros diários.</p>
         </div>
 
         <div className="field">
@@ -75,12 +75,12 @@ export default function LoginPage() {
           {error ? <p className="form-error">{error}</p> : null}
           <button className="button" type="submit">Entrar</button>
           <div className="auth-link-row">
-            Ainda nao tem conta? <Link className="auth-link" href="/cadastro">Criar cadastro</Link>
+            Ainda não tem conta? <Link className="auth-link" href="/cadastro">Criar cadastro</Link>
           </div>
         </div>
       </form>
 
-      <p className="auth-note">BurnoutSense e uma ferramenta de apoio preventivo e nao substitui acompanhamento medico ou psicologico.</p>
+      <p className="auth-note">BurnoutSense é uma ferramenta de apoio preventivo e não substitui acompanhamento médico ou psicológico.</p>
     </section>
   );
 }

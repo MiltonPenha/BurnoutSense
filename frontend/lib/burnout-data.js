@@ -13,11 +13,11 @@ export const defaultProfile = {
 export const defaultRecords = [];
 
 export const moods = [
-  { name: "Feliz", emoji: "😊" },
+  { name: "Feliz", emoji: "🙂" },
   { name: "Calmo", emoji: "😌" },
-  { name: "Ansioso", emoji: "😰" },
+  { name: "Ansioso", emoji: "😟" },
   { name: "Triste", emoji: "😔" },
-  { name: "Irritado", emoji: "😠" },
+  { name: "Irritado", emoji: "😤" },
   { name: "Cansado", emoji: "😴" },
   { name: "Desmotivado", emoji: "😞" }
 ];
@@ -55,18 +55,23 @@ export function formatDateShort(date) {
 }
 
 export function formatDateLong(date) {
-  return date;
+  const parsed = new Date(`${date}T12:00:00`);
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric"
+  }).format(parsed);
 }
 
 export function buildAlerts(record) {
   const alerts = [];
 
   if (record.stress >= 8) {
-    alerts.push("Nivel de estresse muito alto");
+    alerts.push("Nível de estresse muito alto");
   }
 
   if (record.tiredness >= 8) {
-    alerts.push("Cansaco elevado");
+    alerts.push("Cansaço elevado");
   }
 
   if (record.sleepHours < 6 || record.sleepQuality < 5) {
@@ -74,11 +79,11 @@ export function buildAlerts(record) {
   }
 
   if (record.pendingTasks >= 4) {
-    alerts.push("Muitas tarefas academicas pendentes");
+    alerts.push("Muitas tarefas acadêmicas pendentes");
   }
 
   if ((record.examPressure ?? 0) >= 8) {
-    alerts.push("Pressao academica elevada");
+    alerts.push("Pressão acadêmica elevada");
   }
 
   if ((record.socialSupport ?? 6) <= 3) {

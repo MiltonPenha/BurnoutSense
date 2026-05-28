@@ -291,6 +291,23 @@ export async function createRecord(record) {
   return record;
 }
 
+export async function updateRecord(id, record) {
+  if (hasBackend()) {
+    const assessment = await request(`/assessments/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(recordToAssessmentDto(record))
+    });
+
+    return assessmentToRecord(assessment, { ...record, id });
+  }
+
+  const records = readJson(STORAGE_KEYS.records, defaultRecords);
+  const nextRecord = { ...record, id };
+  const nextRecords = sortRecords(records.map((item) => (item.id === id ? nextRecord : item)));
+  writeJson(STORAGE_KEYS.records, nextRecords);
+  return nextRecord;
+}
+
 export async function deleteRecord(id) {
   if (hasBackend()) {
     await request(`/assessments/${id}`, {

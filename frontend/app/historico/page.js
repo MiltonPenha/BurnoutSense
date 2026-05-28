@@ -74,10 +74,16 @@ export default function HistoricoPage() {
                   </div>
                   <span className="chevron" aria-hidden="true">›</span>
                 </Link>
-                <button className="history-delete" type="button" onClick={(event) => requestDelete(event, record)}>
-                  <span aria-hidden="true">🗑️</span>
-                  <span>Excluir</span>
-                </button>
+                <div className="history-actions">
+                  <Link className="history-edit" href={`/registro?edit=${record.id}`}>
+                    <span aria-hidden="true">✏️</span>
+                    <span>Editar</span>
+                  </Link>
+                  <button className="history-delete" type="button" onClick={(event) => requestDelete(event, record)}>
+                    <span aria-hidden="true">🗑️</span>
+                    <span>Excluir</span>
+                  </button>
+                </div>
               </article>
             );
           })}

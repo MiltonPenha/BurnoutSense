@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AuthenticatedUser } from '../auth/types/authenticated-user';
@@ -23,6 +23,11 @@ export class AssessmentsController {
   @Get(':id')
   findOne(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     return this.assessmentsService.findOneByUser(user.id, id);
+  }
+
+  @Patch(':id')
+  update(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string, @Body() updateAssessmentDto: CreateAssessmentDto) {
+    return this.assessmentsService.updateByUser(user.id, id, updateAssessmentDto);
   }
 
   @Delete(':id')

@@ -58,6 +58,49 @@ export class AssessmentsService {
     return assessment;
   }
 
+  async updateByUser(userId: string, id: string, updateAssessmentDto: CreateAssessmentDto) {
+    const existingAssessment = await this.prisma.assessment.findFirst({
+      where: { id, userId },
+      select: { id: true },
+    });
+
+    if (!existingAssessment) {
+      throw new NotFoundException('Assessment not found.');
+    }
+
+    const prediction = await this.aiService.predict(updateAssessmentDto);
+    const assessmentIndicators = BurnoutFeatureMapper.toStoredAssessment(updateAssessmentDto);
+
+    const assessment = await this.prisma.assessment.update({
+      where: { id },
+      data: {
+        ...assessmentIndicators,
+        result: {
+          upsert: {
+            create: {
+              riskLevel: prediction.riskLevel,
+              confidence: prediction.confidence,
+              mainFactors: prediction.mainFactors,
+              modelVersion: prediction.modelVersion,
+            },
+            update: {
+              riskLevel: prediction.riskLevel,
+              confidence: prediction.confidence,
+              mainFactors: prediction.mainFactors,
+              modelVersion: prediction.modelVersion,
+            },
+          },
+        },
+      },
+      include: { result: true },
+    });
+
+    return {
+      ...assessment,
+      disclaimer: prediction.disclaimer,
+    };
+  }
+
   async deleteByUser(userId: string, id: string) {
     const assessment = await this.prisma.assessment.findFirst({
       where: { id, userId },

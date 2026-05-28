@@ -26,13 +26,19 @@ export default function DashboardPage() {
   const alerts = latestRecord ? buildAlerts(latestRecord) : [];
 
   useEffect(() => {
-    if (window.sessionStorage.getItem("burnoutsense.recordCreated") !== "true") {
+    const savedRecordStatus = window.sessionStorage.getItem("burnoutsense.recordSaved");
+
+    if (!savedRecordStatus) {
       return undefined;
     }
 
-    window.sessionStorage.removeItem("burnoutsense.recordCreated");
+    window.sessionStorage.removeItem("burnoutsense.recordSaved");
     const showTimer = window.setTimeout(() => {
-      setRecordNotice("Registro criado com sucesso. Sua análise preventiva já foi atualizada.");
+      setRecordNotice(
+        savedRecordStatus === "updated"
+          ? "Registro atualizado com sucesso. Sua análise preventiva já foi recalculada."
+          : "Registro criado com sucesso. Sua análise preventiva já foi atualizada."
+      );
     }, 0);
 
     const hideTimer = window.setTimeout(() => setRecordNotice(""), 5000);

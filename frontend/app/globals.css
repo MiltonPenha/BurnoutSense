@@ -945,7 +945,7 @@ button {
   min-height: 84px;
   padding: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 112px;
+  grid-template-columns: minmax(0, 1fr) 124px;
   align-items: stretch;
   background: #ffffff;
   box-shadow: var(--shadow);
@@ -967,17 +967,38 @@ button {
   gap: 18px;
 }
 
+.history-actions {
+  border-left: 1px solid var(--line);
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+}
+
+.history-edit,
 .history-delete {
   border: 0;
-  border-left: 1px solid var(--line);
-  padding: 0 18px;
-  background: var(--danger-soft);
-  color: var(--danger-ink);
+  padding: 0 14px;
   font-weight: 800;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 7px;
+}
+
+.history-edit {
+  border-bottom: 1px solid var(--line);
+  background: #ffffff;
+  color: var(--primary-dark);
+}
+
+.history-edit:hover,
+.history-edit:focus-visible {
+  background: var(--primary-soft);
+  outline: none;
+}
+
+.history-delete {
+  background: var(--danger-soft);
+  color: var(--danger-ink);
 }
 
 .history-delete:hover,
@@ -1300,8 +1321,19 @@ button {
 
   .history-delete {
     min-height: 42px;
+  }
+
+  .history-actions {
+    min-height: 84px;
     border-top: 1px solid var(--line);
     border-left: 0;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr;
+  }
+
+  .history-edit {
+    border-right: 1px solid var(--line);
+    border-bottom: 0;
   }
 
   .confirm-actions {

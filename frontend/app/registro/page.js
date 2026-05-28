@@ -1,7 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { moods } from "@/lib/burnout-data";
 import { useBurnoutStore } from "@/hooks/useBurnoutStore";
 
@@ -13,6 +13,25 @@ function todayIso() {
 
 function valueFromLatest(latestRecord, key, fallback) {
   return latestRecord?.[key] ?? fallback;
+}
+
+function recordToForm(record) {
+  return {
+    date: record.date,
+    sleepHours: record.sleepHours,
+    studyHours: record.studyHours,
+    screenTime: record.screenTime ?? 5,
+    academicPerformance: record.academicPerformance ?? 7,
+    examPressure: record.examPressure ?? 5,
+    sleepQuality: record.sleepQuality,
+    stress: record.stress,
+    tiredness: record.tiredness,
+    physicalActivity: record.physicalActivity ?? 5,
+    socialSupport: record.socialSupport ?? 6,
+    financialStress: record.financialStress ?? 3,
+    mood: record.mood,
+    notes: record.notes ?? ""
+  };
 }
 
 function parseIsoDate(value) {
@@ -157,7 +176,10 @@ function RangeField({ field, label, value, onChange }) {
 
 export default function RegistroPage() {
   const router = useRouter();
-  const { addRecord, latestRecord } = useBurnoutStore();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get("edit");
+  const editing = Boolean(editId);
+  const { addRecord, findRecord, latestRecord, ready, updateRecord } = useBurnoutStore();
   const [form, setForm] = useState({
     date: todayIso(),
     sleepHours: valueFromLatest(latestRecord, "sleepHours", 7),
@@ -174,8 +196,39 @@ export default function RegistroPage() {
     mood: valueFromLatest(latestRecord, "mood", "Calmo"),
     notes: ""
   });
+  const [loadError, setLoadError] = useState("");
 
   const moodOptions = useMemo(() => moods, []);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadRecordForEdit() {
+      if (!editId || !ready) {
+        return;
+      }
+
+      const record = await findRecord(editId);
+
+      if (!active) {
+        return;
+      }
+
+      if (!record) {
+        setLoadError("Não foi possível carregar o registro para edição.");
+        return;
+      }
+
+      setForm(recordToForm(record));
+      setLoadError("");
+    }
+
+    loadRecordForEdit();
+
+    return () => {
+      active = false;
+    };
+  }, [editId, findRecord, ready]);
 
   function updateField(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -187,9 +240,9 @@ export default function RegistroPage() {
     const academicPerformance = Number(form.academicPerformance);
     const examPressure = Number(form.examPressure);
 
-    await addRecord({
+    const recordPayload = {
       ...form,
-      id: `record-${form.date}-${Date.now()}`,
+      id: editId ?? `record-${form.date}-${Date.now()}`,
       sleepHours: Number(form.sleepHours),
       studyHours: Number(form.studyHours),
       screenTime: Number(form.screenTime),
@@ -204,9 +257,16 @@ export default function RegistroPage() {
       physicalActivity: Number(form.physicalActivity),
       socialSupport: Number(form.socialSupport),
       financialStress: Number(form.financialStress)
-    });
+    };
 
-    window.sessionStorage.setItem("burnoutsense.recordCreated", "true");
+    if (editing) {
+      await updateRecord(editId, recordPayload);
+      window.sessionStorage.setItem("burnoutsense.recordSaved", "updated");
+    } else {
+      await addRecord(recordPayload);
+      window.sessionStorage.setItem("burnoutsense.recordSaved", "created");
+    }
+
     router.push("/dashboard");
   }
 
@@ -214,10 +274,14 @@ export default function RegistroPage() {
     <section className="page page-narrow">
       <header className="page-header">
         <div>
-          <h1 className="page-title">Registro diário</h1>
-          <p className="page-kicker">Conte como foi seu dia. Suas respostas geram uma análise preventiva.</p>
+          <h1 className="page-title">{editing ? "Editar registro" : "Registro diário"}</h1>
+          <p className="page-kicker">
+            {editing ? "Ajuste as informações do dia e gere uma nova análise preventiva." : "Conte como foi seu dia. Suas respostas geram uma análise preventiva."}
+          </p>
         </div>
       </header>
+
+      {loadError ? <p className="form-error">{loadError}</p> : null}
 
       <form onSubmit={handleSubmit}>
         <section className="card form-card">
@@ -289,8 +353,8 @@ export default function RegistroPage() {
         </section>
 
         <div className="form-actions">
-          <button className="button secondary" type="button" onClick={() => router.push("/dashboard")}>Cancelar</button>
-          <button className="button" type="submit">Gerar análise</button>
+          <button className="button secondary" type="button" onClick={() => router.push(editing ? "/historico" : "/dashboard")}>Cancelar</button>
+          <button className="button" type="submit">{editing ? "Salvar edição" : "Gerar análise"}</button>
         </div>
       </form>
     </section>

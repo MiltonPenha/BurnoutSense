@@ -1,7 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { createRecord, deleteRecord as removeRecord, getProfile, getRecordById, getRecords, updateProfile as saveProfile } from "@/lib/burnout-api";
+import {
+  createRecord,
+  deleteRecord as removeRecord,
+  getProfile,
+  getRecordById,
+  getRecords,
+  updateProfile as saveProfile,
+  updateRecord as saveRecord
+} from "@/lib/burnout-api";
 import { defaultProfile, defaultRecords, sortRecords } from "@/lib/burnout-data";
 
 export function useBurnoutStore() {
@@ -86,6 +94,24 @@ export function useBurnoutStore() {
     }
   }, [records]);
 
+  const updateRecord = useCallback(async (id, record) => {
+    const previousRecords = records;
+    const optimisticRecord = { ...record, id };
+
+    setRecords((current) => sortRecords(current.map((item) => (item.id === id ? optimisticRecord : item))));
+
+    try {
+      const savedRecord = await saveRecord(id, record);
+      setRecords((current) => sortRecords(current.map((item) => (item.id === id ? savedRecord : item))));
+      setError(null);
+      return savedRecord;
+    } catch (error) {
+      setRecords(previousRecords);
+      setError("Não foi possível atualizar o registro.");
+      throw error;
+    }
+  }, [records]);
+
   const updateProfile = useCallback(async (nextProfile) => {
     setProfile(nextProfile);
 
@@ -111,6 +137,7 @@ export function useBurnoutStore() {
     profile,
     ready,
     records: orderedRecords,
+    updateRecord,
     updateProfile
   };
 }

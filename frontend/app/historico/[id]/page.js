@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useBurnoutStore } from "@/hooks/useBurnoutStore";
-import { buildAlerts, calculateRisk, formatDateLong } from "@/lib/burnout-data";
+import { buildAlerts, calculateRisk, formatDateLong, formatHours } from "@/lib/burnout-data";
 
 export default function HistoricoDetalhePage() {
   const params = useParams();
@@ -84,7 +84,7 @@ export default function HistoricoDetalhePage() {
         <div className="detail-grid">
           <div>
             <span className="detail-label">Sono</span>
-            <strong>{record.sleepHours}h</strong>
+            <strong>{formatHours(record.sleepHours)}</strong>
             <small>Qualidade {record.sleepQuality}/10</small>
           </div>
           <div>
@@ -94,13 +94,13 @@ export default function HistoricoDetalhePage() {
           </div>
           <div>
             <span className="detail-label">Carga acadêmica</span>
-            <strong>{record.studyHours}h</strong>
+            <strong>{formatHours(record.studyHours)}</strong>
             <small>Pressão {record.examPressure ?? 5}/10</small>
           </div>
           <div>
             <span className="detail-label">Contexto</span>
             <strong>{record.mood}</strong>
-            <small>Tela {record.screenTime ?? 0}h · Suporte {record.socialSupport ?? 6}/10</small>
+            <small>Tela {formatHours(record.screenTime ?? 0)} · Suporte {record.socialSupport ?? 6}/10</small>
           </div>
         </div>
       </section>

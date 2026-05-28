@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useBurnoutStore } from "@/hooks/useBurnoutStore";
-import { calculateRisk, formatDateShort } from "@/lib/burnout-data";
+import { calculateRisk, emojiForMood, formatDateShort, formatHours } from "@/lib/burnout-data";
 
 export default function HistoricoPage() {
   const { deleteRecord, records } = useBurnoutStore();
@@ -66,10 +66,10 @@ export default function HistoricoPage() {
                   <div className="history-content">
                     <div className={`risk-pill tone-${risk.tone}`}>{risk.label} - {risk.score} pts</div>
                     <div className="history-meta">
-                      <span>🙂 {record.mood.toLowerCase()}</span>
-                      <span>🧠 estresse {record.stress}/10</span>
-                      <span>🌙 sono {record.sleepHours}h</span>
-                      <span>📚 pressão {record.examPressure ?? 5}/10</span>
+                      <span>{emojiForMood(record.mood)} {record.mood}</span>
+                      <span>🧠 Estresse: {record.stress}/10</span>
+                      <span>🌙 Sono: {formatHours(record.sleepHours)}</span>
+                      <span>📚 Pressão: {record.examPressure ?? 5}/10</span>
                     </div>
                   </div>
                   <span className="chevron" aria-hidden="true">›</span>

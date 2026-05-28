@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { TrendChart } from "@/components/TrendChart";
 import { useBurnoutStore } from "@/hooks/useBurnoutStore";
-import { buildAlerts, calculateRisk, formatDateLong } from "@/lib/burnout-data";
+import { buildAlerts, calculateRisk, formatDateLong, formatHours } from "@/lib/burnout-data";
 
 function MetricCard({ icon, label, note, value }) {
   return (
@@ -101,10 +101,10 @@ export default function DashboardPage() {
           </div>
 
           <div className="metrics-grid">
-            <MetricCard icon="🌙" label="Horas de sono" value={`${latestRecord.sleepHours}h`} note={`Qualidade ${latestRecord.sleepQuality}/10`} />
-            <MetricCard icon="🧠" label="Estresse" value={`${latestRecord.stress}/10`} note={`Cansaço ${latestRecord.tiredness}/10`} />
-            <MetricCard icon="📚" label="Carga acadêmica" value={`${latestRecord.studyHours}h`} note={`Pressão ${latestRecord.examPressure ?? 5}/10`} />
-            <MetricCard icon="🙂" label="Contexto" value={latestRecord.mood} note={`Tela ${latestRecord.screenTime ?? 0}h`} />
+            <MetricCard icon="🌙" label="Horas de sono" value={formatHours(latestRecord.sleepHours)} note={`Qualidade: ${latestRecord.sleepQuality}/10`} />
+            <MetricCard icon="🧠" label="Estresse" value={`${latestRecord.stress}/10`} note={`Cansaço: ${latestRecord.tiredness}/10`} />
+            <MetricCard icon="📚" label="Carga acadêmica" value={formatHours(latestRecord.studyHours)} note={`Pressão: ${latestRecord.examPressure ?? 5}/10`} />
+            <MetricCard icon="🙂" label="Contexto" value={latestRecord.mood} note={`Tela: ${formatHours(latestRecord.screenTime ?? 0)}`} />
           </div>
 
           <div className="charts-grid">

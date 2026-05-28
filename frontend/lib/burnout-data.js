@@ -63,6 +63,21 @@ export function formatDateLong(date) {
   }).format(parsed);
 }
 
+export function formatHours(value) {
+  const number = Number(value);
+
+  if (Number.isNaN(number)) {
+    return "0 horas";
+  }
+
+  const formatted = Number.isInteger(number) ? String(number) : String(number).replace(".", ",");
+  return `${formatted} ${number === 1 ? "hora" : "horas"}`;
+}
+
+export function emojiForMood(mood) {
+  return moods.find((item) => item.name === mood)?.emoji ?? "🙂";
+}
+
 export function buildAlerts(record) {
   const alerts = [];
 

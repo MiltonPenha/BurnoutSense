@@ -9,6 +9,7 @@ export default function HistoricoPage() {
   const { deleteRecord, records } = useBurnoutStore();
   const [recordToDelete, setRecordToDelete] = useState(null);
   const [deleteError, setDeleteError] = useState("");
+  const latestRisk = records.length ? calculateRisk(records[0]) : null;
 
   function requestDelete(event, record) {
     event.preventDefault();
@@ -33,10 +34,11 @@ export default function HistoricoPage() {
 
   return (
     <section className="page history-page">
-      <header className="page-header">
+      <header className="page-header compact-header">
         <div>
+          <p className="overline">Linha do tempo</p>
           <h1 className="page-title">Histórico de registros</h1>
-          <p className="page-kicker">Acompanhe a evolução do seu bem-estar ao longo do tempo.</p>
+          <p className="page-kicker">Acompanhe padrões, edite registros e compare sua evolução preventiva ao longo do tempo.</p>
         </div>
       </header>
 
@@ -47,47 +49,66 @@ export default function HistoricoPage() {
             <h2 className="risk-title">Nenhum registro criado</h2>
             <p className="page-kicker">Os registros aparecerão aqui assim que você preencher o formulário diário.</p>
           </div>
-          <Link className="button" href="/registro">Criar registro</Link>
         </section>
       ) : (
-        <div className="history-list">
-          {records.map((record) => {
-            const risk = calculateRisk(record);
-            const [day, month] = formatDateShort(record.date).split("/");
-            const year = record.date.slice(0, 4);
+        <>
+          <div className="history-summary">
+            <article className="card history-summary-card">
+              <span>Total</span>
+              <strong>{records.length}</strong>
+              <small>registros salvos</small>
+            </article>
+            <article className={`card history-summary-card tone-${latestRisk.tone}`}>
+              <span>Registro recente</span>
+              <strong>{latestRisk.label}</strong>
+              <small>{latestRisk.score} pontos</small>
+            </article>
+            <article className="card history-summary-card">
+              <span>Última atualização</span>
+              <strong>{formatDateShort(records[0].date)}</strong>
+              <small>{recordLabel(records.length)}</small>
+            </article>
+          </div>
 
-            return (
-              <article className="history-item" key={record.id}>
-                <Link className="history-link" href={`/historico/${record.id}`}>
-                  <div className="history-date">
-                    <span>{day}/{month}</span>
-                    <span>{year}</span>
-                  </div>
-                  <div className="history-content">
-                    <div className={`risk-pill tone-${risk.tone}`}>{risk.label} - {risk.score} pts</div>
-                    <div className="history-meta">
-                      <span>{emojiForMood(record.mood)} {record.mood}</span>
-                      <span>🧠 Estresse: {record.stress}/10</span>
-                      <span>🌙 Sono: {formatHours(record.sleepHours)}</span>
-                      <span>📚 Pressão: {record.examPressure ?? 5}/10</span>
+          <div className="history-list timeline-list">
+            {records.map((record) => {
+              const risk = calculateRisk(record);
+              const [day, month] = formatDateShort(record.date).split("/");
+              const year = record.date.slice(0, 4);
+
+              return (
+                <article className="history-item" key={record.id}>
+                  <Link className="history-link" href={`/historico/${record.id}`}>
+                    <div className="history-date">
+                      <span>{day}/{month}</span>
+                      <span>{year}</span>
                     </div>
-                  </div>
-                  <span className="chevron" aria-hidden="true">›</span>
-                </Link>
-                <div className="history-actions">
-                  <Link className="history-edit" href={`/registro?edit=${record.id}`}>
-                    <span aria-hidden="true">✏️</span>
-                    <span>Editar</span>
+                    <div className="history-content">
+                      <div className={`risk-pill tone-${risk.tone}`}>{risk.label} - {risk.score} pts</div>
+                      <div className="history-meta">
+                        <span><i className="meta-icon emoji-icon" aria-hidden="true">{emojiForMood(record.mood)}</i> {record.mood}</span>
+                        <span><i className="meta-icon emoji-icon" aria-hidden="true">⚡</i> Estresse: {record.stress}/10</span>
+                        <span><i className="meta-icon emoji-icon" aria-hidden="true">🌙</i> Sono: {formatHours(record.sleepHours)}</span>
+                        <span><i className="meta-icon emoji-icon" aria-hidden="true">📚</i> Pressão: {record.examPressure ?? 5}/10</span>
+                      </div>
+                    </div>
+                    <span className="chevron" aria-hidden="true">›</span>
                   </Link>
-                  <button className="history-delete" type="button" onClick={(event) => requestDelete(event, record)}>
-                    <span aria-hidden="true">🗑️</span>
-                    <span>Excluir</span>
-                  </button>
-                </div>
-              </article>
-            );
-          })}
-        </div>
+                  <div className="history-actions">
+                    <Link className="history-edit" href={`/registro?edit=${record.id}`}>
+                      <span className="history-action-emoji emoji-icon" aria-hidden="true">✏️</span>
+                      <span>Editar</span>
+                    </Link>
+                    <button className="history-delete" type="button" onClick={(event) => requestDelete(event, record)}>
+                      <span className="history-action-emoji emoji-icon" aria-hidden="true">🗑️</span>
+                      <span>Excluir</span>
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </>
       )}
 
       <p className="footer-note" style={{ marginTop: 60 }}>BurnoutSense é uma ferramenta de apoio preventivo e não substitui acompanhamento médico ou psicológico.</p>
@@ -114,4 +135,8 @@ export default function HistoricoPage() {
       ) : null}
     </section>
   );
+}
+
+function recordLabel(total) {
+  return total === 1 ? "primeiro registro" : "histórico em evolução";
 }

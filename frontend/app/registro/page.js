@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { moods } from "@/lib/burnout-data";
+import { emojiForMood, moods } from "@/lib/burnout-data";
 import { useBurnoutStore } from "@/hooks/useBurnoutStore";
 
 const weekDays = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
@@ -104,7 +104,7 @@ function DatePicker({ value, onChange }) {
     <div className="date-picker">
       <button className="date-trigger" type="button" onClick={toggleCalendar}>
         <span>{formatDateLabel(value)}</span>
-        <span aria-hidden="true">📅</span>
+        <span className="calendar-trigger-icon" aria-hidden="true" />
       </button>
 
       {open ? (
@@ -174,6 +174,66 @@ function RangeField({ field, label, value, onChange }) {
   );
 }
 
+function previewTone(form) {
+  const stress = Number(form.stress);
+  const tiredness = Number(form.tiredness);
+  const sleepQuality = Number(form.sleepQuality);
+
+  if (stress >= 8 || tiredness >= 8 || sleepQuality <= 4) {
+    return {
+      label: "Sinais mais intensos",
+      tone: "danger",
+      text: "Esta prévia usa apenas os campos preenchidos neste formulário. Ao salvar, o painel calcula a análise completa."
+    };
+  }
+
+  if (stress >= 6 || tiredness >= 6 || sleepQuality <= 6) {
+    return {
+      label: "Alguns pontos de atenção",
+      tone: "warning",
+      text: "Esta prévia muda conforme você ajusta sono, estresse, cansaço e contexto do dia."
+    };
+  }
+
+  return {
+    label: "Campos em faixa estável",
+    tone: "success",
+    text: "Esta leitura é temporária e serve só para orientar o preenchimento do registro atual."
+  };
+}
+
+function previewSleepLabel(hours) {
+  const value = Number(hours);
+
+  if (value >= 7) {
+    return "Sono preservado";
+  }
+
+  if (value >= 5) {
+    return "Sono curto";
+  }
+
+  return "Sono em alerta";
+}
+
+function previewStressLabel(stress) {
+  const value = Number(stress);
+
+  if (value >= 8) {
+    return "Estresse alto";
+  }
+
+  if (value >= 5) {
+    return "Estresse moderado";
+  }
+
+  if (value >= 2) {
+    return "Estresse baixo";
+  }
+
+  return "Estresse muito baixo";
+}
+
 export default function RegistroPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -199,6 +259,10 @@ export default function RegistroPage() {
   const [loadError, setLoadError] = useState("");
 
   const moodOptions = useMemo(() => moods, []);
+  const preview = previewTone(form);
+  const sleepLabel = previewSleepLabel(form.sleepHours);
+  const stressLabel = previewStressLabel(form.stress);
+  const selectedMoodEmoji = emojiForMood(form.mood);
 
   useEffect(() => {
     let active = true;
@@ -271,21 +335,66 @@ export default function RegistroPage() {
   }
 
   return (
-    <section className="page page-narrow">
-      <header className="page-header">
-        <div>
-          <h1 className="page-title">{editing ? "Editar registro" : "Registro diário"}</h1>
+    <section className="page record-page">
+      <header className="record-hero">
+        <div className="record-hero-copy">
+          <p className="overline">Novo registro</p>
+          <h1 className="page-title">{editing ? "Revisar registro" : "Registrar meu dia"}</h1>
           <p className="page-kicker">
-            {editing ? "Ajuste as informações do dia e gere uma nova análise preventiva." : "Conte como foi seu dia. Suas respostas geram uma análise preventiva."}
+            {editing ? "Ajuste as informações do dia para recalcular sua análise preventiva." : "Preencha os campos com calma. A prévia ao lado usa apenas este formulário e a análise completa aparece depois de salvar."}
           </p>
+          <div className="record-hero-pills" aria-label="Resumo do registro">
+            <span>🧭 Rotina</span>
+            <span>🌙 Sono</span>
+            <span>🫧 Bem-estar</span>
+          </div>
         </div>
+
+        <aside className={`record-preview-card tone-${preview.tone}`} aria-label="Prévia deste registro">
+          <span className="record-preview-icon emoji-icon" aria-hidden="true">{preview.tone === "success" ? "🌿" : preview.tone === "warning" ? "🌤️" : "💗"}</span>
+          <div>
+            <p className="overline">Prévia deste registro</p>
+            <strong>{preview.label}</strong>
+            <span>{preview.text}</span>
+          </div>
+        </aside>
       </header>
 
       {loadError ? <p className="form-error">{loadError}</p> : null}
 
-      <form onSubmit={handleSubmit}>
-        <section className="card form-card">
-          <h2 className="section-title">Rotina acadêmica</h2>
+      <form className="record-form" onSubmit={handleSubmit}>
+        <section className="record-status-grid" aria-label="Indicadores principais">
+          <article className="record-status-card">
+            <span className="record-status-icon emoji-icon" aria-hidden="true">🌙</span>
+            <div>
+              <strong>{form.sleepHours}h</strong>
+              <span>{sleepLabel}</span>
+            </div>
+          </article>
+          <article className="record-status-card">
+            <span className="record-status-icon emoji-icon" aria-hidden="true">⚡</span>
+            <div>
+              <strong>{form.stress}/10</strong>
+              <span>{stressLabel}</span>
+            </div>
+          </article>
+          <article className="record-status-card">
+            <span className="record-status-icon emoji-icon" aria-hidden="true">{selectedMoodEmoji}</span>
+            <div>
+              <strong>{form.mood}</strong>
+              <span>Humor predominante</span>
+            </div>
+          </article>
+        </section>
+
+        <section className="card form-card record-form-card record-section-academic">
+          <div className="record-section-head">
+            <span className="record-section-icon emoji-icon" aria-hidden="true">📚</span>
+            <div>
+              <p className="overline">Bloco 1</p>
+              <h2 className="section-title">Rotina acadêmica</h2>
+            </div>
+          </div>
           <div className="form-grid">
             <div className="field">
               <label htmlFor="date">Data do registro</label>
@@ -311,8 +420,14 @@ export default function RegistroPage() {
           ].map(([field, label]) => <RangeField field={field} key={field} label={label} value={form[field]} onChange={updateField} />)}
         </section>
 
-        <section className="card form-card">
-          <h2 className="section-title">Bem-estar e contexto</h2>
+        <section className="card form-card record-form-card record-section-wellbeing">
+          <div className="record-section-head">
+            <span className="record-section-icon emoji-icon" aria-hidden="true">🫧</span>
+            <div>
+              <p className="overline">Bloco 2</p>
+              <h2 className="section-title">Bem-estar e contexto</h2>
+            </div>
+          </div>
 
           {[
             ["sleepQuality", "Qualidade do sono"],
@@ -325,7 +440,7 @@ export default function RegistroPage() {
 
           <div className="field">
             <span className="field-label">Humor predominante</span>
-            <div className="mood-grid">
+            <div className="mood-grid record-mood-grid">
               {moodOptions.map((mood) => (
                 <button
                   className={`mood-option ${form.mood === mood.name ? "active" : ""}`}
@@ -333,7 +448,7 @@ export default function RegistroPage() {
                   type="button"
                   onClick={() => updateField("mood", mood.name)}
                 >
-                  <span className="mood-emoji" aria-hidden="true">{mood.emoji}</span>
+                  <span className="mood-emoji emoji-icon" aria-hidden="true">{mood.emoji}</span>
                   <span className="mood-name">{mood.name}</span>
                 </button>
               ))}
@@ -342,6 +457,7 @@ export default function RegistroPage() {
 
           <div className="field">
             <label htmlFor="notes">Descreva como foi seu dia</label>
+            <p className="field-hint">Pode ser curto. Uma frase sincera já ajuda a dar contexto aos números.</p>
             <textarea
               className="textarea"
               id="notes"

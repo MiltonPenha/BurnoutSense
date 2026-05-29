@@ -153,7 +153,9 @@ function normalizeProfile(user) {
     ...localProfile,
     id: user.id,
     name: user.name ?? localProfile.name,
-    email: user.email ?? localProfile.email
+    email: user.email ?? localProfile.email,
+    emailAlerts: user.emailAlerts ?? localProfile.emailAlerts,
+    dailyReminder: user.dailyReminder ?? localProfile.dailyReminder
   };
 }
 
@@ -339,7 +341,13 @@ export async function updateProfile(profile) {
         dailyReminder: profile.dailyReminder
       })
     });
-    const normalizedProfile = normalizeProfile(user);
+    const normalizedProfile = {
+      ...normalizeProfile(user),
+      course: profile.course,
+      semester: profile.semester,
+      avatarUrl: profile.avatarUrl ?? "",
+      theme: profile.theme ?? "light"
+    };
 
     writeJson(STORAGE_KEYS.profile, normalizedProfile);
     return normalizedProfile;
@@ -347,6 +355,25 @@ export async function updateProfile(profile) {
 
   writeJson(STORAGE_KEYS.profile, profile);
   return profile;
+}
+
+export async function sendTestNotification(preferences) {
+  if (hasBackend()) {
+    return request("/notifications/test", {
+      method: "POST",
+      body: JSON.stringify(preferences)
+    });
+  }
+
+  const emailEnabled = preferences.emailAlerts !== false;
+  const reminderEnabled = preferences.dailyReminder !== false;
+
+  return {
+    deliveryMode: "local-simulation",
+    emailAlert: { status: emailEnabled ? "simulated" : "skipped" },
+    dailyReminder: { status: reminderEnabled ? "simulated" : "skipped" },
+    message: emailEnabled || reminderEnabled ? "Notificação simulada localmente." : "Nenhuma notificação ativa para testar."
+  };
 }
 
 export async function loginUser(credentials) {
@@ -400,6 +427,22 @@ export async function logoutUser() {
       });
     }
   } finally {
+    clearAuthTokens();
+  }
+}
+
+export async function deleteCurrentUser() {
+  try {
+    if (hasBackend()) {
+      await request("/users/me", {
+        method: "DELETE"
+      });
+    }
+  } finally {
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(STORAGE_KEYS.profile);
+      window.localStorage.removeItem(STORAGE_KEYS.records);
+    }
     clearAuthTokens();
   }
 }

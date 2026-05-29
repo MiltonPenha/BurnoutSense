@@ -47,6 +47,16 @@ Authorization: Bearer {{accessToken}}
 DELETE {{baseUrl}}/users/me
 Authorization: Bearer {{accessToken}}
 
+### Test notification preferences
+POST {{baseUrl}}/notifications/test
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "emailAlerts": true,
+  "dailyReminder": true
+}
+
 ### Create assessment
 POST {{baseUrl}}/assessments
 Authorization: Bearer {{accessToken}}

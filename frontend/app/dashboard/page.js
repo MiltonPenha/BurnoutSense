@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { TrendChart } from "@/components/TrendChart";
 import { useBurnoutStore } from "@/hooks/useBurnoutStore";
-import { buildAlerts, calculateRisk, formatDateLong, formatHours } from "@/lib/burnout-data";
+import { formatDateLong, formatHours, getRecordRisk, mainFactorsForRecord, riskMetaLabel } from "@/lib/burnout-data";
 
 function average(records, key) {
   if (!records.length) {
@@ -108,8 +108,8 @@ function MiniStat({ icon, label, value, tone }) {
 export default function DashboardPage() {
   const { latestRecord, profile, ready, records } = useBurnoutStore();
   const [recordNotice, setRecordNotice] = useState("");
-  const risk = latestRecord ? calculateRisk(latestRecord) : null;
-  const alerts = latestRecord ? buildAlerts(latestRecord) : [];
+  const risk = latestRecord ? getRecordRisk(latestRecord) : null;
+  const alerts = latestRecord ? mainFactorsForRecord(latestRecord) : [];
   const recommendations = latestRecord ? buildRecommendations(latestRecord) : [];
 
   useEffect(() => {
@@ -157,10 +157,13 @@ export default function DashboardPage() {
           <h1 className="page-title">Olá, {profile.name}</h1>
           <p className="page-kicker">Um resumo claro da sua rotina acadêmica, bem-estar e sinais de atenção.</p>
         </div>
-        <Link className="button" href="/registro">
-          <span aria-hidden="true">+</span>
-          <span>Novo registro</span>
-        </Link>
+        <div className="topbar-actions">
+          <Link className="button secondary" href="/status">Status</Link>
+          <Link className="button" href="/registro">
+            <span aria-hidden="true">+</span>
+            <span>Novo registro</span>
+          </Link>
+        </div>
       </header>
 
       {recordNotice ? (
@@ -184,7 +187,7 @@ export default function DashboardPage() {
             <div>
               <p className="overline">Nível atual de risco</p>
               <h2 className="risk-title">{risk.label}</h2>
-              <p className="risk-meta">Pontuação: {risk.score} · Registro de {formatDateLong(latestRecord.date)}</p>
+              <p className="risk-meta">{riskMetaLabel(risk)} · Registro de {formatDateLong(latestRecord.date)}</p>
               <p className="risk-support">{riskDescription(risk.tone)}</p>
             </div>
             <div className="risk-actions">

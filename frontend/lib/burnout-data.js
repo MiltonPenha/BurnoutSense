@@ -46,6 +46,73 @@ export function calculateRisk(record) {
   return { score, label: "Risco baixo", tone: "success" };
 }
 
+export function riskFromBackendResult(result) {
+  if (!result?.riskLevel) {
+    return null;
+  }
+
+  const normalizedRiskLevel = String(result.riskLevel).toUpperCase();
+  const confidence = typeof result.confidence === "number" ? result.confidence : null;
+  const confidencePercent = confidence === null ? null : Math.round(confidence * 100);
+  const base = {
+    confidence,
+    confidencePercent,
+    mainFactors: Array.isArray(result.mainFactors) ? result.mainFactors : [],
+    modelUsed: result.modelUsed ?? result.modelVersion ?? "",
+    source: "backend"
+  };
+
+  if (normalizedRiskLevel === "HIGH") {
+    return { ...base, score: 9, label: "Risco alto", tone: "danger" };
+  }
+
+  if (normalizedRiskLevel === "MEDIUM") {
+    return { ...base, score: 6, label: "Risco moderado", tone: "warning" };
+  }
+
+  if (normalizedRiskLevel === "LOW") {
+    return { ...base, score: 3, label: "Risco baixo", tone: "success" };
+  }
+
+  return null;
+}
+
+export function getRecordRisk(record) {
+  if (!record) {
+    return null;
+  }
+
+  return riskFromBackendResult(record?.backendResult) ?? { ...calculateRisk(record), source: "local" };
+}
+
+export function riskMetaLabel(risk) {
+  if (!risk) {
+    return "";
+  }
+
+  if (risk.source !== "backend") {
+    return `${risk.score} pontos - estimativa local`;
+  }
+
+  const confidenceText = risk.confidencePercent === null ? "confiança não informada" : `${risk.confidencePercent}% de confiança`;
+  const modelText = risk.modelUsed ? ` - modelo ${risk.modelUsed}` : "";
+  return `${confidenceText}${modelText}`;
+}
+
+export function mainFactorsForRecord(record) {
+  const factors = record?.backendResult?.mainFactors;
+
+  if (Array.isArray(factors) && factors.length > 0) {
+    return factors;
+  }
+
+  if (!record) {
+    return [];
+  }
+
+  return buildAlerts(record);
+}
+
 export function sortRecords(records) {
   return [...records].sort((a, b) => b.date.localeCompare(a.date));
 }

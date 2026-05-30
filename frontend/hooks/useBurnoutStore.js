@@ -51,6 +51,7 @@ export function useBurnoutStore() {
   }, []);
 
   const addRecord = useCallback(async (record) => {
+    const previousRecords = records;
     const optimisticRecords = sortRecords([record, ...records]);
     setRecords(optimisticRecords);
 
@@ -59,9 +60,10 @@ export function useBurnoutStore() {
       setRecords((current) => sortRecords([savedRecord, ...current.filter((item) => item.id !== record.id)]));
       setError(null);
       return savedRecord;
-    } catch {
+    } catch (error) {
+      setRecords(previousRecords);
       setError("Não foi possível salvar o registro.");
-      return record;
+      throw error;
     }
   }, [records]);
 

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useBurnoutStore } from "@/hooks/useBurnoutStore";
-import { buildAlerts, calculateRisk, formatDateLong, formatHours } from "@/lib/burnout-data";
+import { formatDateLong, formatHours, getRecordRisk, mainFactorsForRecord, riskMetaLabel } from "@/lib/burnout-data";
 
 export default function HistoricoDetalhePage() {
   const params = useParams();
@@ -58,8 +58,8 @@ export default function HistoricoDetalhePage() {
     );
   }
 
-  const risk = calculateRisk(record);
-  const alerts = buildAlerts(record);
+  const risk = getRecordRisk(record);
+  const alerts = mainFactorsForRecord(record);
 
   return (
     <section className="page page-narrow">
@@ -75,9 +75,30 @@ export default function HistoricoDetalhePage() {
         <div>
           <p className="overline">Classificação preventiva</p>
           <h2 className="risk-title">{risk.label}</h2>
-          <p className="risk-meta">Pontuação: {risk.score} pts</p>
+          <p className="risk-meta">{riskMetaLabel(risk)}</p>
         </div>
       </section>
+
+      {record.backendResult ? (
+        <section className="card detail-card">
+          <h2 className="section-title">Resultado da IA</h2>
+          <div className="detail-grid">
+            <div>
+              <span className="detail-label">Risco</span>
+              <strong>{risk.label}</strong>
+              <small>{riskMetaLabel(risk)}</small>
+            </div>
+            <div>
+              <span className="detail-label">Modelo</span>
+              <strong>{risk.modelUsed || "Não informado"}</strong>
+              <small>Análise preventiva computacional</small>
+            </div>
+          </div>
+          <p className="footer-note" style={{ marginTop: 18, textAlign: "left" }}>
+            Esta análise não representa diagnóstico clínico. Use o resultado como apoio preventivo e procure apoio profissional se os sinais persistirem.
+          </p>
+        </section>
+      ) : null}
 
       <section className="card detail-card">
         <h2 className="section-title">Resumo do dia</h2>

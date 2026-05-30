@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useBurnoutStore } from "@/hooks/useBurnoutStore";
-import { calculateRisk, emojiForMood, formatDateShort, formatHours } from "@/lib/burnout-data";
+import { emojiForMood, formatDateShort, formatHours, getRecordRisk, riskMetaLabel } from "@/lib/burnout-data";
 
 export default function HistoricoPage() {
   const { deleteRecord, records } = useBurnoutStore();
   const [recordToDelete, setRecordToDelete] = useState(null);
   const [deleteError, setDeleteError] = useState("");
-  const latestRisk = records.length ? calculateRisk(records[0]) : null;
+  const latestRisk = records.length ? getRecordRisk(records[0]) : null;
 
   function requestDelete(event, record) {
     event.preventDefault();
@@ -61,7 +61,7 @@ export default function HistoricoPage() {
             <article className={`card history-summary-card tone-${latestRisk.tone}`}>
               <span>Registro recente</span>
               <strong>{latestRisk.label}</strong>
-              <small>{latestRisk.score} pontos</small>
+              <small>{riskMetaLabel(latestRisk)}</small>
             </article>
             <article className="card history-summary-card">
               <span>Última atualização</span>
@@ -72,7 +72,7 @@ export default function HistoricoPage() {
 
           <div className="history-list timeline-list">
             {records.map((record) => {
-              const risk = calculateRisk(record);
+              const risk = getRecordRisk(record);
               const [day, month] = formatDateShort(record.date).split("/");
               const year = record.date.slice(0, 4);
 
@@ -84,7 +84,7 @@ export default function HistoricoPage() {
                       <span>{year}</span>
                     </div>
                     <div className="history-content">
-                      <div className={`risk-pill tone-${risk.tone}`}>{risk.label} - {risk.score} pts</div>
+                      <div className={`risk-pill tone-${risk.tone}`}>{risk.label} - {riskMetaLabel(risk)}</div>
                       <div className="history-meta">
                         <span><i className="meta-icon emoji-icon" aria-hidden="true">{emojiForMood(record.mood)}</i> {record.mood}</span>
                         <span><i className="meta-icon emoji-icon" aria-hidden="true">⚡</i> Estresse: {record.stress}/10</span>

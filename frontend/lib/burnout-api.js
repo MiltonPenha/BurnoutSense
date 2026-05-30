@@ -135,7 +135,18 @@ async function request(path, options = {}) {
   }
 
   if (!response.ok) {
-    throw new Error(`Request failed: ${response.status}`);
+    let errorMessage = `Request failed: ${response.status}`;
+
+    try {
+      const errorBody = await response.json();
+      errorMessage = errorBody.message ?? errorBody.detail ?? errorMessage;
+    } catch {
+      // Keep the generic status message when the backend does not return JSON.
+    }
+
+    const error = new Error(errorMessage);
+    error.status = response.status;
+    throw error;
   }
 
   if (response.status === 204) {
@@ -245,7 +256,12 @@ export function assessmentToRecord(assessment, fallback = {}) {
     financialStress: assessment.financialStress ?? fallback.financialStress ?? 3,
     mood: assessment.mood ?? fallback.mood ?? moodFromAssessment(assessment),
     notes: assessment.dailyDescription ?? fallback.notes ?? resultNotes(assessment.result),
-    backendResult: assessment.result ?? null
+    backendResult: assessment.result
+      ? {
+          ...assessment.result,
+          modelUsed: assessment.result.modelUsed ?? assessment.result.modelVersion
+        }
+      : null
   };
 }
 
@@ -445,6 +461,22 @@ export async function deleteCurrentUser() {
     }
     clearAuthTokens();
   }
+}
+
+export async function getSystemStatus() {
+  if (!hasBackend()) {
+    return {
+      backend: { status: "offline" },
+      database: { status: "offline" },
+      aiService: { status: "offline" },
+      model: { loaded: false, status: "unavailable" },
+      checkedAt: new Date().toISOString()
+    };
+  }
+
+  return request("/status", {
+    headers: {}
+  });
 }
 
 export function endSession(reason = "expired") {

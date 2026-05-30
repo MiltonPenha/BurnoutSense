@@ -5,7 +5,7 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { endSession, isAuthenticated, logoutUser, SESSION_TIMEOUT_MINUTES } from "@/lib/burnout-api";
-import { calculateRisk } from "@/lib/burnout-data";
+import { getRecordRisk } from "@/lib/burnout-data";
 import { useBurnoutStore } from "@/hooks/useBurnoutStore";
 
 const navItems = [
@@ -139,7 +139,7 @@ export function AppShellClient({ children }) {
 
 function Sidebar({ onLogout, pathname }) {
   const { latestRecord, profile, ready } = useBurnoutStore();
-  const risk = latestRecord ? calculateRisk(latestRecord) : null;
+  const risk = latestRecord ? getRecordRisk(latestRecord) : null;
   const score = risk?.score ?? 0;
   const circumference = 2 * Math.PI * 44;
   const progress = Math.min(1, score / 10);

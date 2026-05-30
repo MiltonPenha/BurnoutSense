@@ -308,6 +308,14 @@ export async function getAssessmentResult(assessmentId) {
   return record?.backendResult ?? null;
 }
 
+export async function getAssessmentInsights(assessmentId) {
+  if (!hasBackend()) {
+    throw new Error("Generated insights require the backend API.");
+  }
+
+  return request(`/results/${assessmentId}/insights`);
+}
+
 export async function createRecord(record) {
   if (hasBackend()) {
     const assessment = await request("/assessments", {

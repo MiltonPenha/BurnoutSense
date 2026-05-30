@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { TrendChart } from "@/components/TrendChart";
 import { useBurnoutStore } from "@/hooks/useBurnoutStore";
-import { formatDateLong, formatHours, getRecordRisk, mainFactorsForRecord, riskMetaLabel } from "@/lib/burnout-data";
+import { getAssessmentInsights } from "@/lib/burnout-api";
+import { formatDateLong, formatHours, getRecordRisk } from "@/lib/burnout-data";
 
 function average(records, key) {
   if (!records.length) {
@@ -25,59 +26,6 @@ function riskDescription(tone) {
   }
 
   return "Indicadores recentes em uma faixa mais tranquila.";
-}
-
-function buildRecommendations(record) {
-  const recommendations = [];
-
-  if (record.stress >= 7 || record.tiredness >= 7) {
-    recommendations.push({
-      icon: "🧘",
-      title: "Reduza a intensidade do próximo bloco",
-      text: "Divida tarefas longas em ciclos menores e faça uma pausa real antes de retomar."
-    });
-  }
-
-  if (record.sleepHours < 7 || record.sleepQuality < 6) {
-    recommendations.push({
-      icon: "🌙",
-      title: "Proteja o sono de hoje",
-      text: "Evite acumular estudo no fim da noite e tente manter um horário fixo para desacelerar."
-    });
-  }
-
-  if ((record.examPressure ?? 0) >= 7) {
-    recommendations.push({
-      icon: "📚",
-      title: "Organize a pressão acadêmica",
-      text: "Liste o que é essencial para a próxima entrega e deixe o restante como melhoria opcional."
-    });
-  }
-
-  if ((record.socialSupport ?? 6) <= 4) {
-    recommendations.push({
-      icon: "🤝",
-      title: "Busque apoio antes de isolar",
-      text: "Compartilhe uma dificuldade com colega, professor ou suporte institucional."
-    });
-  }
-
-  if (!recommendations.length) {
-    recommendations.push(
-      {
-        icon: "⚖️",
-        title: "Mantenha o acompanhamento",
-        text: "Continue registrando pequenos sinais. A evolução do histórico ajuda a perceber padrões."
-      },
-      {
-        icon: "☕",
-        title: "Reserve uma pausa curta",
-        text: "Mesmo em dias bons, pausas breves ajudam a manter consistência sem sobrecarga."
-      }
-    );
-  }
-
-  return recommendations.slice(0, 3);
 }
 
 function MetricCard({ icon, label, note, tone = "blue", value }) {
@@ -108,9 +56,10 @@ function MiniStat({ icon, label, value, tone }) {
 export default function DashboardPage() {
   const { latestRecord, profile, ready, records } = useBurnoutStore();
   const [recordNotice, setRecordNotice] = useState("");
+  const [insights, setInsights] = useState({ alerts: [], recommendations: [], loading: false, error: "" });
   const risk = latestRecord ? getRecordRisk(latestRecord) : null;
-  const alerts = latestRecord ? mainFactorsForRecord(latestRecord) : [];
-  const recommendations = latestRecord ? buildRecommendations(latestRecord) : [];
+  const alerts = insights.alerts;
+  const recommendations = insights.recommendations;
 
   useEffect(() => {
     const savedRecordStatus = window.sessionStorage.getItem("burnoutsense.recordSaved");
@@ -134,6 +83,49 @@ export default function DashboardPage() {
       window.clearTimeout(hideTimer);
     };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadGeneratedInsights() {
+      if (!latestRecord?.id) {
+        setInsights({ alerts: [], recommendations: [], loading: false, error: "" });
+        return;
+      }
+
+      setInsights({ alerts: [], recommendations: [], loading: true, error: "" });
+
+      try {
+        const generatedInsights = await getAssessmentInsights(latestRecord.id);
+
+        if (!active) {
+          return;
+        }
+
+        setInsights({
+          alerts: generatedInsights.alerts ?? [],
+          recommendations: generatedInsights.recommendations ?? [],
+          loading: false,
+          error: ""
+        });
+      } catch (error) {
+        if (active) {
+          setInsights({
+            alerts: [],
+            recommendations: [],
+            loading: false,
+            error: error?.message ?? "Não foi possível gerar alertas e recomendações agora."
+          });
+        }
+      }
+    }
+
+    loadGeneratedInsights();
+
+    return () => {
+      active = false;
+    };
+  }, [latestRecord?.id]);
 
   if (!ready) {
     return (
@@ -216,31 +208,45 @@ export default function DashboardPage() {
 
           <div className="dashboard-bottom-grid">
             <section className="card alert-card">
-              <h2 className="alert-title">
-                <span className="alert-icon emoji-icon" aria-hidden="true">⚠️</span>
-                <span>Alertas preventivos</span>
-              </h2>
-              <ul className="alert-list">
-                {alerts.map((alert) => <li key={alert}>{alert}</li>)}
-              </ul>
+              <div className="section-head">
+                <h2 className="alert-title">
+                  <span className="alert-icon emoji-icon" aria-hidden="true">⚠️</span>
+                  <span>Alertas preventivos</span>
+                </h2>
+                <span>Gerado por IA</span>
+              </div>
+              {insights.loading ? <p className="page-kicker">Gerando alertas a partir do resultado real...</p> : null}
+              {insights.error ? <p className="form-error">{insights.error}</p> : null}
+              {!insights.loading && !insights.error ? (
+                <ul className="alert-list">
+                  {alerts.map((alert) => <li key={alert}>{alert}</li>)}
+                </ul>
+              ) : null}
             </section>
 
             <section className="card recommendations-card">
               <div className="section-head">
-                <h2 className="card-title">Dicas e recomendações</h2>
-                <span>Baseado no último registro</span>
+                <h2 className="card-title recommendation-title">
+                  <span className="recommendation-title-icon emoji-icon" aria-hidden="true">💡</span>
+                  <span>Dicas e recomendações</span>
+                </h2>
+                <span>Gerado por IA</span>
               </div>
-              <div className="recommendation-list">
-                {recommendations.map((item) => (
-                  <article className="recommendation-item" key={item.title}>
-                    <span className="recommendation-icon emoji-icon" aria-hidden="true">{item.icon}</span>
-                    <div>
-                      <strong>{item.title}</strong>
-                      <p>{item.text}</p>
-                    </div>
-                  </article>
-                ))}
-              </div>
+              {insights.loading ? <p className="page-kicker">Gerando recomendações preventivas...</p> : null}
+              {insights.error ? <p className="form-error">{insights.error}</p> : null}
+              {!insights.loading && !insights.error ? (
+                <div className="recommendation-list">
+                  {recommendations.map((item) => (
+                    <article className="recommendation-item" key={item.title}>
+                      <span className="recommendation-icon" aria-hidden="true">IA</span>
+                      <div>
+                        <strong>{item.title}</strong>
+                        <p>{item.text}</p>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : null}
             </section>
           </div>
         </>

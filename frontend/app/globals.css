@@ -2482,6 +2482,30 @@ select.input {
   margin: 0;
 }
 
+.section-head .alert-title {
+  margin: 0;
+}
+
+.recommendation-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.recommendation-title-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #DBEAFE;
+  color: var(--primary-dark);
+  flex: 0 0 28px;
+  font-size: 17px;
+  line-height: 1;
+}
+
 .section-head a,
 .section-head span {
   color: var(--muted);

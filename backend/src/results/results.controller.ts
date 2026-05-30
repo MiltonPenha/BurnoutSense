@@ -9,6 +9,14 @@ import { ResultsService } from './results.service';
 export class ResultsController {
   constructor(private readonly resultsService: ResultsService) {}
 
+  @Get(':assessmentId/insights')
+  generateInsights(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('assessmentId') assessmentId: string,
+  ) {
+    return this.resultsService.generateInsights(user.id, assessmentId);
+  }
+
   @Get(':assessmentId')
   findByAssessmentId(
     @CurrentUser() user: AuthenticatedUser,

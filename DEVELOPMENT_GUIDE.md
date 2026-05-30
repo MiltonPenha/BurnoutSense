@@ -58,9 +58,15 @@ Crie o arquivo `.env` a partir de `.env.example` e confira estes valores:
 DATABASE_URL="postgresql://burnoutsense:burnoutsense@localhost:5432/burnoutsense?schema=public"
 FRONTEND_URL="http://localhost:3000"
 AI_SERVICE_URL="http://localhost:8000"
+GEMINI_API_KEY=""
+GEMINI_INSIGHTS_MODEL="gemini-2.5-flash"
+OPENAI_API_KEY=""
+OPENAI_INSIGHTS_MODEL="gpt-5.4-mini"
 JWT_ACCESS_SECRET="change-this-access-secret"
 JWT_REFRESH_SECRET="change-this-refresh-secret"
 ```
+
+`GEMINI_API_KEY` é a opção recomendada para gerar alertas preventivos e recomendações por IA generativa no dashboard. `OPENAI_API_KEY` continua opcional como alternativa. Sem uma dessas chaves, o sistema mantém o resultado de risco da IA local, mas não inventa dicas pré-prontas.
 
 Gere o Prisma Client e aplique as migrations:
 

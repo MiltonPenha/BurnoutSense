@@ -1,71 +1,130 @@
 # BurnoutSense
 
-## Plataforma Inteligente para Detecção Precoce de Burnout Acadêmico
+## Plataforma inteligente para apoio preventivo ao burnout acadêmico
 
----
+O BurnoutSense é uma aplicação web acadêmica voltada à identificação preventiva de sinais associados ao burnout em estudantes universitários. O sistema coleta registros diários, envia os indicadores para um serviço de Machine Learning e apresenta um histórico com nível de risco, fatores relevantes, alertas preventivos e recomendações geradas por IA.
 
-## Sobre o Projeto
-
-O BurnoutSense é uma plataforma web desenvolvida com o objetivo de identificar sinais precoces de burnout acadêmico em estudantes universitários utilizando técnicas de Inteligência Artificial e Machine Learning.
-
-A aplicação analisa indicadores acadêmicos, emocionais e comportamentais para realizar classificações de risco relacionadas ao esgotamento acadêmico, atuando como uma ferramenta computacional de apoio preventivo.
-
----
+O projeto não possui finalidade clínica ou diagnóstica. Ele funciona como uma ferramenta computacional de apoio, acompanhamento e estudo no contexto do TCC.
 
 ## Objetivo
 
-Desenvolver uma aplicação inteligente capaz de auxiliar na identificação preventiva de burnout acadêmico por meio de modelos supervisionados de Machine Learning e análise de dados comportamentais.
+Desenvolver uma solução full stack capaz de:
 
----
+- registrar indicadores acadêmicos, comportamentais e de bem-estar;
+- classificar preventivamente o risco de burnout acadêmico;
+- manter histórico de avaliações por estudante;
+- apoiar a interpretação dos resultados com alertas e recomendações;
+- documentar limitações técnicas e éticas do uso de IA nesse contexto.
+
+## Fluxo principal
+
+```text
+cadastro -> login -> registro diário -> backend -> ai-service -> banco -> histórico/dashboard
+```
+
+O frontend prioriza os resultados persistidos pelo backend, incluindo nível de risco, confiança, principais fatores e modelo utilizado. Cálculos locais existem apenas como fallback quando ainda não há resultado real salvo.
+
+## Funcionalidades atuais
+
+- Cadastro e login de usuários.
+- Registro diário de indicadores acadêmicos e de bem-estar.
+- Edição e exclusão de registros.
+- Validação de data, impedindo registros futuros.
+- Validação de horas, impedindo que sono, estudo e tempo de tela ultrapassem 24 horas no mesmo dia.
+- Classificação de risco via AI Service.
+- Histórico de registros com risco, humor, estresse, sono e pressão acadêmica.
+- Dashboard com métricas consolidadas.
+- Alertas preventivos e recomendações geradas por IA generativa.
+- Tela `/status` para verificar backend, banco, AI Service e carregamento do modelo.
 
 ## Inteligência Artificial
 
-A Inteligência Artificial representa o núcleo principal do projeto, sendo responsável pela análise e classificação do risco de burnout acadêmico.
+O projeto utiliza dois tipos de IA:
 
-### Modelos Utilizados
+- **Modelo preditivo local:** classifica o risco de burnout acadêmico por meio do AI Service em Python/FastAPI.
+- **IA generativa opcional:** gera alertas preventivos e recomendações no dashboard a partir do resultado real do último registro.
+
+### Modelo preditivo
+
+O AI Service utiliza Scikit-learn para servir um modelo treinado a partir do dataset de referência:
+
+[Student Lifestyle, Mental Health & Burnout Insight](https://www.kaggle.com/datasets/ayeshasiddiqa123/student-health)
+
+Modelo atual documentado no AI Service:
 
 - Random Forest
-- Support Vector Machine (SVM)
+- Estratégia final sem `dropout_risk` e `internet_usage`
+- Métricas e limitações registradas em `ai-service/MODEL_CARD.md`
 
-### Variáveis Analisadas
+### Features utilizadas pelo modelo
 
 - Horas de estudo
-- Qualidade do sono
+- Desempenho acadêmico
+- Pressão acadêmica
 - Nível de estresse
 - Ansiedade
+- Depressão
+- Qualidade do sono
+- Atividade física
 - Tempo de tela
-- Desempenho acadêmico
 - Suporte social
+- Expectativa familiar
+- Estresse financeiro
 
----
+O campo de humor predominante é mantido como contexto visual do registro, mas não é convertido em feature enviada ao modelo, pois não há feature equivalente no treinamento atual.
 
-## Dataset
+### IA generativa
 
-### Student Lifestyle, Mental Health & Burnout Insight
+Os alertas e recomendações do dashboard podem ser gerados com Gemini, usando:
 
-Dataset disponível em:
+```env
+GEMINI_API_KEY=""
+GEMINI_INSIGHTS_MODEL="gemini-2.5-flash-lite"
+```
 
-https://www.kaggle.com/datasets/ayeshasiddiqa123/student-health
+Também existe suporte opcional para OpenAI como alternativa:
 
----
+```env
+OPENAI_API_KEY=""
+OPENAI_INSIGHTS_MODEL="gpt-5.4-mini"
+```
 
-## Arquitetura da Aplicação
+Sem chave de IA generativa, o sistema mantém a classificação de risco do modelo local, mas não inventa recomendações mockadas.
 
-A aplicação será estruturada de forma modular e desacoplada.
+## Regras do registro diário
+
+- A data pode ser hoje ou uma data passada.
+- Datas futuras são bloqueadas no frontend e no backend.
+- Horas de sono, estudo e tempo de tela começam em `0`.
+- Sliders começam no ponto médio da escala.
+- A soma de sono, estudo e tempo de tela não pode ultrapassar 24 horas.
+- Humor é salvo apenas como informação contextual.
+- Cenários severos de sono muito baixo, estresse alto e pressão acadêmica alta recebem calibração preventiva para reduzir subestimação de risco alto.
+
+## Arquitetura
+
+```text
+BurnoutSense/
+  frontend/    Next.js + React
+  backend/     NestJS + Prisma
+  ai-service/  FastAPI + Scikit-learn
+```
 
 ### Frontend
 
-- React
 - Next.js
-- TypeScript
-- Tailwind CSS
+- React
+- CSS modular/global do projeto
 
 ### Backend
 
 - Node.js
 - NestJS
+- Prisma
+- JWT
+- PostgreSQL
 
-### Microsserviço de Inteligência Artificial
+### AI Service
 
 - Python
 - FastAPI
@@ -73,60 +132,25 @@ A aplicação será estruturada de forma modular e desacoplada.
 - Pandas
 - NumPy
 
-### Banco de Dados
-
-- PostgreSQL
-
 ### Infraestrutura
 
 - Docker
 - Docker Compose
+- PostgreSQL
 
----
-
-## Funcionalidades Previstas
-
-- Cadastro de usuários
-- Autenticação
-- Registro de indicadores acadêmicos e emocionais
-- Dashboard de risco
-- Classificação automatizada
-- Histórico de avaliações
-
----
-
-## Métricas de Avaliação
-
-Os modelos de Machine Learning serão avaliados utilizando:
-
-- Accuracy
-- Precision
-- Recall
-- F1-Score
-
----
-
-## Observações
-
-O BurnoutSense não possui finalidade clínica ou diagnóstica, funcionando exclusivamente como ferramenta computacional de apoio preventivo.
-
----
-
-## Fluxo do protótipo TCC1
-
-O fluxo principal validado para a entrega do TCC1 é:
-
-```text
-cadastro -> login -> registro diário -> backend -> ai-service -> banco -> histórico/dashboard
-```
-
-O frontend deve priorizar os resultados persistidos pelo backend, incluindo nível de risco, confiança, principais fatores e modelo utilizado. Cálculos locais podem existir apenas como fallback quando não houver resultado real salvo.
+## Execução local
 
 Para instruções de execução do ambiente local, consulte [DEVELOPMENT_GUIDE.md](./DEVELOPMENT_GUIDE.md).
 
-Também há uma tela simples de homologação em `/status` para verificar backend, banco, AI Service e carregamento do modelo durante a apresentação.
+Resumo do fluxo recomendado:
 
----
+1. Subir o PostgreSQL com Docker.
+2. Configurar os arquivos `.env`.
+3. Rodar migrations do Prisma.
+4. Subir o AI Service.
+5. Subir o backend.
+6. Subir o frontend.
+7. Validar o fluxo em `/status`.
 
 ## Privacidade e LGPD
 
@@ -134,33 +158,23 @@ Os dados coletados têm finalidade acadêmica e preventiva, limitada ao acompanh
 
 Como evolução futura, recomenda-se implementar exclusão completa de conta e dados, revisão de consentimento e políticas formais para eventual uso fora do ambiente acadêmico.
 
----
-
 ## Integrantes
 
 - João Rafael Jordão Pereira
 - Mateus Nauhan Vieira Matos
 - Milton Rogério Dotto Penha Junior
 
----
-
 ## Orientador
 
 Prof. Marco Antônio Montebello Junior
-
----
 
 ## Instituição
 
 Centro Universitário Facens
 
----
-
 ## Status do Projeto
 
 Em desenvolvimento.
-
----
 
 ## Licença
 

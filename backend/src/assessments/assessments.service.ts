@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { BurnoutFeatureMapper } from '../ai/burnout-feature.mapper';
 import { AiService } from '../ai/ai.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAssessmentDto } from './dto/create-assessment.dto';
 
@@ -9,6 +10,7 @@ export class AssessmentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly aiService: AiService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async create(userId: string, createAssessmentDto: CreateAssessmentDto) {
@@ -31,6 +33,8 @@ export class AssessmentsService {
       },
       include: { result: true },
     });
+
+    await this.notificationsService.sendHighRiskAlert(userId, assessmentIndicators, prediction.mainFactors, prediction.riskLevel);
 
     return {
       ...assessment,
@@ -96,6 +100,8 @@ export class AssessmentsService {
       },
       include: { result: true },
     });
+
+    await this.notificationsService.sendHighRiskAlert(userId, assessmentIndicators, prediction.mainFactors, prediction.riskLevel);
 
     return {
       ...assessment,

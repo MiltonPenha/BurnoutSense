@@ -361,6 +361,7 @@ export default function PerfilPage() {
 function notificationStatusLabel(status) {
   const labels = {
     sent: "enviado",
+    failed: "falhou",
     skipped: "desativado",
     not_configured: "SMTP não configurado",
     simulated: "simulado"

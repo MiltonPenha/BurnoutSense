@@ -59,7 +59,7 @@ DATABASE_URL="postgresql://burnoutsense:burnoutsense@localhost:5432/burnoutsense
 FRONTEND_URL="http://localhost:3000"
 AI_SERVICE_URL="http://localhost:8000"
 GEMINI_API_KEY=""
-GEMINI_INSIGHTS_MODEL="gemini-2.5-flash"
+GEMINI_INSIGHTS_MODEL="gemini-2.5-flash-lite"
 OPENAI_API_KEY=""
 OPENAI_INSIGHTS_MODEL="gpt-5.4-mini"
 JWT_ACCESS_SECRET="change-this-access-secret"
@@ -67,6 +67,13 @@ JWT_REFRESH_SECRET="change-this-refresh-secret"
 ```
 
 `GEMINI_API_KEY` é a opção recomendada para gerar alertas preventivos e recomendações por IA generativa no dashboard. `OPENAI_API_KEY` continua opcional como alternativa. Sem uma dessas chaves, o sistema mantém o resultado de risco da IA local, mas não inventa dicas pré-prontas.
+
+### Regras do registro diário
+
+- A data do registro pode ser hoje ou uma data passada, mas não pode ser futura.
+- A soma de horas de sono, horas de estudo e tempo de tela não pode ultrapassar 24 horas.
+- O humor predominante é salvo como contexto visual do registro, mas não é convertido em feature enviada para o modelo de IA.
+- Combinações severas de sono muito baixo, estresse alto e pressão acadêmica alta recebem calibração preventiva para evitar subestimar risco alto quando o modelo estatístico retorna risco moderado.
 
 Gere o Prisma Client e aplique as migrations:
 

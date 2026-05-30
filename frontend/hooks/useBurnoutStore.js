@@ -12,6 +12,14 @@ import {
 } from "@/lib/burnout-api";
 import { defaultProfile, defaultRecords, sortRecords } from "@/lib/burnout-data";
 
+const STORE_CHANGE_EVENT = "burnoutsense-store-change";
+
+function emitStoreChange(detail) {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(STORE_CHANGE_EVENT, { detail }));
+  }
+}
+
 export function useBurnoutStore() {
   const [records, setRecords] = useState(defaultRecords);
   const [profile, setProfile] = useState(defaultProfile);
@@ -50,18 +58,38 @@ export function useBurnoutStore() {
     };
   }, []);
 
+  useEffect(() => {
+    function handleStoreChange(event) {
+      if (event.detail?.records) {
+        setRecords(event.detail.records);
+      }
+
+      if (event.detail?.profile) {
+        setProfile(event.detail.profile);
+      }
+    }
+
+    window.addEventListener(STORE_CHANGE_EVENT, handleStoreChange);
+
+    return () => window.removeEventListener(STORE_CHANGE_EVENT, handleStoreChange);
+  }, []);
+
   const addRecord = useCallback(async (record) => {
     const previousRecords = records;
     const optimisticRecords = sortRecords([record, ...records]);
     setRecords(optimisticRecords);
+    emitStoreChange({ records: optimisticRecords });
 
     try {
       const savedRecord = await createRecord(record);
-      setRecords((current) => sortRecords([savedRecord, ...current.filter((item) => item.id !== record.id)]));
+      const nextRecords = sortRecords([savedRecord, ...optimisticRecords.filter((item) => item.id !== record.id)]);
+      setRecords(nextRecords);
+      emitStoreChange({ records: nextRecords });
       setError(null);
       return savedRecord;
     } catch (error) {
       setRecords(previousRecords);
+      emitStoreChange({ records: previousRecords });
       setError("Não foi possível salvar o registro.");
       throw error;
     }
@@ -84,13 +112,16 @@ export function useBurnoutStore() {
 
   const deleteRecord = useCallback(async (id) => {
     const previousRecords = records;
-    setRecords((current) => current.filter((record) => record.id !== id));
+    const nextRecords = records.filter((record) => record.id !== id);
+    setRecords(nextRecords);
+    emitStoreChange({ records: nextRecords });
 
     try {
       await removeRecord(id);
       setError(null);
     } catch (error) {
       setRecords(previousRecords);
+      emitStoreChange({ records: previousRecords });
       setError("Não foi possível excluir o registro.");
       throw error;
     }
@@ -99,34 +130,44 @@ export function useBurnoutStore() {
   const updateRecord = useCallback(async (id, record) => {
     const previousRecords = records;
     const optimisticRecord = { ...record, id };
+    const optimisticRecords = sortRecords(records.map((item) => (item.id === id ? optimisticRecord : item)));
 
-    setRecords((current) => sortRecords(current.map((item) => (item.id === id ? optimisticRecord : item))));
+    setRecords(optimisticRecords);
+    emitStoreChange({ records: optimisticRecords });
 
     try {
       const savedRecord = await saveRecord(id, record);
-      setRecords((current) => sortRecords(current.map((item) => (item.id === id ? savedRecord : item))));
+      const nextRecords = sortRecords(optimisticRecords.map((item) => (item.id === id ? savedRecord : item)));
+      setRecords(nextRecords);
+      emitStoreChange({ records: nextRecords });
       setError(null);
       return savedRecord;
     } catch (error) {
       setRecords(previousRecords);
+      emitStoreChange({ records: previousRecords });
       setError("Não foi possível atualizar o registro.");
       throw error;
     }
   }, [records]);
 
   const updateProfile = useCallback(async (nextProfile) => {
+    const previousProfile = profile;
     setProfile(nextProfile);
+    emitStoreChange({ profile: nextProfile });
 
     try {
       const savedProfile = await saveProfile(nextProfile);
       setProfile(savedProfile);
+      emitStoreChange({ profile: savedProfile });
       setError(null);
       return savedProfile;
     } catch {
+      setProfile(previousProfile);
+      emitStoreChange({ profile: previousProfile });
       setError("Não foi possível salvar o perfil.");
       throw new Error("Profile update failed.");
     }
-  }, []);
+  }, [profile]);
 
   const orderedRecords = useMemo(() => sortRecords(records), [records]);
 

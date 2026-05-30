@@ -158,16 +158,28 @@ async function request(path, options = {}) {
 
 function normalizeProfile(user) {
   const localProfile = readJson(STORAGE_KEYS.profile, defaultProfile);
+  const shouldUseLocalProfile = localProfile.id === user.id;
+  const accountProfile = shouldUseLocalProfile ? localProfile : defaultProfile;
 
   return {
     ...defaultProfile,
-    ...localProfile,
+    ...accountProfile,
     id: user.id,
-    name: user.name ?? localProfile.name,
-    email: user.email ?? localProfile.email,
-    emailAlerts: user.emailAlerts ?? localProfile.emailAlerts,
-    dailyReminder: user.dailyReminder ?? localProfile.dailyReminder
+    name: user.name ?? accountProfile.name,
+    email: user.email ?? accountProfile.email,
+    course: normalizeCourse(accountProfile.course),
+    semester: normalizeSemester(accountProfile.semester),
+    emailAlerts: user.emailAlerts ?? accountProfile.emailAlerts,
+    dailyReminder: user.dailyReminder ?? accountProfile.dailyReminder
   };
+}
+
+function normalizeCourse(course) {
+  return course === "Ciência da Computação" ? "" : course ?? "";
+}
+
+function normalizeSemester(semester) {
+  return semester === "4º semestre" ? "" : semester ?? "";
 }
 
 function moodFromAssessment(assessment) {

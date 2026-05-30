@@ -207,7 +207,7 @@ function Sidebar({ onLogout, pathname }) {
         </span>
         <span>
           <strong>{profile.name || "Estudante"}</strong>
-          <small>{profile.course || "Universitário"}</small>
+          <small>{profile.course || "Adicionar curso"}</small>
         </span>
         <button className="sidebar-logout" type="button" onClick={onLogout} aria-label="Sair">
           ↪

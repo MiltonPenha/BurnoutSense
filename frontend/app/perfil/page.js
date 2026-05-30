@@ -18,6 +18,8 @@ const themeOptions = [
   { id: "dark", label: "Escuro", icon: "🌚", help: "Menos luminosidade para estudar à noite." }
 ];
 
+const semesterOptions = Array.from({ length: 12 }, (_, index) => index + 1);
+
 function applyTheme(theme) {
   if (typeof document === "undefined") {
     return;
@@ -34,6 +36,7 @@ export default function PerfilPage() {
   const [notice, setNotice] = useState(null);
   const [notificationTest, setNotificationTest] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [removePhotoDialogOpen, setRemovePhotoDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPreference, setSavingPreference] = useState(null);
@@ -56,8 +59,8 @@ export default function PerfilPage() {
       return;
     }
 
-    applyTheme(draft.theme);
-  }, [draft.theme, ready]);
+    applyTheme(profile.theme);
+  }, [profile.theme, ready]);
 
   function showNotice(nextNotice, duration = 5000) {
     window.clearTimeout(noticeTimeout.current);
@@ -109,24 +112,8 @@ export default function PerfilPage() {
     }
   }
 
-  async function handleThemeChange(theme) {
-    const previousProfile = draft;
-    const nextProfile = { ...draft, theme };
-
-    setDraft(nextProfile);
-    applyTheme(theme);
-    setSavingPreference("theme");
-
-    try {
-      await updateProfile(nextProfile);
-      showNotice({ tone: "success", message: "Tema atualizado." }, 3000);
-    } catch {
-      setDraft(previousProfile);
-      applyTheme(previousProfile.theme);
-      showNotice({ tone: "error", message: "Não foi possível atualizar o tema." });
-    } finally {
-      setSavingPreference(null);
-    }
+  function handleThemeChange(theme) {
+    updateField("theme", theme);
   }
 
   async function handleDeleteAccount() {
@@ -216,7 +203,7 @@ export default function PerfilPage() {
                 />
                 <label className="button secondary tiny-button" htmlFor="profile-photo">Alterar foto</label>
                 {draft.avatarUrl ? (
-                  <button className="button secondary tiny-button" type="button" onClick={() => updateField("avatarUrl", "")}>
+                  <button className="button secondary tiny-button" type="button" onClick={() => setRemovePhotoDialogOpen(true)}>
                     Remover
                   </button>
                 ) : null}
@@ -237,8 +224,23 @@ export default function PerfilPage() {
               <input className="input" id="course" value={draft.course ?? ""} onChange={(event) => updateField("course", event.target.value)} />
             </div>
             <div className="field">
-              <label htmlFor="semester">Semestre</label>
-              <input className="input" id="semester" value={draft.semester ?? ""} onChange={(event) => updateField("semester", event.target.value)} />
+              <label htmlFor="semester">Período</label>
+              <span className="select-control">
+                <select
+                  className="input"
+                  id="semester"
+                  value={semesterNumberFromLabel(draft.semester)}
+                  onChange={(event) => updateField("semester", semesterLabelFromNumber(event.target.value))}
+                >
+                  <option value="">Selecione o semestre</option>
+                  {semesterOptions.map((semester) => (
+                    <option key={semester} value={semester}>
+                      {semester}º Semestre
+                    </option>
+                  ))}
+                </select>
+                <span className="select-arrow" aria-hidden="true">›</span>
+              </span>
             </div>
           </section>
         ) : null}
@@ -353,6 +355,33 @@ export default function PerfilPage() {
         </div>
       ) : null}
 
+      {removePhotoDialogOpen ? (
+        <div className="modal-backdrop" role="presentation">
+          <div className="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="remove-photo-title">
+            <span className="alert-icon emoji-icon" aria-hidden="true">🖼️</span>
+            <h2 className="confirm-title" id="remove-photo-title">Remover foto de perfil?</h2>
+            <p className="confirm-copy">
+              A imagem atual será removida do seu perfil após salvar as alterações. Você poderá escolher outra foto quando quiser.
+            </p>
+            <div className="confirm-actions">
+              <button className="button secondary" type="button" onClick={() => setRemovePhotoDialogOpen(false)}>
+                Cancelar
+              </button>
+              <button
+                className="button danger"
+                type="button"
+                onClick={() => {
+                  updateField("avatarUrl", "");
+                  setRemovePhotoDialogOpen(false);
+                }}
+              >
+                Remover foto
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <p className="footer-note">BurnoutSense é uma ferramenta de apoio preventivo e não substitui acompanhamento médico ou psicológico.</p>
     </section>
   );
@@ -368,6 +397,27 @@ function notificationStatusLabel(status) {
   };
 
   return labels[status] ?? status;
+}
+
+function semesterNumberFromLabel(semester) {
+  const match = String(semester ?? "").match(/\d+/);
+  const value = match ? Number(match[0]) : "";
+
+  if (!value || value < 1 || value > 12) {
+    return "";
+  }
+
+  return String(value);
+}
+
+function semesterLabelFromNumber(value) {
+  const number = Number(value);
+
+  if (!number || number < 1 || number > 12) {
+    return "";
+  }
+
+  return `${number}º Semestre`;
 }
 
 function SettingsRow({ checked, disabled = false, help, label, onChange }) {

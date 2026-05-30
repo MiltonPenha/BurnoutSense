@@ -1032,6 +1032,28 @@ button {
   padding: 0 16px;
 }
 
+select.input {
+  appearance: none;
+  padding-right: 56px;
+}
+
+.select-control {
+  position: relative;
+  display: block;
+}
+
+.select-arrow {
+  position: absolute;
+  top: 50%;
+  right: 24px;
+  transform: translateY(-52%);
+  color: var(--muted);
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1;
+  pointer-events: none;
+}
+
 .password-field {
   position: relative;
 }

@@ -6,8 +6,8 @@ export const STORAGE_KEYS = {
 export const defaultProfile = {
   name: "estudante",
   email: "",
-  course: "Ciência da Computação",
-  semester: "4º semestre",
+  course: "",
+  semester: "",
   emailAlerts: true,
   dailyReminder: true,
   avatarUrl: "",

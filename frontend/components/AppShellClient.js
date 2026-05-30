@@ -9,10 +9,10 @@ import { getRecordRisk } from "@/lib/burnout-data";
 import { useBurnoutStore } from "@/hooks/useBurnoutStore";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: "📊" },
-  { href: "/registro", label: "Novo registro", icon: "📝" },
-  { href: "/historico", label: "Histórico", icon: "🕘" },
-  { href: "/perfil", label: "Perfil", icon: "👤" }
+  { href: "/dashboard", label: "Dashboard", icon: "bar-chart-3" },
+  { href: "/registro", label: "Novo registro", icon: "file-plus-2" },
+  { href: "/historico", label: "Histórico", icon: "clock-3" },
+  { href: "/perfil", label: "Perfil", icon: "user-round" }
 ];
 
 export function AppShellClient({ children }) {
@@ -21,6 +21,7 @@ export function AppShellClient({ children }) {
   const authRoute = pathname === "/login" || pathname === "/cadastro";
   const [authState, setAuthState] = useState("checking");
   const [sessionNotice, setSessionNotice] = useState("");
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const loggedIn = authState === "authenticated";
 
   useEffect(() => {
@@ -95,7 +96,28 @@ export function AppShellClient({ children }) {
     };
   }, [loggedIn, router]);
 
+  useEffect(() => {
+    if (!isMobileMenuOpen) {
+      return undefined;
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === "Escape") {
+        setIsMobileMenuOpen(false);
+      }
+    }
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isMobileMenuOpen]);
+
   async function handleLogout() {
+    setIsMobileMenuOpen(false);
     await logoutUser();
     window.dispatchEvent(new Event("burnoutsense-auth-change"));
     router.push("/login");
@@ -131,13 +153,42 @@ export function AppShellClient({ children }) {
   return (
     <div className="app-shell">
       <SessionNotice message={sessionNotice} />
+      <MobileHeader isOpen={isMobileMenuOpen} onToggle={() => setIsMobileMenuOpen((current) => !current)} />
       <Sidebar pathname={pathname} onLogout={handleLogout} />
+      <button
+        aria-label="Fechar menu"
+        className={`mobile-menu-overlay ${isMobileMenuOpen ? "open" : ""}`}
+        type="button"
+        onClick={() => setIsMobileMenuOpen(false)}
+      />
+      <Sidebar
+        className={`mobile-sidebar ${isMobileMenuOpen ? "open" : ""}`}
+        pathname={pathname}
+        onLogout={handleLogout}
+        onNavigate={() => setIsMobileMenuOpen(false)}
+      />
       <main className="main">{children}</main>
     </div>
   );
 }
 
-function Sidebar({ onLogout, pathname }) {
+function MobileHeader({ isOpen, onToggle }) {
+  return (
+    <header className="mobile-header">
+      <Link className="mobile-brand" href="/dashboard" aria-label="Ir para o dashboard">
+        <span className="mobile-brand-mark">
+          <Image className="brand-logo" src="/imgs/logo-BurnoutSense.svg" alt="" width={30} height={30} />
+        </span>
+        <span>BurnoutSense</span>
+      </Link>
+      <button className="mobile-menu-button" type="button" aria-label={isOpen ? "Fechar menu" : "Abrir menu"} onClick={onToggle}>
+        <span className={isOpen ? "mobile-menu-icon close" : "mobile-menu-icon"} aria-hidden="true" />
+      </button>
+    </header>
+  );
+}
+
+function Sidebar({ className = "", onLogout, onNavigate, pathname }) {
   const { latestRecord, profile, ready } = useBurnoutStore();
   const risk = latestRecord ? getRecordRisk(latestRecord) : null;
   const score = risk?.score ?? 0;
@@ -154,9 +205,9 @@ function Sidebar({ onLogout, pathname }) {
   }, [profile.theme, ready]);
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${className}`.trim()}>
       <div>
-        <Link className="sidebar-brand" href="/dashboard" aria-label="Ir para o dashboard">
+        <Link className="sidebar-brand" href="/dashboard" aria-label="Ir para o dashboard" onClick={onNavigate}>
           <span className="sidebar-brand-mark">
             <Image className="brand-logo" src="/imgs/logo-BurnoutSense.svg" alt="" width={32} height={32} />
           </span>
@@ -192,8 +243,8 @@ function Sidebar({ onLogout, pathname }) {
           {navItems.map((item) => {
             const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
             return (
-              <Link key={item.href} className={`sidebar-link ${active ? "active" : ""}`} href={item.href}>
-                <span className="sidebar-emoji" aria-hidden="true">{item.icon}</span>
+              <Link key={item.href} className={`sidebar-link ${active ? "active" : ""}`} href={item.href} onClick={onNavigate}>
+                <SidebarIcon name={item.icon} />
                 <span>{item.label}</span>
               </Link>
             );
@@ -214,6 +265,51 @@ function Sidebar({ onLogout, pathname }) {
         </button>
       </div>
     </aside>
+  );
+}
+
+function SidebarIcon({ name }) {
+  if (name === "bar-chart-3") {
+    return (
+      <svg aria-hidden="true" className="sidebar-svg-icon" fill="none" focusable="false" viewBox="0 0 24 24">
+        <path d="M3 3v18h18" />
+        <path d="M8 17V9" />
+        <path d="M13 17V5" />
+        <path d="M18 17v-4" />
+      </svg>
+    );
+  }
+
+  if (name === "file-plus-2") {
+    return (
+      <svg aria-hidden="true" className="sidebar-svg-icon" fill="none" focusable="false" viewBox="0 0 24 24">
+        <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z" />
+        <path d="M14 2v5h5" />
+        <path d="M12 11v6" />
+        <path d="M9 14h6" />
+      </svg>
+    );
+  }
+
+  if (name === "clock-3") {
+    return (
+      <svg aria-hidden="true" className="sidebar-svg-icon" fill="none" focusable="false" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 6v6h5" />
+      </svg>
+    );
+  }
+
+  return <UserRoundIcon />;
+}
+
+function UserRoundIcon() {
+  return (
+    <svg aria-hidden="true" className="sidebar-svg-icon" fill="none" focusable="false" viewBox="0 0 24 24">
+      <path d="M18 20a6 6 0 0 0-12 0" />
+      <circle cx="12" cy="10" r="4" />
+      <circle cx="12" cy="12" r="10" />
+    </svg>
   );
 }
 

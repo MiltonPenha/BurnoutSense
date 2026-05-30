@@ -153,19 +153,23 @@ function DatePicker({ value, onChange }) {
   );
 }
 
-function RangeField({ field, label, value, onChange }) {
+function RangeField({ field, label, value, onChange, min = 0, max = 10, helperText, className = "" }) {
+  const numericValue = Number(value);
+  const percentage = Math.min(100, Math.max(0, ((numericValue - min) / (max - min)) * 100));
+
   return (
-    <div className="range-row">
+    <div className={`range-row ${className}`.trim()}>
       <div className="range-head">
         <label htmlFor={field}>{label}</label>
-        <span className="range-value">{value}/10</span>
+        <span className="range-value">{numericValue}/{max}</span>
       </div>
+      {helperText ? <p className="range-helper">{helperText}</p> : null}
       <input
         className="range"
         id={field}
-        min="0"
-        max="10"
-        style={{ "--range-progress": `${Number(value) * 10}%` }}
+        min={min}
+        max={max}
+        style={{ "--range-progress": `${percentage}%` }}
         type="range"
         value={value}
         onChange={(event) => onChange(field, event.target.value)}

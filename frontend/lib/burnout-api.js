@@ -160,6 +160,7 @@ function normalizeProfile(user) {
   const localProfile = readJson(STORAGE_KEYS.profile, defaultProfile);
   const shouldUseLocalProfile = localProfile.id === user.id;
   const accountProfile = shouldUseLocalProfile ? localProfile : defaultProfile;
+  const userHasField = (field) => Object.prototype.hasOwnProperty.call(user, field);
 
   return {
     ...defaultProfile,
@@ -167,10 +168,12 @@ function normalizeProfile(user) {
     id: user.id,
     name: user.name ?? accountProfile.name,
     email: user.email ?? accountProfile.email,
-    course: normalizeCourse(accountProfile.course),
-    semester: normalizeSemester(accountProfile.semester),
+    course: normalizeCourse(userHasField("course") ? user.course : accountProfile.course),
+    semester: normalizeSemester(userHasField("semester") ? user.semester : accountProfile.semester),
+    avatarUrl: userHasField("avatarUrl") ? user.avatarUrl ?? "" : accountProfile.avatarUrl ?? "",
     emailAlerts: user.emailAlerts ?? accountProfile.emailAlerts,
-    dailyReminder: user.dailyReminder ?? accountProfile.dailyReminder
+    dailyReminder: user.dailyReminder ?? accountProfile.dailyReminder,
+    theme: accountProfile.theme ?? "light"
   };
 }
 
@@ -366,14 +369,14 @@ export async function updateProfile(profile) {
       body: JSON.stringify({
         name: profile.name,
         emailAlerts: profile.emailAlerts,
-        dailyReminder: profile.dailyReminder
+        dailyReminder: profile.dailyReminder,
+        course: profile.course,
+        semester: profile.semester,
+        avatarUrl: profile.avatarUrl ?? ""
       })
     });
     const normalizedProfile = {
       ...normalizeProfile(user),
-      course: profile.course,
-      semester: profile.semester,
-      avatarUrl: profile.avatarUrl ?? "",
       theme: profile.theme ?? "light"
     };
 

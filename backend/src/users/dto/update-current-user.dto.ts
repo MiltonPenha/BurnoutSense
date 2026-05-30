@@ -14,4 +14,19 @@ export class UpdateCurrentUserDto {
   @IsOptional()
   @IsBoolean()
   dailyReminder?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  course?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  semester?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(3_000_000)
+  avatarUrl?: string;
 }

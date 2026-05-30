@@ -52,6 +52,18 @@ export class UsersService {
       updateData.dailyReminder = data.dailyReminder;
     }
 
+    if (data.course !== undefined) {
+      updateData.course = data.course.trim() || null;
+    }
+
+    if (data.semester !== undefined) {
+      updateData.semester = data.semester.trim() || null;
+    }
+
+    if (data.avatarUrl !== undefined) {
+      updateData.avatarUrl = data.avatarUrl || null;
+    }
+
     const user = await this.prisma.user.update({
       where: { id },
       data: updateData,

@@ -26,6 +26,9 @@ model User {
   role         UserRole     @default(STUDENT)
   emailAlerts  Boolean      @default(true)
   dailyReminder Boolean     @default(true)
+  course       String?
+  semester     String?
+  avatarUrl    String?
   assessments  Assessment[]
   sessions     AuthSession[]
   createdAt    DateTime     @default(now())

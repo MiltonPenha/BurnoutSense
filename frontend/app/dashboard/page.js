@@ -7,6 +7,8 @@ import { useBurnoutStore } from "@/hooks/useBurnoutStore";
 import { getAssessmentInsights } from "@/lib/burnout-api";
 import { formatDateLong, formatHours, getRecordRisk } from "@/lib/burnout-data";
 
+const INSIGHTS_CACHE_KEY = "burnoutsense.generatedInsights.v1";
+
 function average(records, key) {
   if (!records.length) {
     return 0;
@@ -26,6 +28,49 @@ function riskDescription(tone) {
   }
 
   return "Indicadores recentes em uma faixa mais tranquila.";
+}
+
+function buildInsightsCacheKey(record) {
+  return JSON.stringify({
+    id: record.id,
+    date: record.date,
+    sleepHours: record.sleepHours,
+    studyHours: record.studyHours,
+    screenTime: record.screenTime,
+    sleepQuality: record.sleepQuality,
+    stress: record.stress,
+    tiredness: record.tiredness,
+    academicPerformance: record.academicPerformance,
+    examPressure: record.examPressure,
+    physicalActivity: record.physicalActivity,
+    socialSupport: record.socialSupport,
+    financialStress: record.financialStress,
+    riskLevel: record.backendResult?.riskLevel,
+    confidence: record.backendResult?.confidence,
+    mainFactors: record.backendResult?.mainFactors
+  });
+}
+
+function readCachedInsights(record) {
+  try {
+    const cache = JSON.parse(window.localStorage.getItem(INSIGHTS_CACHE_KEY) ?? "{}");
+    return cache[buildInsightsCacheKey(record)] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedInsights(record, generatedInsights) {
+  try {
+    const cache = JSON.parse(window.localStorage.getItem(INSIGHTS_CACHE_KEY) ?? "{}");
+    cache[buildInsightsCacheKey(record)] = {
+      alerts: generatedInsights.alerts ?? [],
+      recommendations: generatedInsights.recommendations ?? []
+    };
+    window.localStorage.setItem(INSIGHTS_CACHE_KEY, JSON.stringify(cache));
+  } catch {
+    // Cache is only a performance hint; generation still works without it.
+  }
 }
 
 function MetricCard({ icon, label, note, tone = "blue", value }) {
@@ -58,6 +103,7 @@ export default function DashboardPage() {
   const [recordNotice, setRecordNotice] = useState("");
   const [insights, setInsights] = useState({ alerts: [], recommendations: [], loading: false, error: "" });
   const risk = latestRecord ? getRecordRisk(latestRecord) : null;
+  const latestRecordInsightKey = latestRecord ? buildInsightsCacheKey(latestRecord) : "";
   const alerts = insights.alerts;
   const recommendations = insights.recommendations;
 
@@ -93,6 +139,18 @@ export default function DashboardPage() {
         return;
       }
 
+      const cachedInsights = readCachedInsights(latestRecord);
+
+      if (cachedInsights) {
+        setInsights({
+          alerts: cachedInsights.alerts ?? [],
+          recommendations: cachedInsights.recommendations ?? [],
+          loading: false,
+          error: ""
+        });
+        return;
+      }
+
       setInsights({ alerts: [], recommendations: [], loading: true, error: "" });
 
       try {
@@ -101,6 +159,8 @@ export default function DashboardPage() {
         if (!active) {
           return;
         }
+
+        writeCachedInsights(latestRecord, generatedInsights);
 
         setInsights({
           alerts: generatedInsights.alerts ?? [],
@@ -125,7 +185,7 @@ export default function DashboardPage() {
     return () => {
       active = false;
     };
-  }, [latestRecord?.id]);
+  }, [latestRecord, latestRecordInsightKey]);
 
   if (!ready) {
     return (
@@ -210,7 +270,9 @@ export default function DashboardPage() {
             <section className="card alert-card">
               <div className="section-head">
                 <h2 className="alert-title">
-                  <span className="alert-icon emoji-icon" aria-hidden="true">⚠️</span>
+                  <span className="alert-icon emoji-icon" aria-hidden="true">
+                    <span>⚠️</span>
+                  </span>
                   <span>Alertas preventivos</span>
                 </h2>
                 <span>Gerado por IA</span>
@@ -235,17 +297,16 @@ export default function DashboardPage() {
               {insights.loading ? <p className="page-kicker">Gerando recomendações preventivas...</p> : null}
               {insights.error ? <p className="form-error">{insights.error}</p> : null}
               {!insights.loading && !insights.error ? (
-                <div className="recommendation-list">
+                <ul className="recommendation-list">
                   {recommendations.map((item) => (
-                    <article className="recommendation-item" key={item.title}>
-                      <span className="recommendation-icon" aria-hidden="true">IA</span>
+                    <li key={item.title}>
                       <div>
                         <strong>{item.title}</strong>
                         <p>{item.text}</p>
                       </div>
-                    </article>
+                    </li>
                   ))}
-                </div>
+                </ul>
               ) : null}
             </section>
           </div>

@@ -476,7 +476,7 @@ button {
 }
 
 .dashboard-risk::after {
-  content: "";
+  content: none;
   position: absolute;
   inset: 18px 18px auto auto;
   width: 120px;
@@ -2427,8 +2427,7 @@ select.input {
 }
 
 .dashboard-risk::after {
-  width: 180px;
-  height: 180px;
+  content: none;
 }
 
 .overview-grid {
@@ -2535,44 +2534,25 @@ select.input {
 }
 
 .recommendation-list {
-  display: grid;
-  gap: 12px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--ink);
 }
 
-.recommendation-item {
-  border: 1px solid rgba(219, 230, 243, 0.82);
-  border-radius: 18px;
-  padding: 14px;
-  display: grid;
-  grid-template-columns: 42px minmax(0, 1fr);
-  gap: 14px;
-  background: #f8fbff;
+.recommendation-list li + li {
+  margin-top: 14px;
 }
 
-.recommendation-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 16px;
-  background: #DBEAFE;
-  color: var(--primary-dark);
+.recommendation-list li::marker {
+  color: var(--warning-line);
 }
 
-.recommendation-item:nth-child(2) .recommendation-icon {
-  background: #CCFBF1;
-  color: #0F766E;
-}
-
-.recommendation-item:nth-child(3) .recommendation-icon {
-  background: #F3E8FF;
-  color: #7E22CE;
-}
-
-.recommendation-item strong {
+.recommendation-list strong {
   display: block;
   margin-bottom: 4px;
 }
 
-.recommendation-item p {
+.recommendation-list p {
   margin: 0;
   color: var(--muted);
   font-size: 12px;
@@ -2590,7 +2570,7 @@ select.input {
   background: #FFE4E6;
   color: var(--danger-ink);
   flex: 0 0 28px;
-  font-size: 17px;
+  font-size: 16px;
   line-height: 1;
 }
 
@@ -2600,8 +2580,15 @@ select.input {
 }
 
 .alert-icon.emoji-icon {
-  padding-bottom: 1px;
+  padding-bottom: 0;
   text-indent: 0;
+  transform: none;
+}
+
+.alert-icon.emoji-icon span {
+  display: block;
+  line-height: 1;
+  transform: translateY(-2px);
 }
 
 .alert-icon::before {

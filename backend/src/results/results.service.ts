@@ -95,7 +95,7 @@ export class ResultsService {
 
   private async requestGeneratedInsights(context: InsightGenerationContext) {
     const geminiApiKey = this.configService.get<string>('GEMINI_API_KEY') ?? this.configService.get<string>('GOOGLE_API_KEY');
-    const geminiModel = this.configService.get<string>('GEMINI_INSIGHTS_MODEL') ?? 'gemini-2.5-flash';
+    const geminiModel = this.configService.get<string>('GEMINI_INSIGHTS_MODEL') ?? 'gemini-2.5-flash-lite';
     const apiKey = this.configService.get<string>('OPENAI_API_KEY');
     const model = this.configService.get<string>('OPENAI_INSIGHTS_MODEL') ?? 'gpt-5.4-mini';
 

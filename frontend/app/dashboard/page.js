@@ -204,14 +204,14 @@ export default function DashboardPage() {
 
           <div className="metrics-grid">
             <MetricCard icon="🌙" label="Horas de sono" value={formatHours(latestRecord.sleepHours)} note={`Qualidade: ${latestRecord.sleepQuality}/10`} tone="blue" />
-            <MetricCard icon="⚡" label="Estresse" value={`${latestRecord.stress}/10`} note={`Cansaço: ${latestRecord.tiredness}/10`} tone={latestRecord.stress >= 8 ? "danger" : "peach"} />
-            <MetricCard icon="📚" label="Carga acadêmica" value={formatHours(latestRecord.studyHours)} note={`Pressão: ${latestRecord.examPressure ?? 5}/10`} tone="lavender" />
-            <MetricCard icon="🧭" label="Contexto" value={latestRecord.mood} note={`Tela: ${formatHours(latestRecord.screenTime ?? 0)}`} tone="rose" />
+            <MetricCard icon="⚡" label="Estresse" value={`${latestRecord.stress}/10`} note={`Cansaço: ${latestRecord.tiredness}/10`} tone={latestRecord.stress >= 8 ? "danger" : "blue"} />
+            <MetricCard icon="📚" label="Carga acadêmica" value={formatHours(latestRecord.studyHours)} note={`Pressão: ${latestRecord.examPressure ?? 5}/10`} tone="mint" />
+            <MetricCard icon="🧭" label="Contexto" value={latestRecord.mood} note={`Tela: ${formatHours(latestRecord.screenTime ?? 0)}`} tone="blue" />
           </div>
 
           <div className="dashboard-grid">
-            <TrendChart color="#F59E0B" records={records} title="Evolução do estresse" valueKey="stress" />
-            <TrendChart color="#14B8A6" records={records} title="Qualidade do sono" valueKey="sleepQuality" />
+            <TrendChart color="#60A5FA" records={records} title="Evolução do estresse" valueKey="stress" />
+            <TrendChart color="#34D399" records={records} title="Qualidade do sono" valueKey="sleepQuality" />
           </div>
 
           <div className="dashboard-bottom-grid">

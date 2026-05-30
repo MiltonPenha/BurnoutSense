@@ -1,58 +1,58 @@
-# Development Guide
+# Guia de Desenvolvimento
 
-This guide describes the recommended local setup for BurnoutSense development and TCC1 validation.
+Este guia descreve a forma recomendada de executar o BurnoutSense em ambiente local para desenvolvimento e validação do TCC1.
 
-## Prerequisites
+## Pré-requisitos
 
 - Node.js.
-- npm for the frontend.
-- pnpm for the backend.
-- Python 3.11 or newer for the AI service.
-- Docker Desktop for PostgreSQL.
+- npm para o frontend.
+- pnpm para o backend.
+- Python 3.11 ou superior para o ai-service.
+- Docker Desktop para subir o PostgreSQL.
 
-## Recommended Startup Order
+## Ordem Recomendada de Execução
 
-1. Start PostgreSQL.
-2. Configure backend and frontend environment variables.
-3. Run Prisma migrations.
-4. Train or validate the AI model.
-5. Start the AI service.
-6. Start the backend.
-7. Start the frontend.
+1. Subir o PostgreSQL.
+2. Configurar as variáveis de ambiente do backend e do frontend.
+3. Rodar as migrations do Prisma.
+4. Treinar ou validar o modelo de IA.
+5. Subir o ai-service.
+6. Subir o backend.
+7. Subir o frontend.
 
-## PostgreSQL With Docker
+## PostgreSQL com Docker
 
-From the project root:
+Na raiz do projeto:
 
 ```bash
 docker compose up -d postgres
 ```
 
-Local database settings:
+Configuração local do banco:
 
 - Host: `localhost`
-- Port: `5432`
-- User: `burnoutsense`
-- Password: `burnoutsense`
-- Database: `burnoutsense`
+- Porta: `5432`
+- Usuário: `burnoutsense`
+- Senha: `burnoutsense`
+- Banco: `burnoutsense`
 
-Current note: `docker-compose.yml` starts PostgreSQL only. Backend, frontend, and the AI service are still started separately.
+Observação atual: o `docker-compose.yml` sobe apenas o PostgreSQL. Backend, frontend e ai-service ainda devem ser executados separadamente.
 
 ## Backend
 
-Enter the backend folder:
+Entre na pasta do backend:
 
 ```bash
 cd backend
 ```
 
-Install dependencies:
+Instale as dependências:
 
 ```bash
 pnpm install
 ```
 
-Create `.env` from `.env.example` and check these values:
+Crie o arquivo `.env` a partir de `.env.example` e confira estes valores:
 
 ```env
 DATABASE_URL="postgresql://burnoutsense:burnoutsense@localhost:5432/burnoutsense?schema=public"
@@ -62,126 +62,126 @@ JWT_ACCESS_SECRET="change-this-access-secret"
 JWT_REFRESH_SECRET="change-this-refresh-secret"
 ```
 
-Generate the Prisma Client and apply migrations:
+Gere o Prisma Client e aplique as migrations:
 
 ```bash
 pnpm prisma:generate
 pnpm prisma:migrate
 ```
 
-Open Prisma Studio:
+Abra o Prisma Studio:
 
 ```bash
 pnpm prisma:studio
 ```
 
-Start the backend:
+Suba o backend:
 
 ```bash
 pnpm start:dev
 ```
 
-Default URL: `http://localhost:3001`
+URL padrão: `http://localhost:3001`
 
 ## Frontend
 
-Enter the frontend folder:
+Entre na pasta do frontend:
 
 ```bash
 cd frontend
 ```
 
-Install dependencies:
+Instale as dependências:
 
 ```bash
 npm install
 ```
 
-Create `.env.local` from `.env.example`:
+Crie o arquivo `.env.local` a partir de `.env.example`:
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:3001
 ```
 
-Start the frontend:
+Suba o frontend:
 
 ```bash
 npm run dev
 ```
 
-Default URL: `http://localhost:3000`
+URL padrão: `http://localhost:3000`
 
 ## AI Service
 
-Enter the AI service folder:
+Entre na pasta do ai-service:
 
 ```bash
 cd ai-service
 ```
 
-Create and activate a virtual environment if needed:
+Crie e ative um ambiente virtual, se necessário:
 
 ```bash
 python -m venv .venv
 .venv\Scripts\activate
 ```
 
-Install dependencies:
+Instale as dependências:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Train the model when the dataset file is available:
+Treine o modelo quando o arquivo do dataset estiver disponível:
 
 ```bash
 python -m training.train_model
 ```
 
-Start the API:
+Suba a API:
 
 ```bash
 uvicorn app.main:app --reload --port 8000
 ```
 
-Useful endpoints:
+Endpoints úteis:
 
 - `GET http://localhost:8000/health`
 - `POST http://localhost:8000/predict`
 - `GET http://localhost:8000/model-info`
 - `GET http://localhost:8000/model-metrics`
 
-## Technical Status
+## Status Técnico
 
-With the backend, database, and AI service running, open:
+Com backend, banco e ai-service rodando, acesse:
 
 ```text
 http://localhost:3000/status
 ```
 
-This page calls `GET http://localhost:3001/status` and shows:
+Essa tela consulta `GET http://localhost:3001/status` e mostra:
 
 - Backend online/offline.
-- Database online/offline.
+- Banco online/offline.
 - AI Service online/offline.
-- Model loaded or unavailable.
+- Modelo carregado ou indisponível.
 
-## Manual Validation Flow
+## Fluxo Manual de Validação
 
-1. Open `http://localhost:3000`.
-2. Create an account.
-3. Log in.
-4. Create a daily assessment record.
-5. Confirm that the backend called the AI service.
-6. Confirm that the prediction result was saved in `prediction_results`.
-7. Check the dashboard, history, and assessment detail pages.
-8. Edit a record and confirm it redirects back to history.
-9. Check the technical status page.
-10. Delete a record and confirm the list updates.
+1. Abrir `http://localhost:3000`.
+2. Criar uma conta.
+3. Fazer login.
+4. Criar um registro diário.
+5. Confirmar que o backend chamou o ai-service.
+6. Confirmar que o resultado da predição foi salvo em `prediction_results`.
+7. Conferir dashboard, histórico e detalhe do registro.
+8. Editar um registro e confirmar retorno ao histórico.
+9. Conferir a tela de status técnico.
+10. Excluir um registro e confirmar atualização da lista.
 
-## TCC1 Notes
+## Observações de TCC1
 
-- BurnoutSense is an academic preventive support tool.
-- The result is not a clinical diagnosis.
-- Screen time is stored as a separate variable because it can overlap with study or work time.
-- Advanced AI improvements, tuning, and deeper scientific comparisons are left for TCC2.
+- O BurnoutSense é uma ferramenta acadêmica de apoio preventivo.
+- O resultado não representa diagnóstico clínico.
+- Tempo de tela é armazenado como variável separada, pois pode ocorrer junto com estudo ou trabalho.
+- Melhorias avançadas de IA, tuning e comparações científicas mais profundas ficam para o TCC2.

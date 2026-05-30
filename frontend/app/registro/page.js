@@ -8,7 +8,7 @@ import { useBurnoutStore } from "@/hooks/useBurnoutStore";
 const weekDays = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 
 function todayIso() {
-  return new Date().toISOString().slice(0, 10);
+  return toIsoDate(new Date());
 }
 
 function valueFromLatest(latestRecord, key, fallback) {
@@ -74,10 +74,12 @@ function buildCalendarDays(viewDate) {
 }
 
 function DatePicker({ value, onChange }) {
+  const maxDateIso = todayIso();
   const selectedDate = parseIsoDate(value);
   const [open, setOpen] = useState(false);
   const [viewDate, setViewDate] = useState(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
   const days = useMemo(() => buildCalendarDays(viewDate), [viewDate]);
+  const isViewingCurrentMonth = viewDate.getFullYear() === parseIsoDate(maxDateIso).getFullYear() && viewDate.getMonth() === parseIsoDate(maxDateIso).getMonth();
 
   function toggleCalendar() {
     if (!open) {
@@ -89,7 +91,13 @@ function DatePicker({ value, onChange }) {
   }
 
   function selectDate(date) {
-    onChange(toIsoDate(date));
+    const isoDate = toIsoDate(date);
+
+    if (isoDate > maxDateIso) {
+      return;
+    }
+
+    onChange(isoDate);
     setOpen(false);
   }
 
@@ -114,7 +122,7 @@ function DatePicker({ value, onChange }) {
               ‹
             </button>
             <strong>{formatMonthLabel(viewDate)}</strong>
-            <button aria-label="Próximo mês" className="calendar-nav" type="button" onClick={() => setViewDate((current) => addMonths(current, 1))}>
+            <button aria-label="Próximo mês" className="calendar-nav" type="button" disabled={isViewingCurrentMonth} onClick={() => setViewDate((current) => addMonths(current, 1))}>
               ›
             </button>
           </div>
@@ -129,10 +137,13 @@ function DatePicker({ value, onChange }) {
               const outsideMonth = date.getMonth() !== viewDate.getMonth();
               const selected = isoDate === value;
               const today = isoDate === todayIso();
+              const future = isoDate > maxDateIso;
 
               return (
                 <button
-                  className={`calendar-day ${outsideMonth ? "outside" : ""} ${selected ? "selected" : ""} ${today ? "today" : ""}`}
+                  aria-disabled={future}
+                  className={`calendar-day ${outsideMonth ? "outside" : ""} ${selected ? "selected" : ""} ${today ? "today" : ""} ${future ? "disabled" : ""}`}
+                  disabled={future}
                   key={isoDate}
                   type="button"
                   onClick={() => selectDate(date)}
@@ -524,6 +535,10 @@ function formatSubmitError(error) {
 }
 
 function validateRecordPayload(record) {
+  if (record.date > todayIso()) {
+    return "A data do registro não pode ser futura.";
+  }
+
   const hourFields = [
     ["sleepHours", "horas de sono"],
     ["studyHours", "horas de estudo"],

@@ -1254,6 +1254,11 @@ select.input {
   outline: none;
 }
 
+.calendar-nav:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
 .calendar-weekdays,
 .calendar-grid {
   display: grid;
@@ -1289,6 +1294,18 @@ select.input {
 
 .calendar-day.outside {
   color: #9aa9b8;
+}
+
+.calendar-day.disabled {
+  cursor: not-allowed;
+  color: #b9c3cf;
+  opacity: 0.45;
+}
+
+.calendar-day.disabled:hover,
+.calendar-day.disabled:focus-visible {
+  border-color: transparent;
+  background: transparent;
 }
 
 .calendar-day.today {

@@ -178,11 +178,11 @@ function normalizeProfile(user) {
 }
 
 function normalizeCourse(course) {
-  return course === "Ciência da Computação" ? "" : course ?? "";
+  return course ?? "";
 }
 
 function normalizeSemester(semester) {
-  return semester === "4º semestre" ? "" : semester ?? "";
+  return semester ?? "";
 }
 
 function moodFromAssessment(assessment) {

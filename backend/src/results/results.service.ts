@@ -306,7 +306,7 @@ function parseGeneratedInsights(outputText: string, model: string) {
       generatedBy: model,
       disclaimer: 'Conteúdo gerado por IA para apoio preventivo. Não representa diagnóstico clínico.',
     };
-  } catch (error) {
+  } catch {
     throw new BadGatewayException('Generated insights response could not be parsed.');
   }
 }

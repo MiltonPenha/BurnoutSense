@@ -123,7 +123,15 @@ export class AssessmentsService {
   }
 }
 
-function validateStoredAssessmentIndicators(assessmentIndicators: { sleepHours: number; studyHours: number; workHours: number }) {
+function validateStoredAssessmentIndicators(assessmentIndicators: { date: Date; sleepHours: number; studyHours: number; workHours: number }) {
+  const tomorrow = new Date();
+  tomorrow.setHours(0, 0, 0, 0);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  if (assessmentIndicators.date >= tomorrow) {
+    throw new BadRequestException('Assessment date cannot be in the future.');
+  }
+
   const dailyAllocatedHours = assessmentIndicators.sleepHours + assessmentIndicators.studyHours + assessmentIndicators.workHours;
 
   if (dailyAllocatedHours > 24) {

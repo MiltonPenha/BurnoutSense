@@ -8,11 +8,11 @@ The model predicts the target column `risk_level` using academic, emotional and 
 
 ## Dataset
 
-- Source file: `dataset\student_mental_health_burnout_1M.csv`
+- Source file: `C:\Users\USER\Desktop\TCC\BurnoutSense\ai-service\dataset\student_mental_health_burnout_1M.csv`
 - Total records identified during EDA: 1000000
 - Records used in this training run: 1000000
-- Training strategy: `custom_class_sampling`
-- Training timestamp: `2026-05-27T22:05:38.865883+00:00`
+- Training strategy: `focused_high_recall_sampling`
+- Training timestamp: `2026-05-29T22:38:08.166814+00:00`
 
 ## Target
 
@@ -41,9 +41,9 @@ Before balancing:
 
 After balancing:
 
+- `high`: 40000
+- `medium`: 70000
 - `low`: 100000
-- `medium`: 50000
-- `high`: 11000
 
 ## Input Features
 
@@ -56,37 +56,66 @@ After balancing:
 - `sleep_quality`
 - `physical_activity`
 - `screen_time`
-- `internet_usage`
 - `social_support`
 - `family_expectation`
 - `financial_stress`
-- `dropout_risk`
 
 ## Models Evaluated
 
-- Random Forest
-- SVM Linear
+- DummyClassifier baseline
+- Logistic Regression with class balancing
+- Random Forest with class balancing
+- Extra Trees with class balancing
+- HistGradientBoosting with sample weights
+- Linear SVC with class balancing
 
-The API currently uses `Random Forest` as the saved production prototype model.
+The API currently uses `Random Forest [final_without_dropout_or_internet]` as the saved production prototype model.
 
 ## Selected Model Metrics
 
-- Accuracy: 0.8652
-- Precision: 0.8704
-- Recall: 0.8652
-- F1-score: 0.8674
-- Confusion Matrix: `[[2078, 1, 1691], [8, 174217, 17436], [1979, 12588, 40002]]`
+- Accuracy: 0.8259
+- Balanced Accuracy: 0.7542
+- Precision macro: 0.6390
+- Recall macro: 0.7542
+- F1 macro: 0.6804
+- High recall: 0.6430
+- High F1-score: 0.4868
+- Confusion Matrix: `[[2424, 2, 1344], [48, 161699, 29914], [3717, 8504, 42348]]`
+
+Quality targets:
+
+- `accuracy` >= 0.8: met
+- `f1_macro` >= 0.7: not met
+- `high_recall` >= 0.7: not met
+- `high_f1_score` >= 0.65: not met
+
+## Feature Importance
+
+- `stress_level`: 0.262925
+- `anxiety_score`: 0.174816
+- `depression_score`: 0.151558
+- `sleep_quality`: 0.086222
+- `exam_pressure`: 0.071902
+- `social_support`: 0.064352
+- `study_hours`: 0.039573
+- `financial_stress`: 0.034136
+- `family_expectation`: 0.030181
+- `academic_performance`: 0.028511
+- `screen_time`: 0.027913
+- `physical_activity`: 0.027912
 
 ## Per-Class Metrics
 
-- `high`: precision=0.5112, recall=0.5512, f1-score=0.5304, support=3770
-- `low`: precision=0.9326, recall=0.909, f1-score=0.9206, support=191661
-- `medium`: precision=0.6765, recall=0.7331, f1-score=0.7037, support=54569
+- `high`: precision=0.3917, recall=0.643, f1-score=0.4868, support=3770
+- `low`: precision=0.95, recall=0.8437, f1-score=0.8937, support=191661
+- `medium`: precision=0.5753, recall=0.776, f1-score=0.6608, support=54569
 
 ## Notes
 
 - The train/test split evaluates the model on data not used during fitting.
 - The test set keeps the original class distribution to make evaluation closer to real data.
 - The training set may use balanced sampling to reduce bias toward the majority class.
-- The `high` class has fewer examples than `low`, so recall for high-risk cases should still be monitored in TCC 2.
+- The final model excludes `dropout_risk` because it behaves like a risk-derived variable and can cause leakage or weak product compatibility.
+- The final model excludes `internet_usage` because it is highly redundant with `screen_time`.
+- The `high` class has far fewer examples than `low`, so recall and F1 for high-risk cases should still be monitored in TCC 2.
 - Future improvements may include cross-validation, hyperparameter tuning, model versioning and database logging of predictions.

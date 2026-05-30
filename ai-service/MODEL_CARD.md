@@ -4,13 +4,15 @@
 
 O microsservico de IA do BurnoutSense e um prototipo academico para classificacao preventiva de risco de burnout academico em estudantes universitarios.
 
-O modelo nao possui finalidade clinica ou diagnostica. Seu objetivo nesta etapa e demonstrar viabilidade tecnica para o TCC 1, utilizando aprendizado de maquina para classificar niveis de risco academico.
+O modelo nao possui finalidade clinica ou diagnostica. O resultado deve ser interpretado como uma estimativa computacional de apoio preventivo.
 
 ## Dataset
 
 Dataset de referencia:
 
+```text
 Student Lifestyle, Mental Health & Burnout Insight
+```
 
 https://www.kaggle.com/datasets/ayeshasiddiqa123/student-health
 
@@ -20,17 +22,25 @@ Arquivo local utilizado no treinamento atual:
 dataset/student_mental_health_burnout_1M.csv
 ```
 
+O dataset local analisado possui 1.000.000 registros, sem valores ausentes e sem duplicados.
+
+Distribuicao da variavel-alvo:
+
+- `Low`: 766.645
+- `Medium`: 218.275
+- `High`: 15.080
+
+A classe `High` representa aproximadamente 1,5% do dataset. Esse desbalanceamento e a principal limitacao tecnica do modelo.
+
 ## Variavel-Alvo
 
-A variavel-alvo do modelo e:
+A variavel-alvo e:
 
 ```text
 risk_level
 ```
 
-Essa coluna ja existe no dataset original. Ela nao foi criada aleatoriamente pelo codigo do projeto.
-
-Os rotulos originais sao normalizados da seguinte forma:
+Os rotulos originais sao normalizados como:
 
 ```text
 Low    -> low
@@ -38,17 +48,9 @@ Medium -> medium
 High   -> high
 ```
 
-Portanto, a API pode retornar:
+## Features Finais
 
-```text
-low
-medium
-high
-```
-
-## Variaveis de Entrada
-
-O prototipo atual utiliza os seguintes indicadores quando disponiveis:
+O modelo final usa:
 
 - `study_hours`
 - `academic_performance`
@@ -59,76 +61,109 @@ O prototipo atual utiliza os seguintes indicadores quando disponiveis:
 - `sleep_quality`
 - `physical_activity`
 - `screen_time`
-- `internet_usage`
 - `social_support`
 - `family_expectation`
 - `financial_stress`
-- `dropout_risk`
 
-Nota de compatibilidade: a feature salva como `sleep_quality` recebe a coluna
-`sleep_hours` do dataset durante o preprocessamento. O backend mantem esse nome
-para nao quebrar o modelo `.pkl` ja treinado, mas envia horas de sono para essa
-feature.
+Nota: a feature `sleep_quality` recebe a coluna `sleep_hours` do dataset. No produto, o nome deve ser revisado com cuidado para diferenciar horas de sono de qualidade percebida do sono.
+
+## Features Removidas do Modelo Final
+
+- `dropout_risk`: removida por ser uma variavel de risco derivada/adjacente, com potencial de vazamento e baixa compatibilidade com o fluxo atual do produto.
+- `internet_usage`: removida por alta redundancia com `screen_time` (`correlacao ~= 0.89`).
+
+As colunas `burnout_score` e `mental_health_index` nao sao usadas como features porque parecem indicadores agregados fortemente relacionados ao alvo, o que caracterizaria vazamento de dados.
 
 ## Modelos Avaliados
 
-O script de treinamento avalia:
+Foram comparados:
 
-- Random Forest
-- SVM Linear
+- DummyClassifier como baseline
+- LogisticRegression com `class_weight="balanced"`
+- RandomForestClassifier
+- ExtraTreesClassifier
+- HistGradientBoostingClassifier com pesos de amostra
+- LinearSVC com `class_weight="balanced"`
 
-O modelo salvo e utilizado pela API e:
+Foram testados cenarios com todas as features, sem `dropout_risk` e sem `dropout_risk`/`internet_usage`.
 
-```text
-Random Forest
-```
+## Modelo Final
 
-## Estrategia de Treinamento
-
-O dataset possui desbalanceamento entre as classes, com uma quantidade muito maior de registros `low` do que `high`.
-
-Para reduzir esse impacto, o treinamento atual utiliza amostragem customizada no conjunto de treino:
+Modelo selecionado:
 
 ```text
-low: 100000
-medium: 50000
-high: 11000
+Random Forest [final_without_dropout_or_internet]
 ```
 
-A amostragem e aplicada somente no conjunto de treino. O conjunto de teste mantem a distribuicao original dos dados, permitindo uma avaliacao mais proxima do cenario real.
-
-## Avaliacao
-
-Os dados sao separados em treino e teste. Isso significa que o modelo e avaliado em registros que nao foram usados durante o ajuste, reduzindo o risco de apenas memorizar os dados de treinamento.
-
-As metricas geradas sao salvas em:
+Estrategia de treino:
 
 ```text
-saved_models/training_report.json
-saved_models/training_summary.md
+focused_high_recall_sampling
 ```
 
-Metricas principais do modelo atual:
+Amostragem aplicada apenas no treino:
+
+- `high`: 40.000
+- `medium`: 70.000
+- `low`: 100.000
+
+O conjunto de teste manteve a distribuicao original para avaliar o comportamento em um cenario mais realista.
+
+## Metricas do Modelo Final
+
+- Accuracy: 0.8259
+- Balanced accuracy: 0.7542
+- Precision macro: 0.6390
+- Recall macro: 0.7542
+- F1 macro: 0.6804
+- High precision: 0.3917
+- High recall: 0.6430
+- High F1-score: 0.4868
+
+Matriz de confusao, na ordem `high`, `low`, `medium`:
 
 ```text
-Accuracy: 0.8652
-Precision: 0.8704
-Recall: 0.8652
-F1-score: 0.8674
+[[2424, 2, 1344], [48, 161699, 29914], [3717, 8504, 42348]]
 ```
 
-Metricas por classe:
+## Criterios de Qualidade
 
-```text
-high   -> precision: 0.5112 | recall: 0.5512 | f1-score: 0.5304
-low    -> precision: 0.9326 | recall: 0.9090 | f1-score: 0.9206
-medium -> precision: 0.6765 | recall: 0.7331 | f1-score: 0.7037
-```
+Metas definidas para o TCC:
+
+- Accuracy >= 0.80: atingida
+- F1 macro >= 0.70: nao atingida
+- Recall da classe high >= 0.70: nao atingida
+- F1 da classe high >= 0.65: nao atingida
+
+O modelo final e tecnicamente mais defensavel por evitar features problemáticas, mas ainda precisa ser melhorado para capturar a classe `high` com qualidade suficiente.
+
+## Importancia das Features
+
+Ranking global do modelo final:
+
+- `stress_level`: 0.262925
+- `anxiety_score`: 0.174816
+- `depression_score`: 0.151558
+- `sleep_quality`: 0.086222
+- `exam_pressure`: 0.071902
+- `social_support`: 0.064352
+- `study_hours`: 0.039573
+- `financial_stress`: 0.034136
+- `family_expectation`: 0.030181
+- `academic_performance`: 0.028511
+- `screen_time`: 0.027913
+- `physical_activity`: 0.027912
 
 ## Limitacoes
 
-- O dataset original e desbalanceado, com muito mais exemplos `low` do que `high`.
-- A amostragem customizada melhora a identificacao de `medium` e `high`, mas ainda nao representa uma solucao final.
-- O modelo atual e um prototipo inicial para TCC 1, nao uma versao final de producao.
-- No TCC 2, recomenda-se avaliar validacao cruzada, ajuste de hiperparametros, tecnicas adicionais para desbalanceamento e versionamento de modelos.
-- As predicoes devem ser interpretadas como indicadores academicos preventivos, nao como conclusoes medicas.
+- Classe `high` muito rara no dataset.
+- A classe `high` ainda apresenta F1 abaixo do desejado.
+- Variaveis como `depression_score` e `anxiety_score` exigem cuidado etico e de privacidade, pois podem ser sensiveis.
+- O campo `sleep_quality` precisa ser melhor padronizado entre dataset, backend e frontend.
+- O modelo nao substitui avaliacao profissional.
+
+## Recomendacoes
+
+- Para TCC1, manter este modelo como prototipo funcional e documentar as limitacoes.
+- Para TCC2, avaliar engenharia de features, calibracao de probabilidades, validacao cruzada, limiares por classe e dataset complementar.
+- Evitar usar `burnout_score`, `mental_health_index` e `dropout_risk` como entradas diretas do produto sem justificativa metodologica forte.

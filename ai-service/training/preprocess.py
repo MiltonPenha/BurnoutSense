@@ -40,6 +40,8 @@ FEATURE_ALIASES = {
     "dropout_risk": ["dropout_risk", "dropout", "evasion_risk", "risco_de_evasao"],
 }
 
+DEFAULT_EXCLUDED_FEATURES = ["dropout_risk"]
+
 
 def standardize_column_name(column: str) -> str:
     column = column.strip().lower()
@@ -75,12 +77,19 @@ def _find_feature_column(df: pd.DataFrame, canonical_name: str) -> str | None:
     return None
 
 
-def prepare_features(df: pd.DataFrame, target_column: str | None = None) -> tuple[pd.DataFrame, pd.Series, list[str]]:
+def prepare_features(
+    df: pd.DataFrame,
+    target_column: str | None = None,
+    excluded_features: list[str] | None = None,
+) -> tuple[pd.DataFrame, pd.Series, list[str]]:
     data = standardize_columns(df)
     target = target_column or find_target_column(data)
+    excluded = set(excluded_features or [])
 
     selected = pd.DataFrame(index=data.index)
     for canonical_name in FEATURE_ALIASES:
+        if canonical_name in excluded:
+            continue
         source_column = _find_feature_column(data, canonical_name)
         if source_column is None:
             selected[canonical_name] = 0

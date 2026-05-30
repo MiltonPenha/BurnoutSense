@@ -59,7 +59,11 @@ class BurnoutPredictor:
             "feature_names": feature_names,
             "dataset_source": artifact.get("dataset_source", ""),
             "training_records": artifact.get("training_records"),
+            "trained_at": artifact.get("trained_at"),
             "metrics_summary": self._metrics_summary(artifact.get("metrics", {})),
+            "quality_targets": artifact.get("quality_targets", {}),
+            "quality_targets_met": artifact.get("quality_targets_met", {}),
+            "feature_importance": artifact.get("feature_importance", []),
             "purpose": "Academic prototype for early burnout risk screening.",
             "clinical_disclaimer": "This service is not a clinical or diagnostic tool.",
         }
@@ -77,15 +81,24 @@ class BurnoutPredictor:
                 "confusion_matrix_labels",
                 artifact.get("risk_classes", []),
             ),
+            "quality_targets": artifact.get("quality_targets", {}),
+            "quality_targets_met": artifact.get("quality_targets_met", {}),
         }
 
     @staticmethod
     def _metrics_summary(metrics: dict[str, Any]) -> dict[str, float | None]:
         return {
             "accuracy": _round_metric(metrics.get("accuracy")),
+            "balanced_accuracy": _round_metric(metrics.get("balanced_accuracy")),
             "precision": _round_metric(metrics.get("precision")),
             "recall": _round_metric(metrics.get("recall")),
             "f1_score": _round_metric(metrics.get("f1_score")),
+            "precision_macro": _round_metric(metrics.get("precision_macro")),
+            "recall_macro": _round_metric(metrics.get("recall_macro")),
+            "f1_macro": _round_metric(metrics.get("f1_macro")),
+            "high_precision": _round_metric(metrics.get("high_precision")),
+            "high_recall": _round_metric(metrics.get("high_recall")),
+            "high_f1_score": _round_metric(metrics.get("high_f1_score")),
         }
 
     @staticmethod
@@ -108,7 +121,7 @@ class BurnoutPredictor:
         if features.get("stress_level", 0) >= 8:
             factors.append("Nivel de estresse elevado")
         if features.get("sleep_quality", 24) < 6:
-            factors.append("Poucas horas de sono")
+            factors.append("Poucas horas de sono ou baixa qualidade do sono")
         if features.get("exam_pressure", 0) >= 7 or features.get("study_hours", 0) >= 8:
             factors.append("Alta carga academica")
         if features.get("screen_time", 0) >= 8:

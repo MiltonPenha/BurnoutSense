@@ -21,7 +21,7 @@ ai-service/dataset/student_mental_health_burnout_1M.csv
 Depois disso, a partir da pasta `ai-service`, gere o modelo real:
 
 ```bash
-python -m training.train_model --balance-train --class-sample-sizes high=11000,medium=50000,low=100000
+python -m training.train_model
 ```
 
 Isso cria o arquivo:

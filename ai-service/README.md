@@ -1,8 +1,8 @@
 # BurnoutSense AI Service
 
-Prototipo tecnico do microsservico de Inteligencia Artificial do BurnoutSense para TCC 1.
+Microsservico de IA do BurnoutSense para o TCC1. Ele usa FastAPI, Pandas e Scikit-learn para treinar e servir uma classificacao preventiva de risco de burnout academico.
 
-O servico usa FastAPI, Pandas, NumPy e Scikit-learn para carregar dados de estudantes, treinar modelos iniciais e expor uma predicao simples de risco de burnout academico. A classificacao tem finalidade academica e preventiva, sem valor diagnostico ou clinico.
+O servico nao realiza diagnostico clinico. A resposta e uma estimativa computacional para apoio preventivo e academico.
 
 ## Estrutura
 
@@ -30,9 +30,11 @@ ai-service/
 
 ## Dataset
 
-Use como referencia o dataset Student Lifestyle, Mental Health & Burnout Insight:
+Dataset de referencia:
 
-https://www.kaggle.com/datasets/ayeshasiddiqa123/student-health
+```text
+Student Lifestyle, Mental Health & Burnout Insight
+```
 
 Baixe o CSV e salve em:
 
@@ -40,209 +42,139 @@ Baixe o CSV e salve em:
 ai-service/dataset/student_mental_health_burnout_1M.csv
 ```
 
-O arquivo CSV nao fica versionado no Git porque e grande. A pasta `ai-service/dataset/` fica no repositorio com um README e um `.gitkeep`, mas cada pessoa precisa baixar o CSV localmente ou usar Git LFS caso o grupo decida versionar o arquivo grande.
+O CSV nao deve ser versionado no Git porque e grande. A pasta `dataset/` fica no repositorio apenas com README e `.gitkeep`.
 
-O modelo treinado `ai-service/saved_models/burnout_model.pkl` tambem nao fica versionado por padrao, pois e gerado pelo treinamento e pode exceder o limite de tamanho do GitHub. Depois de baixar o dataset, execute o treinamento para gerar esse arquivo localmente.
-
-Neste prototipo tambem e possivel usar outro nome de arquivo, informando o caminho no comando de treinamento.
-
-O pipeline faz:
-
-- leitura do CSV;
-- padronizacao basica dos nomes das colunas;
-- verificacao de valores ausentes;
-- identificacao da variavel-alvo de risco;
-- normalizacao das classes `Low`, `Medium` e `High` para `low`, `medium` e `high`;
-- selecao inicial de indicadores;
-- conversao numerica simples;
-- analise exploratoria inicial;
-- treino e teste com Random Forest e SVM;
-- avaliacao com Accuracy, Precision, Recall, F1-score e Confusion Matrix.
-- geracao de relatorio tecnico em JSON e Markdown.
-
-## Como rodar
-
-Crie e ative um ambiente virtual, depois instale as dependencias:
+## Instalar Dependencias
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Treine o modelo com o CSV real:
+## Treinar Modelo
+
+Na pasta `ai-service`:
 
 ```bash
 python -m training.train_model
 ```
 
-O comando acima usa por padrao:
+O treinamento atual:
+
+- padroniza nomes de colunas;
+- identifica `risk_level`;
+- normaliza `Low`, `Medium`, `High` para `low`, `medium`, `high`;
+- executa auditoria basica do dataset;
+- compara DummyClassifier, LogisticRegression, RandomForest, ExtraTrees, HistGradientBoosting e LinearSVC;
+- testa cenarios de features;
+- remove `dropout_risk` e `internet_usage` do modelo final;
+- salva `saved_models/burnout_model.pkl`;
+- atualiza `saved_models/training_report.json`;
+- atualiza `saved_models/training_summary.md`.
+
+## Modelo Atual
+
+Modelo selecionado:
 
 ```text
-dataset/student_mental_health_burnout_1M.csv
+Random Forest [final_without_dropout_or_internet]
 ```
 
-Para o arquivo de 1 milhao de linhas usado neste projeto, uma execucao rapida de prototipo pode usar amostragem:
+Features finais:
 
-```bash
-python -m training.train_model --dataset dataset/student_mental_health_burnout_1M.csv --sample-size 100000
-```
+- `study_hours`
+- `academic_performance`
+- `exam_pressure`
+- `stress_level`
+- `anxiety_score`
+- `depression_score`
+- `sleep_quality`
+- `physical_activity`
+- `screen_time`
+- `social_support`
+- `family_expectation`
+- `financial_stress`
 
-Treine com amostragem customizada para reduzir o impacto do desbalanceamento entre classes:
+Features removidas do modelo final:
 
-```bash
-python -m training.train_model --dataset dataset/student_mental_health_burnout_1M.csv --balance-train --class-sample-sizes high=11000,medium=50000,low=100000
-```
+- `dropout_risk`: possivel vazamento/variavel derivada de risco.
+- `internet_usage`: redundante com `screen_time`.
 
-Caso ainda nao tenha o CSV localmente, gere um modelo apenas demonstrativo:
+## Metricas Atuais
 
-```bash
-python -m training.train_model --allow-synthetic
-```
+- Accuracy: 0.8259
+- Balanced accuracy: 0.7542
+- Precision macro: 0.6390
+- Recall macro: 0.7542
+- F1 macro: 0.6804
+- High recall: 0.6430
+- High F1-score: 0.4868
 
-Inicie a API:
+As metas de `high` ainda nao foram atingidas. Isso deve aparecer como limitacao tecnica no TCC1, sem mascarar o resultado com accuracy.
+
+## Rodar API
 
 ```bash
 uvicorn app.main:app --reload
+```
+
+Ou use:
+
+```powershell
+.\run_api.ps1
 ```
 
 ## Endpoints
 
 ### GET /health
 
-Resposta:
-
-```json
-{
-  "status": "ok",
-  "service": "BurnoutSense AI Service"
-}
-```
+Retorna status basico do servico.
 
 ### POST /predict
 
-Entrada:
+Exemplo:
 
 ```json
 {
   "study_hours": 8,
-  "sleep_quality": 3,
-  "stress_level": 5,
+  "sleep_quality": 4,
+  "stress_level": 8,
   "screen_time": 7,
-  "social_support": 2,
-  "financial_stress": 4
+  "social_support": 3,
+  "financial_stress": 6,
+  "academic_performance": 65,
+  "exam_pressure": 8,
+  "anxiety_score": 7,
+  "depression_score": 5,
+  "physical_activity": 2,
+  "family_expectation": 7
 }
 ```
 
-O endpoint tambem aceita campos opcionais como `academic_performance`, `exam_pressure`, `anxiety_score`, `depression_score`, `physical_activity`, `internet_usage`, `family_expectation` e `dropout_risk`. Quando esses campos nao sao enviados, o servico usa medianas calculadas no treinamento.
-
-Resposta esperada:
+Resposta:
 
 ```json
 {
   "risk_level": "high",
-  "model_used": "Random Forest"
-}
-```
-
-Exemplo para classe `low`:
-
-```json
-{
-  "study_hours": 3,
-  "sleep_quality": 8,
-  "stress_level": 2,
-  "screen_time": 4,
-  "social_support": 8,
-  "financial_stress": 2,
-  "exam_pressure": 3,
-  "anxiety_score": 2,
-  "depression_score": 1,
-  "dropout_risk": 1
-}
-```
-
-Exemplo para classe `medium`:
-
-```json
-{
-  "study_hours": 6,
-  "sleep_quality": 5,
-  "stress_level": 5,
-  "screen_time": 6,
-  "social_support": 5,
-  "financial_stress": 5,
-  "exam_pressure": 5,
-  "anxiety_score": 5,
-  "depression_score": 4,
-  "dropout_risk": 3
-}
-```
-
-Exemplo para classe `high`:
-
-```json
-{
-  "study_hours": 9,
-  "sleep_quality": 3,
-  "stress_level": 8,
-  "screen_time": 8,
-  "social_support": 2,
-  "financial_stress": 7,
-  "exam_pressure": 8,
-  "anxiety_score": 7,
-  "depression_score": 7,
-  "dropout_risk": 6
+  "confidence": 0.72,
+  "model_used": "Random Forest [final_without_dropout_or_internet]",
+  "main_factors": ["Nivel de estresse elevado"]
 }
 ```
 
 ### GET /model-info
 
-Retorna metadados resumidos do modelo salvo:
-
-```json
-{
-  "model_name": "Random Forest",
-  "training_strategy": "custom_class_sampling",
-  "target_column": "risk_level",
-  "risk_classes": ["high", "low", "medium"],
-  "feature_count": 14,
-  "feature_names": ["study_hours", "academic_performance"],
-  "dataset_source": "dataset/student_mental_health_burnout_1M.csv",
-  "training_records": 100000,
-  "metrics_summary": {
-    "accuracy": 0.8652,
-    "precision": 0.8704,
-    "recall": 0.8652,
-    "f1_score": 0.8674
-  }
-}
-```
+Retorna modelo usado, estrategia de treino, features, quantidade de registros, data de treino, metricas principais, importancia das features e aviso preventivo.
 
 ### GET /model-metrics
 
-Retorna metricas tecnicas detalhadas do modelo salvo:
+Retorna matriz de confusao, metricas gerais, metricas por classe, labels da matriz e status das metas de qualidade.
 
-```json
-{
-  "model_name": "Random Forest",
-  "training_strategy": "custom_class_sampling",
-  "metrics_summary": {
-    "accuracy": 0.8652,
-    "precision": 0.8704,
-    "recall": 0.8652,
-    "f1_score": 0.8674
-  },
-  "per_class_metrics": {
-    "high": {"precision": 0.5112, "recall": 0.5512, "f1_score": 0.5304, "support": 3770},
-    "low": {"precision": 0.9326, "recall": 0.909, "f1_score": 0.9206, "support": 191661},
-    "medium": {"precision": 0.6765, "recall": 0.7331, "f1_score": 0.7037, "support": 54569}
-  },
-  "confusion_matrix": [[2078, 1, 1691], [8, 174217, 17436], [1979, 12588, 40002]],
-  "confusion_matrix_labels": ["high", "low", "medium"]
-}
-```
+## Documentos Tecnicos
 
-## Observacao
+Leia tambem:
 
-O arquivo `saved_models/burnout_model.pkl` e gerado pelo script de treinamento. Quando o CSV real for adicionado, execute o treinamento novamente para substituir o modelo demonstrativo por um modelo baseado no dataset do Kaggle.
+- `MODEL_CARD.md`
+- `saved_models/training_summary.md`
+- `saved_models/training_report.json`
 
-Leia tambem `MODEL_CARD.md` e `saved_models/training_summary.md` para uma explicacao resumida do modelo, da variavel-alvo e das limitacoes do prototipo.
+Esses arquivos documentam a auditoria, as features finais, os modelos comparados e as limitacoes.

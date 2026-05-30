@@ -27,6 +27,27 @@ function statusTone(value, loaded) {
   return "danger";
 }
 
+const TRAINING_STRATEGY_LABELS = {
+  custom_class_sampling: "Amostragem balanceada por classe",
+  final_without_dropout_or_internet: "Sem variáveis de vazamento",
+};
+
+function formatModelName(modelName) {
+  if (!modelName) {
+    return "Modelo não informado";
+  }
+
+  return modelName.includes("Random Forest") ? "Random Forest" : modelName;
+}
+
+function formatTrainingStrategy(strategy) {
+  if (!strategy) {
+    return "";
+  }
+
+  return TRAINING_STRATEGY_LABELS[strategy] ?? strategy.replaceAll("_", " ");
+}
+
 function StatusCard({ label, note, status, tone }) {
   return (
     <article className={`card history-summary-card tone-${tone}`}>
@@ -74,6 +95,11 @@ export default function StatusPage() {
   }, []);
 
   const modelStatus = status?.model?.loaded ? "loaded" : status?.model?.status;
+  const modelName = formatModelName(status?.model?.modelName);
+  const trainingStrategy = formatTrainingStrategy(status?.model?.trainingStrategy);
+  const modelNote = status?.model?.loaded
+    ? trainingStrategy || "Estratégia de treinamento não informada"
+    : normalizeStatusLabel(modelStatus);
 
   return (
     <section className="page">
@@ -90,7 +116,7 @@ export default function StatusPage() {
 
       {status ? (
         <>
-          <div className="history-summary">
+          <div className="history-summary status-summary">
             <StatusCard
               label="Backend"
               note="API NestJS"
@@ -109,18 +135,13 @@ export default function StatusPage() {
               status={normalizeStatusLabel(status.aiService?.status)}
               tone={statusTone(status.aiService?.status)}
             />
+            <StatusCard
+              label="Modelo de IA"
+              note={modelNote}
+              status={status.model?.loaded ? modelName : "indisponível"}
+              tone={statusTone(modelStatus, status.model?.loaded)}
+            />
           </div>
-
-          <section className={`risk-banner tone-${statusTone(modelStatus, status.model?.loaded)}`}>
-            <div>
-              <p className="overline">Modelo de IA</p>
-              <h2 className="risk-title">{status.model?.loaded ? "Modelo carregado" : "Modelo indisponível"}</h2>
-              <p className="risk-meta">
-                {status.model?.modelName ?? "Modelo não informado"}
-                {status.model?.trainingStrategy ? ` · ${status.model.trainingStrategy}` : ""}
-              </p>
-            </div>
-          </section>
 
           <p className="footer-note">
             Última verificação: {status.checkedAt ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(status.checkedAt)) : "não informada"}

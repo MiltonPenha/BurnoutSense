@@ -1684,6 +1684,10 @@ select.input {
   margin-bottom: 20px;
 }
 
+.status-summary {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .history-summary-card {
   padding: 20px;
   display: grid;

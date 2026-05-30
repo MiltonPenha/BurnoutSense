@@ -112,6 +112,30 @@ O BurnoutSense não possui finalidade clínica ou diagnóstica, funcionando excl
 
 ---
 
+## Fluxo do protótipo TCC1
+
+O fluxo principal validado para a entrega do TCC1 é:
+
+```text
+cadastro -> login -> registro diário -> backend -> ai-service -> banco -> histórico/dashboard
+```
+
+O frontend deve priorizar os resultados persistidos pelo backend, incluindo nível de risco, confiança, principais fatores e modelo utilizado. Cálculos locais podem existir apenas como fallback quando não houver resultado real salvo.
+
+Para instruções de execução do ambiente local, consulte [INSTRUCOES_COLABORADORES.md](./INSTRUCOES_COLABORADORES.md).
+
+Também há uma tela simples de homologação em `/status` para verificar backend, banco, AI Service e carregamento do modelo durante a apresentação.
+
+---
+
+## Privacidade e LGPD
+
+Os dados coletados têm finalidade acadêmica e preventiva, limitada ao acompanhamento dos indicadores informados pelo estudante. O projeto deve manter minimização de dados, uso restrito ao contexto do TCC, transparência sobre limitações do modelo e aviso claro de que a análise não substitui avaliação clínica.
+
+Como evolução futura, recomenda-se implementar exclusão completa de conta e dados, revisão de consentimento e políticas formais para eventual uso fora do ambiente acadêmico.
+
+---
+
 ## Integrantes
 
 - João Rafael Jordão Pereira

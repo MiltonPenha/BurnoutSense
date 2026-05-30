@@ -167,3 +167,6 @@ vite.config.ts.timestamp-*
 .npm-cache/
 .run-logs/
 .tmp-eslint-utils/
+frontend/.tmp-*/
+frontend/*.tgz
+*.log

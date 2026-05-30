@@ -122,7 +122,7 @@ cadastro -> login -> registro diário -> backend -> ai-service -> banco -> hist�
 
 O frontend deve priorizar os resultados persistidos pelo backend, incluindo nível de risco, confiança, principais fatores e modelo utilizado. Cálculos locais podem existir apenas como fallback quando não houver resultado real salvo.
 
-For local setup and validation instructions, see [DEVELOPMENT_GUIDE.md](./DEVELOPMENT_GUIDE.md).
+Para instruções de execução do ambiente local, consulte [DEVELOPMENT_GUIDE.md](./DEVELOPMENT_GUIDE.md).
 
 Também há uma tela simples de homologação em `/status` para verificar backend, banco, AI Service e carregamento do modelo durante a apresentação.
 

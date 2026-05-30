@@ -94,9 +94,7 @@ export function riskMetaLabel(risk) {
     return `${risk.score} pontos - estimativa local`;
   }
 
-  const confidenceText = risk.confidencePercent === null ? "confiança não informada" : `${risk.confidencePercent}% de confiança`;
-  const modelText = risk.modelUsed ? ` - modelo ${risk.modelUsed}` : "";
-  return `${confidenceText}${modelText}`;
+  return "";
 }
 
 export function mainFactorsForRecord(record) {

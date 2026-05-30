@@ -75,22 +75,16 @@ export default function HistoricoDetalhePage() {
         <div>
           <p className="overline">Classificação preventiva</p>
           <h2 className="risk-title">{risk.label}</h2>
-          <p className="risk-meta">{riskMetaLabel(risk)}</p>
         </div>
       </section>
 
       {record.backendResult ? (
         <section className="card detail-card">
-          <h2 className="section-title">Resultado da IA</h2>
+          <h2 className="section-title">Resultado preventivo</h2>
           <div className="detail-grid">
             <div>
               <span className="detail-label">Risco</span>
               <strong>{risk.label}</strong>
-              <small>{riskMetaLabel(risk)}</small>
-            </div>
-            <div>
-              <span className="detail-label">Modelo</span>
-              <strong>{risk.modelUsed || "Não informado"}</strong>
               <small>Análise preventiva computacional</small>
             </div>
           </div>

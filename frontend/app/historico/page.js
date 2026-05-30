@@ -61,7 +61,7 @@ export default function HistoricoPage() {
             <article className={`card history-summary-card tone-${latestRisk.tone}`}>
               <span>Registro recente</span>
               <strong>{latestRisk.label}</strong>
-              <small>{riskMetaLabel(latestRisk)}</small>
+              <small>{formatDateShort(records[0].date)}</small>
             </article>
             <article className="card history-summary-card">
               <span>Última atualização</span>
@@ -84,7 +84,7 @@ export default function HistoricoPage() {
                       <span>{year}</span>
                     </div>
                     <div className="history-content">
-                      <div className={`risk-pill tone-${risk.tone}`}>{risk.label} - {riskMetaLabel(risk)}</div>
+                      <div className={`risk-pill tone-${risk.tone}`}>{risk.label}</div>
                       <div className="history-meta">
                         <span><i className="meta-icon emoji-icon" aria-hidden="true">{emojiForMood(record.mood)}</i> {record.mood}</span>
                         <span><i className="meta-icon emoji-icon" aria-hidden="true">⚡</i> Estresse: {record.stress}/10</span>

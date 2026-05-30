@@ -296,6 +296,15 @@ export default function RegistroPage() {
     };
   }, [editId, findRecord, ready]);
 
+  useEffect(() => {
+    if (!submitError) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => setSubmitError(""), 7000);
+    return () => window.clearTimeout(timeoutId);
+  }, [submitError]);
+
   function updateField(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
   }
@@ -378,7 +387,12 @@ export default function RegistroPage() {
       </header>
 
       {loadError ? <p className="form-error">{loadError}</p> : null}
-      {submitError ? <p className="form-error">{submitError}</p> : null}
+      {submitError ? (
+        <div className="toast toast-error" role="alert" style={{ "--toast-duration": "7s" }}>
+          <strong>Não foi possível salvar</strong>
+          <span>{submitError}</span>
+        </div>
+      ) : null}
 
       <form className="record-form" onSubmit={handleSubmit}>
         <section className="record-status-grid" aria-label="Indicadores principais">

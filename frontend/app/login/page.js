@@ -13,6 +13,7 @@ export default function LoginPage() {
     password: ""
   });
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   function updateField(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -20,6 +21,7 @@ export default function LoginPage() {
 
   async function handleSubmit(event) {
     event.preventDefault();
+    setSubmitting(true);
 
     try {
       await loginUser(form);
@@ -27,6 +29,7 @@ export default function LoginPage() {
       router.push("/dashboard");
     } catch {
       setError("Não foi possível entrar. Confira seus dados e tente novamente.");
+      setSubmitting(false);
     }
   }
 
@@ -53,6 +56,7 @@ export default function LoginPage() {
           <input
             className="input"
             id="email"
+            required
             type="email"
             value={form.email}
             onChange={(event) => updateField("email", event.target.value)}
@@ -65,6 +69,7 @@ export default function LoginPage() {
             className="input"
             id="password"
             placeholder="Digite sua senha"
+            required
             type="password"
             value={form.password}
             onChange={(event) => updateField("password", event.target.value)}
@@ -73,7 +78,7 @@ export default function LoginPage() {
 
         <div className="auth-actions">
           {error ? <p className="form-error">{error}</p> : null}
-          <button className="button" type="submit">Entrar</button>
+          <button className="button" disabled={submitting} type="submit">{submitting ? "Entrando..." : "Entrar"}</button>
           <div className="auth-link-row">
             Ainda não tem conta? <Link className="auth-link" href="/cadastro">Criar cadastro</Link>
           </div>

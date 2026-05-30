@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { BurnoutFeatureMapper } from '../ai/burnout-feature.mapper';
 import { AiService } from '../ai/ai.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -12,8 +12,9 @@ export class AssessmentsService {
   ) {}
 
   async create(userId: string, createAssessmentDto: CreateAssessmentDto) {
-    const prediction = await this.aiService.predict(createAssessmentDto);
     const assessmentIndicators = BurnoutFeatureMapper.toStoredAssessment(createAssessmentDto);
+    validateStoredAssessmentIndicators(assessmentIndicators);
+    const prediction = await this.aiService.predict(createAssessmentDto);
 
     const assessment = await this.prisma.assessment.create({
       data: {
@@ -68,8 +69,9 @@ export class AssessmentsService {
       throw new NotFoundException('Assessment not found.');
     }
 
-    const prediction = await this.aiService.predict(updateAssessmentDto);
     const assessmentIndicators = BurnoutFeatureMapper.toStoredAssessment(updateAssessmentDto);
+    validateStoredAssessmentIndicators(assessmentIndicators);
+    const prediction = await this.aiService.predict(updateAssessmentDto);
 
     const assessment = await this.prisma.assessment.update({
       where: { id },
@@ -112,5 +114,15 @@ export class AssessmentsService {
     }
 
     await this.prisma.assessment.delete({ where: { id } });
+  }
+}
+
+function validateStoredAssessmentIndicators(assessmentIndicators: { sleepHours: number; studyHours: number; workHours: number }) {
+  const dailyAllocatedHours = assessmentIndicators.sleepHours + assessmentIndicators.studyHours + assessmentIndicators.workHours;
+
+  if (dailyAllocatedHours > 24) {
+    throw new BadRequestException(
+      'Sleep, study and work hours cannot exceed 24 hours. Screen time is stored separately because it can overlap with study or work.',
+    );
   }
 }

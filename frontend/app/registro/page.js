@@ -257,6 +257,8 @@ export default function RegistroPage() {
     notes: ""
   });
   const [loadError, setLoadError] = useState("");
+  const [submitError, setSubmitError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const moodOptions = useMemo(() => moods, []);
   const preview = previewTone(form);
@@ -300,6 +302,8 @@ export default function RegistroPage() {
 
   async function handleSubmit(event) {
     event.preventDefault();
+    setSubmitError("");
+    setSubmitting(true);
 
     const academicPerformance = Number(form.academicPerformance);
     const examPressure = Number(form.examPressure);
@@ -323,15 +327,28 @@ export default function RegistroPage() {
       financialStress: Number(form.financialStress)
     };
 
-    if (editing) {
-      await updateRecord(editId, recordPayload);
-      window.sessionStorage.setItem("burnoutsense.recordSaved", "updated");
-    } else {
-      await addRecord(recordPayload);
-      window.sessionStorage.setItem("burnoutsense.recordSaved", "created");
+    const validationMessage = validateRecordPayload(recordPayload);
+
+    if (validationMessage) {
+      setSubmitError(validationMessage);
+      setSubmitting(false);
+      return;
     }
 
-    router.push("/dashboard");
+    try {
+      if (editing) {
+        await updateRecord(editId, recordPayload);
+        window.sessionStorage.setItem("burnoutsense.recordSaved", "updated");
+        router.push("/historico");
+      } else {
+        const savedRecord = await addRecord(recordPayload);
+        window.sessionStorage.setItem("burnoutsense.recordSaved", "created");
+        router.push(`/historico/${savedRecord.id}`);
+      }
+    } catch (error) {
+      setSubmitError(formatSubmitError(error));
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -361,6 +378,7 @@ export default function RegistroPage() {
       </header>
 
       {loadError ? <p className="form-error">{loadError}</p> : null}
+      {submitError ? <p className="form-error">{submitError}</p> : null}
 
       <form className="record-form" onSubmit={handleSubmit}>
         <section className="record-status-grid" aria-label="Indicadores principais">
@@ -402,15 +420,15 @@ export default function RegistroPage() {
             </div>
             <div className="field">
               <label htmlFor="sleepHours">Horas de sono</label>
-              <input className="input" id="sleepHours" min="0" max="18" step="0.5" type="number" value={form.sleepHours} onChange={(event) => updateField("sleepHours", event.target.value)} />
+              <input className="input" id="sleepHours" min="0" max="18" required step="0.5" type="number" value={form.sleepHours} onChange={(event) => updateField("sleepHours", event.target.value)} />
             </div>
             <div className="field">
               <label htmlFor="studyHours">Horas de estudo</label>
-              <input className="input" id="studyHours" min="0" max="18" step="0.5" type="number" value={form.studyHours} onChange={(event) => updateField("studyHours", event.target.value)} />
+              <input className="input" id="studyHours" min="0" max="18" required step="0.5" type="number" value={form.studyHours} onChange={(event) => updateField("studyHours", event.target.value)} />
             </div>
             <div className="field">
               <label htmlFor="screenTime">Tempo de tela</label>
-              <input className="input" id="screenTime" min="0" max="24" step="0.5" type="number" value={form.screenTime} onChange={(event) => updateField("screenTime", event.target.value)} />
+              <input className="input" id="screenTime" min="0" max="24" required step="0.5" type="number" value={form.screenTime} onChange={(event) => updateField("screenTime", event.target.value)} />
             </div>
           </div>
 
@@ -469,10 +487,43 @@ export default function RegistroPage() {
         </section>
 
         <div className="form-actions">
-          <button className="button secondary" type="button" onClick={() => router.push(editing ? "/historico" : "/dashboard")}>Cancelar</button>
-          <button className="button" type="submit">{editing ? "Salvar edição" : "Gerar análise"}</button>
+          <button className="button secondary" type="button" disabled={submitting} onClick={() => router.push(editing ? "/historico" : "/dashboard")}>Cancelar</button>
+          <button className="button" type="submit" disabled={submitting}>{submitting ? "Salvando..." : editing ? "Salvar edição" : "Gerar análise"}</button>
         </div>
       </form>
     </section>
   );
+}
+
+function formatSubmitError(error) {
+  const message = error?.message ?? "";
+
+  if (error?.status === 503 || message.toLowerCase().includes("ai service")) {
+    return "Serviço de IA indisponível no momento. Tente novamente mais tarde.";
+  }
+
+  return "Não foi possível salvar o registro. Confira os campos e tente novamente.";
+}
+
+function validateRecordPayload(record) {
+  const hourFields = [
+    ["sleepHours", "horas de sono"],
+    ["studyHours", "horas de estudo"],
+    ["workHours", "horas de trabalho"],
+    ["screenTime", "tempo de tela"]
+  ];
+
+  for (const [field, label] of hourFields) {
+    const value = Number(record[field]);
+
+    if (!Number.isFinite(value) || value < 0 || value > 24) {
+      return `Informe um valor entre 0 e 24 para ${label}.`;
+    }
+  }
+
+  if (record.sleepHours + record.studyHours + record.workHours > 24) {
+    return "Sono, estudo e trabalho não podem ultrapassar 24 horas no mesmo dia. Tempo de tela é tratado separadamente.";
+  }
+
+  return "";
 }

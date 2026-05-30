@@ -35,6 +35,7 @@ export default function PerfilPage() {
   const [notificationTest, setNotificationTest] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
   const [savingPreference, setSavingPreference] = useState(null);
   const noticeTimeout = useRef(null);
 
@@ -96,12 +97,15 @@ export default function PerfilPage() {
 
   async function handleSubmit(event) {
     event.preventDefault();
+    setSavingProfile(true);
 
     try {
       await updateProfile(draft);
       showNotice({ tone: "success", message: "Perfil atualizado com sucesso." }, 4000);
     } catch {
       showNotice({ tone: "error", message: "Não foi possível salvar o perfil. Tente novamente." });
+    } finally {
+      setSavingProfile(false);
     }
   }
 
@@ -325,7 +329,7 @@ export default function PerfilPage() {
         ) : null}
 
         <div className="save-row">
-          <button className="button" type="submit">Salvar alterações</button>
+          <button className="button" disabled={savingProfile} type="submit">{savingProfile ? "Salvando..." : "Salvar alterações"}</button>
         </div>
       </form>
 

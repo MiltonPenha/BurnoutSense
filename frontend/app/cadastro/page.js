@@ -48,6 +48,7 @@ export default function CadastroPage() {
     confirmPassword: ""
   });
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const passwordChecks = passwordRules.map((rule) => ({
@@ -62,14 +63,17 @@ export default function CadastroPage() {
 
   async function handleSubmit(event) {
     event.preventDefault();
+    setSubmitting(true);
 
     if (!passwordIsValid) {
       setError("A senha ainda não cumpre todos os requisitos.");
+      setSubmitting(false);
       return;
     }
 
     if (form.password !== form.confirmPassword) {
       setError("As senhas precisam ser iguais.");
+      setSubmitting(false);
       return;
     }
 
@@ -79,6 +83,7 @@ export default function CadastroPage() {
       router.push("/dashboard");
     } catch {
       setError("Não foi possível criar a conta. Tente novamente.");
+      setSubmitting(false);
     }
   }
 
@@ -105,6 +110,7 @@ export default function CadastroPage() {
           <input
             className="input"
             id="name"
+            required
             value={form.name}
             onChange={(event) => updateField("name", event.target.value)}
           />
@@ -116,6 +122,7 @@ export default function CadastroPage() {
             className="input"
             id="email"
             placeholder="seuemail@exemplo.com"
+            required
             type="email"
             value={form.email}
             onChange={(event) => updateField("email", event.target.value)}
@@ -129,6 +136,7 @@ export default function CadastroPage() {
               className="input"
               id="password"
               placeholder="Crie uma senha"
+              required
               type={showPassword ? "text" : "password"}
               value={form.password}
               onChange={(event) => updateField("password", event.target.value)}
@@ -151,6 +159,7 @@ export default function CadastroPage() {
               className="input"
               id="confirmPassword"
               placeholder="Repita a senha"
+              required
               type={showConfirmPassword ? "text" : "password"}
               value={form.confirmPassword}
               onChange={(event) => updateField("confirmPassword", event.target.value)}
@@ -176,7 +185,7 @@ export default function CadastroPage() {
 
         <div className="auth-actions">
           {error ? <p className="form-error">{error}</p> : null}
-          <button className="button" type="submit">Cadastrar</button>
+          <button className="button" disabled={submitting} type="submit">{submitting ? "Cadastrando..." : "Cadastrar"}</button>
           <div className="auth-link-row">
             Já tem conta? <Link className="auth-link" href="/login">Entrar</Link>
           </div>

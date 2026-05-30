@@ -218,8 +218,8 @@ function resultNotes(result) {
 }
 
 export function recordToAssessmentDto(record) {
-  const stress = clampInt(record.stress, 1, 10);
-  const tiredness = clampInt(record.tiredness, 1, 10);
+  const stress = clampInt(record.stress, 0, 10);
+  const tiredness = clampInt(record.tiredness, 0, 10);
   const studyHours = clampNumber(record.studyHours, 0, 24);
   const pendingTasks = clampInt(record.pendingTasks, 0, 30);
 
@@ -230,15 +230,15 @@ export function recordToAssessmentDto(record) {
     workHours: clampNumber(record.workHours, 0, 24),
     pendingTasks,
     hasImportantExamOrDelivery: Boolean(record.importantDelivery),
-    sleepQuality: clampInt(record.sleepQuality, 1, 10),
+    sleepQuality: clampInt(record.sleepQuality, 0, 10),
     stressLevel: stress,
     tirednessLevel: tiredness,
     academicPerformance: clampInt(record.academicPerformance ?? Math.max(0, 10 - pendingTasks), 0, 10),
     examPressure: clampInt(record.examPressure ?? (record.importantDelivery ? 8 : stress), 0, 10),
     screenTime: clampNumber(record.screenTime ?? studyHours, 0, 24),
-    socialSupport: clampInt(record.socialSupport ?? (["Feliz", "Calmo"].includes(record.mood) ? 8 : 5), 0, 10),
-    financialStress: clampInt(record.financialStress ?? 3, 0, 10),
-    physicalActivity: clampInt(record.physicalActivity ?? (tiredness >= 8 ? 1 : 5), 0, 10),
+    socialSupport: clampInt(record.socialSupport ?? 5, 0, 10),
+    financialStress: clampInt(record.financialStress ?? 5, 0, 10),
+    physicalActivity: clampInt(record.physicalActivity ?? 5, 0, 10),
     mood: record.mood,
     dailyDescription: record.notes
   };

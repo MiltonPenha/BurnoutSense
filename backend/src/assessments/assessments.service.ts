@@ -123,20 +123,20 @@ export class AssessmentsService {
   }
 }
 
-function validateStoredAssessmentIndicators(assessmentIndicators: { date: Date; sleepHours: number; studyHours: number; workHours: number }) {
+function validateStoredAssessmentIndicators(assessmentIndicators: { date: Date; sleepHours: number; studyHours: number; screenTime: number }) {
   const tomorrow = new Date();
   tomorrow.setHours(0, 0, 0, 0);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
   if (assessmentIndicators.date >= tomorrow) {
-    throw new BadRequestException('Assessment date cannot be in the future.');
+    throw new BadRequestException('A data do registro não pode ser futura.');
   }
 
-  const dailyAllocatedHours = assessmentIndicators.sleepHours + assessmentIndicators.studyHours + assessmentIndicators.workHours;
+  const dailyTrackedHours = assessmentIndicators.sleepHours + assessmentIndicators.studyHours + assessmentIndicators.screenTime;
 
-  if (dailyAllocatedHours > 24) {
+  if (dailyTrackedHours > 24) {
     throw new BadRequestException(
-      'Sleep, study and work hours cannot exceed 24 hours. Screen time is stored separately because it can overlap with study or work.',
+      'Sono, estudo e tempo de tela não podem ultrapassar 24 horas no mesmo dia.',
     );
   }
 }

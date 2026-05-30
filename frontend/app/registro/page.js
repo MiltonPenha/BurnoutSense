@@ -11,32 +11,23 @@ function todayIso() {
   return toIsoDate(new Date());
 }
 
-function valueFromLatest(latestRecord, key, fallback) {
-  return latestRecord?.[key] ?? fallback;
-}
-
 function recordToForm(record) {
   return {
     date: record.date,
-    sleepHours: record.sleepHours,
-    studyHours: record.studyHours,
-    screenTime: record.screenTime ?? 5,
-    academicPerformance: record.academicPerformance ?? 7,
+    sleepHours: record.sleepHours ?? 0,
+    studyHours: record.studyHours ?? 0,
+    screenTime: record.screenTime ?? 0,
+    academicPerformance: record.academicPerformance ?? 5,
     examPressure: record.examPressure ?? 5,
-    sleepQuality: record.sleepQuality,
-    stress: record.stress,
-    tiredness: record.tiredness,
+    sleepQuality: record.sleepQuality ?? 5,
+    stress: record.stress ?? 5,
+    tiredness: record.tiredness ?? 5,
     physicalActivity: record.physicalActivity ?? 5,
-    socialSupport: record.socialSupport ?? 6,
-    financialStress: record.financialStress ?? 3,
-    mood: record.mood,
+    socialSupport: record.socialSupport ?? 5,
+    financialStress: record.financialStress ?? 5,
+    mood: record.mood ?? "Calmo",
     notes: record.notes ?? ""
   };
-}
-
-function parseIsoDate(value) {
-  const [year, month, day] = value.split("-").map(Number);
-  return new Date(year, month - 1, day);
 }
 
 function toIsoDate(date) {
@@ -44,6 +35,11 @@ function toIsoDate(date) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function parseIsoDate(value) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
 }
 
 function formatDateLabel(value) {
@@ -76,10 +72,11 @@ function buildCalendarDays(viewDate) {
 function DatePicker({ value, onChange }) {
   const maxDateIso = todayIso();
   const selectedDate = parseIsoDate(value);
+  const maxDate = parseIsoDate(maxDateIso);
   const [open, setOpen] = useState(false);
   const [viewDate, setViewDate] = useState(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
   const days = useMemo(() => buildCalendarDays(viewDate), [viewDate]);
-  const isViewingCurrentMonth = viewDate.getFullYear() === parseIsoDate(maxDateIso).getFullYear() && viewDate.getMonth() === parseIsoDate(maxDateIso).getMonth();
+  const isViewingCurrentMonth = viewDate.getFullYear() === maxDate.getFullYear() && viewDate.getMonth() === maxDate.getMonth();
 
   function toggleCalendar() {
     if (!open) {
@@ -136,7 +133,7 @@ function DatePicker({ value, onChange }) {
               const isoDate = toIsoDate(date);
               const outsideMonth = date.getMonth() !== viewDate.getMonth();
               const selected = isoDate === value;
-              const today = isoDate === todayIso();
+              const today = isoDate === maxDateIso;
               const future = isoDate > maxDateIso;
 
               return (
@@ -254,21 +251,21 @@ export default function RegistroPage() {
   const searchParams = useSearchParams();
   const editId = searchParams.get("edit");
   const editing = Boolean(editId);
-  const { addRecord, findRecord, latestRecord, ready, updateRecord } = useBurnoutStore();
+  const { addRecord, findRecord, ready, updateRecord } = useBurnoutStore();
   const [form, setForm] = useState({
     date: todayIso(),
-    sleepHours: valueFromLatest(latestRecord, "sleepHours", 7),
-    studyHours: valueFromLatest(latestRecord, "studyHours", 4),
-    screenTime: valueFromLatest(latestRecord, "screenTime", 5),
-    academicPerformance: valueFromLatest(latestRecord, "academicPerformance", 7),
-    examPressure: valueFromLatest(latestRecord, "examPressure", latestRecord?.importantDelivery ? 8 : 5),
-    sleepQuality: valueFromLatest(latestRecord, "sleepQuality", 7),
-    stress: valueFromLatest(latestRecord, "stress", 5),
-    tiredness: valueFromLatest(latestRecord, "tiredness", 5),
-    physicalActivity: valueFromLatest(latestRecord, "physicalActivity", 5),
-    socialSupport: valueFromLatest(latestRecord, "socialSupport", 6),
-    financialStress: valueFromLatest(latestRecord, "financialStress", 3),
-    mood: valueFromLatest(latestRecord, "mood", "Calmo"),
+    sleepHours: 0,
+    studyHours: 0,
+    screenTime: 0,
+    academicPerformance: 5,
+    examPressure: 5,
+    sleepQuality: 5,
+    stress: 5,
+    tiredness: 5,
+    physicalActivity: 5,
+    socialSupport: 5,
+    financialStress: 5,
+    mood: "Calmo",
     notes: ""
   });
   const [loadError, setLoadError] = useState("");
@@ -531,18 +528,25 @@ function formatSubmitError(error) {
     return "Serviço de IA indisponível no momento. Tente novamente mais tarde.";
   }
 
+  if (message && !message.toLowerCase().startsWith("request failed")) {
+    return message;
+  }
+
   return "Não foi possível salvar o registro. Confira os campos e tente novamente.";
 }
 
 function validateRecordPayload(record) {
+  if (!record.date) {
+    return "Informe a data do registro.";
+  }
+
   if (record.date > todayIso()) {
-    return "A data do registro não pode ser futura.";
+    return "A data do registro não pode ser futura. Escolha hoje ou um dia anterior.";
   }
 
   const hourFields = [
     ["sleepHours", "horas de sono"],
     ["studyHours", "horas de estudo"],
-    ["workHours", "horas de trabalho"],
     ["screenTime", "tempo de tela"]
   ];
 
@@ -554,8 +558,10 @@ function validateRecordPayload(record) {
     }
   }
 
-  if (record.sleepHours + record.studyHours + record.workHours > 24) {
-    return "Sono, estudo e trabalho não podem ultrapassar 24 horas no mesmo dia. Tempo de tela é tratado separadamente.";
+  const dailyTrackedHours = record.sleepHours + record.studyHours + record.screenTime;
+
+  if (dailyTrackedHours > 24) {
+    return `Sono, estudo e tempo de tela somam ${dailyTrackedHours} horas. Ajuste os valores para não ultrapassar 24 horas no mesmo dia.`;
   }
 
   return "";

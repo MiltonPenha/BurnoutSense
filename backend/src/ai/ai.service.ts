@@ -28,15 +28,17 @@ export class AiService {
 
     const aiPayload = BurnoutFeatureMapper.toAiServicePayload(indicators);
     const prediction = await this.requestPrediction(aiServiceUrl, aiPayload);
-    const riskLevel = this.normalizeRiskLevel(prediction.risk_level);
+    const modelRiskLevel = this.normalizeRiskLevel(prediction.risk_level);
+    const calibratedRiskLevel = this.calibratePreventiveRisk(modelRiskLevel, aiPayload);
     const mainFactors = prediction.main_factors?.length ? prediction.main_factors : BurnoutFeatureMapper.mainFactors(aiPayload);
     const confidence = prediction.confidence ?? (await this.getModelConfidence(aiServiceUrl, prediction.risk_level));
+    const calibrated = calibratedRiskLevel !== modelRiskLevel;
 
     return {
-      riskLevel,
+      riskLevel: calibratedRiskLevel,
       confidence,
-      mainFactors,
-      modelVersion: prediction.model_used,
+      mainFactors: calibrated ? ['Combinação severa de sono, estresse e pressão acadêmica', ...mainFactors] : mainFactors,
+      modelVersion: calibrated ? `${prediction.model_used} + preventive calibration` : prediction.model_used,
       disclaimer: this.preventiveDisclaimer,
     };
   }
@@ -72,6 +74,31 @@ export class AiService {
     }
 
     return normalizedRiskLevel as RiskLevel;
+  }
+
+  private calibratePreventiveRisk(riskLevel: RiskLevel, indicators: AiPredictionRequest): RiskLevel {
+    if (riskLevel === RiskLevel.HIGH) {
+      return riskLevel;
+    }
+
+    const severeAcademicOverload =
+      indicators.stress_level >= 9 &&
+      indicators.sleep_quality <= 4 &&
+      indicators.exam_pressure >= 8;
+    const severeRecoveryRisk =
+      indicators.stress_level >= 9 &&
+      indicators.sleep_quality <= 3 &&
+      indicators.physical_activity <= 2;
+    const severeContextRisk =
+      indicators.sleep_quality <= 3 &&
+      indicators.exam_pressure >= 9 &&
+      (indicators.financial_stress >= 7 || indicators.social_support <= 3);
+
+    if (severeAcademicOverload || severeRecoveryRisk || severeContextRisk) {
+      return RiskLevel.HIGH;
+    }
+
+    return riskLevel;
   }
 
   private async getModelConfidence(aiServiceUrl: string, riskLevel: string): Promise<number> {

@@ -243,13 +243,6 @@ export default function DashboardPage() {
               </div>
             </section>
           </div>
-
-          <section className="method-strip" aria-label="Indicadores considerados">
-            <span>Rotina acadêmica</span>
-            <span>Qualidade do sono</span>
-            <span>Estresse percebido</span>
-            <span>Suporte e contexto</span>
-          </section>
         </>
       )}
 

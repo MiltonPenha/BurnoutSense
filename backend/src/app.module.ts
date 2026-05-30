@@ -9,6 +9,7 @@ import { AuthModule } from './auth/auth.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ResultsModule } from './results/results.module';
+import { StatusModule } from './status/status.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -27,6 +28,7 @@ import { UsersModule } from './users/users.module';
     AiModule,
     AssessmentsModule,
     ResultsModule,
+    StatusModule,
   ],
   providers: [
     {

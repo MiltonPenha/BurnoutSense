@@ -32,6 +32,7 @@ export class AssessmentsService {
             riskScore: prediction.riskScore,
             mainFactors: prediction.mainFactors,
             modelVersion: prediction.modelVersion,
+            predictionSource: prediction.predictionSource,
           },
         },
       },
@@ -93,6 +94,7 @@ export class AssessmentsService {
               riskScore: prediction.riskScore,
               mainFactors: prediction.mainFactors,
               modelVersion: prediction.modelVersion,
+              predictionSource: prediction.predictionSource,
             },
             update: {
               riskLevel: prediction.riskLevel,
@@ -100,6 +102,7 @@ export class AssessmentsService {
               riskScore: prediction.riskScore,
               mainFactors: prediction.mainFactors,
               modelVersion: prediction.modelVersion,
+              predictionSource: prediction.predictionSource,
             },
           },
         },

@@ -1,6 +1,6 @@
 import { BadGatewayException, Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { RiskLevel } from '@prisma/client';
+import { PredictionSource, RiskLevel } from '@prisma/client';
 import { AiPredictionRequest, BurnoutFeatureMapper } from './burnout-feature.mapper';
 import { PredictBurnoutDto } from './dto/predict-burnout.dto';
 
@@ -10,6 +10,7 @@ export interface PredictionOutput {
   riskScore: number;
   mainFactors: string[];
   modelVersion: string;
+  predictionSource: PredictionSource;
   disclaimer: string;
 }
 
@@ -30,21 +31,29 @@ export class AiService {
     const aiPayload = BurnoutFeatureMapper.toAiServicePayload(indicators);
     const prediction = await this.requestPrediction(aiServiceUrl, aiPayload);
     const modelRiskLevel = this.normalizeRiskLevel(prediction.risk_level);
-    const calibratedRiskLevel = this.calibratePreventiveRisk(modelRiskLevel, aiPayload);
     const mainFactors = prediction.main_factors?.length ? prediction.main_factors : BurnoutFeatureMapper.mainFactors(aiPayload);
+    const usedBackendConfidenceFallback = prediction.confidence === undefined;
     const confidence = prediction.confidence ?? (await this.getModelConfidence(aiServiceUrl, prediction.risk_level));
+    const usedBackendScoreFallback = prediction.risk_score === undefined;
     const modelRiskScore = this.normalizeRiskScore(
       prediction.risk_score ?? this.scoreFromRiskLevelAndConfidence(modelRiskLevel, confidence),
     );
-    const calibrated = calibratedRiskLevel !== modelRiskLevel;
-    const riskScore = calibrated ? Math.max(modelRiskScore, this.calibratePreventiveRiskScore(aiPayload)) : modelRiskScore;
+    const calibrationAdjustment = this.preventiveCalibrationAdjustment(aiPayload);
+    const calibrated = this.isPreventiveCalibrationEnabled() && calibrationAdjustment > 0;
+    const riskScore = calibrated ? this.normalizeRiskScore(modelRiskScore + calibrationAdjustment) : modelRiskScore;
+    const predictionSource = usedBackendConfidenceFallback || usedBackendScoreFallback
+      ? PredictionSource.BACKEND_FALLBACK
+      : calibrated
+        ? PredictionSource.MODEL_WITH_PREVENTIVE_CALIBRATION
+        : PredictionSource.MODEL;
 
     return {
-      riskLevel: calibratedRiskLevel,
+      riskLevel: modelRiskLevel,
       confidence,
       riskScore: this.normalizeRiskScore(riskScore),
-      mainFactors: calibrated ? ['Combinação severa de sono, estresse e pressão acadêmica', ...mainFactors] : mainFactors,
+      mainFactors: calibrated ? ['Combinacao severa de sono, estresse e pressao academica', ...mainFactors] : mainFactors,
       modelVersion: calibrated ? `${prediction.model_used} + preventive calibration` : prediction.model_used,
+      predictionSource,
       disclaimer: this.preventiveDisclaimer,
     };
   }
@@ -101,11 +110,7 @@ export class AiService {
     return this.normalizeRiskScore(8 + 2 * confidenceRatio);
   }
 
-  private calibratePreventiveRisk(riskLevel: RiskLevel, indicators: AiPredictionRequest): RiskLevel {
-    if (riskLevel === RiskLevel.HIGH) {
-      return riskLevel;
-    }
-
+  private preventiveCalibrationAdjustment(indicators: AiPredictionRequest): number {
     const severeAcademicOverload =
       indicators.stress_level >= 9 &&
       indicators.sleep_quality <= 4 &&
@@ -120,28 +125,14 @@ export class AiService {
       (indicators.financial_stress >= 7 || indicators.social_support <= 3);
 
     if (severeAcademicOverload || severeRecoveryRisk || severeContextRisk) {
-      return RiskLevel.HIGH;
+      return 1.0;
     }
 
-    return riskLevel;
+    return 0;
   }
 
-  private calibratePreventiveRiskScore(indicators: AiPredictionRequest): number {
-    const sleepRisk = Math.min(1, Math.max(0, (7 - indicators.sleep_quality) / 7));
-    const stressRisk = indicators.stress_level / 10;
-    const pressureRisk = indicators.exam_pressure / 10;
-    const supportRisk = Math.min(1, Math.max(0, (5 - indicators.social_support) / 5));
-    const activityRisk = Math.min(1, Math.max(0, (3 - indicators.physical_activity) / 3));
-    const financialRisk = indicators.financial_stress / 10;
-    const severity =
-      stressRisk * 0.35 +
-      pressureRisk * 0.25 +
-      sleepRisk * 0.2 +
-      supportRisk * 0.1 +
-      activityRisk * 0.05 +
-      financialRisk * 0.05;
-
-    return this.normalizeRiskScore(8 + Math.min(1, severity) * 2);
+  private isPreventiveCalibrationEnabled(): boolean {
+    return this.configService.get<string>('ENABLE_PREVENTIVE_CALIBRATION') === 'true';
   }
 
   private async getModelConfidence(aiServiceUrl: string, riskLevel: string): Promise<number> {

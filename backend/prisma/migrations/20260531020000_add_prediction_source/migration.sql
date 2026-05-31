@@ -1,0 +1,4 @@
+CREATE TYPE "PredictionSource" AS ENUM ('MODEL', 'MODEL_WITH_PREVENTIVE_CALIBRATION', 'BACKEND_FALLBACK', 'FRONTEND_LOCAL');
+
+ALTER TABLE "prediction_results"
+ADD COLUMN "predictionSource" "PredictionSource" NOT NULL DEFAULT 'MODEL';

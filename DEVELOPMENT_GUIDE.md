@@ -58,6 +58,7 @@ Crie o arquivo `.env` a partir de `.env.example` e confira estes valores:
 DATABASE_URL="postgresql://burnoutsense:burnoutsense@localhost:5432/burnoutsense?schema=public"
 FRONTEND_URL="http://localhost:3000"
 AI_SERVICE_URL="http://localhost:8000"
+ENABLE_PREVENTIVE_CALIBRATION=false
 GEMINI_API_KEY=""
 GEMINI_INSIGHTS_MODEL="gemini-2.5-flash-lite"
 OPENAI_API_KEY=""
@@ -73,7 +74,7 @@ JWT_REFRESH_SECRET="change-this-refresh-secret"
 - A data do registro pode ser hoje ou uma data passada, mas não pode ser futura.
 - A soma de horas de sono, horas de estudo e tempo de tela não pode ultrapassar 24 horas.
 - O humor predominante é salvo como contexto visual do registro, mas não é convertido em feature enviada para o modelo de IA.
-- Combinações severas de sono muito baixo, estresse alto e pressão acadêmica alta recebem calibração preventiva para evitar subestimar risco alto quando o modelo estatístico retorna risco moderado.
+- A calibração preventiva do backend fica desligada por padrão (`ENABLE_PREVENTIVE_CALIBRATION=false`). Se ativada, ela apenas ajusta levemente o score e marca a origem como `MODEL_WITH_PREVENTIVE_CALIBRATION`, sem transformar `LOW` ou `MEDIUM` diretamente em `HIGH`.
 
 Gere o Prisma Client e aplique as migrations:
 

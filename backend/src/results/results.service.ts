@@ -82,6 +82,7 @@ export class ResultsService {
         riskScore: assessment.result.riskScore,
         mainFactors: assessment.result.mainFactors,
         modelVersion: assessment.result.modelVersion,
+        predictionSource: assessment.result.predictionSource,
       },
       constraints: {
         language: 'pt-BR',

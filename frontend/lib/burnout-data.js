@@ -26,6 +26,8 @@ export const moods = [
   { name: "Desmotivado", emoji: "😞", icon: "unmotivated" }
 ];
 
+const warnedFrontendFallbackIds = new Set();
+
 export function calculateRisk(record) {
   const stressWeight = record.stress * 0.32;
   const tirednessWeight = record.tiredness * 0.22;
@@ -33,7 +35,7 @@ export function calculateRisk(record) {
   const qualityPenalty = Math.max(0, 7 - record.sleepQuality) * 0.24;
   const academicPressure = Math.max(0, (record.examPressure ?? 5) - 5) * 0.35;
   const screenPenalty = Math.max(0, (record.screenTime ?? 0) - 8) * 0.18;
-  const score = Math.min(10, Math.max(1, Math.round(stressWeight + tirednessWeight + sleepPenalty + qualityPenalty + academicPressure + screenPenalty)));
+  const score = normalizeRiskScore(stressWeight + tirednessWeight + sleepPenalty + qualityPenalty + academicPressure + screenPenalty);
 
   if (score >= 8) {
     return { score, label: "Risco alto", tone: "danger" };
@@ -56,12 +58,14 @@ export function riskFromBackendResult(result) {
   const confidencePercent = confidence === null ? null : Math.round(confidence * 100);
   const mainFactors = Array.isArray(result.mainFactors) ? result.mainFactors : [];
   const backendRiskScore = typeof result.riskScore === "number" ? result.riskScore : null;
+  const predictionSource = result.predictionSource ?? "MODEL";
   const base = {
     confidence,
     confidencePercent,
     mainFactors,
     modelUsed: result.modelUsed ?? result.modelVersion ?? "",
-    source: "backend"
+    predictionSource,
+    source: predictionSource
   };
 
   if (normalizedRiskLevel === "HIGH") {
@@ -86,7 +90,7 @@ function normalizeRiskScore(score) {
     return 5;
   }
 
-  return Math.round(Math.min(10, Math.max(1, number)));
+  return Number(Math.min(10, Math.max(1, number)).toFixed(1));
 }
 
 function scoreFromRiskLevel(riskLevel, confidence, mainFactors = []) {
@@ -115,7 +119,32 @@ export function getRecordRisk(record) {
     return null;
   }
 
-  return riskFromBackendResult(record?.backendResult) ?? { ...calculateRisk(record), source: "local" };
+  const backendRisk = riskFromBackendResult(record?.backendResult);
+
+  if (backendRisk) {
+    return backendRisk;
+  }
+
+  warnFrontendFallback(record);
+  return { ...calculateRisk(record), predictionSource: "FRONTEND_LOCAL", source: "FRONTEND_LOCAL" };
+}
+
+function warnFrontendFallback(record) {
+  if (process.env.NODE_ENV !== "development") {
+    return;
+  }
+
+  const warningKey = record?.id ?? record?.date ?? "unknown-record";
+
+  if (warnedFrontendFallbackIds.has(warningKey)) {
+    return;
+  }
+
+  warnedFrontendFallbackIds.add(warningKey);
+  console.warn("BurnoutSense: usando FRONTEND_LOCAL para calcular risco porque o registro nao possui backendResult.", {
+    recordId: record?.id ?? null,
+    date: record?.date ?? null
+  });
 }
 
 export function mainFactorsForRecord(record) {

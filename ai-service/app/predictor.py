@@ -44,7 +44,7 @@ class BurnoutPredictor:
         return {
             "risk_level": risk_level,
             "confidence": confidence,
-            "risk_score": self._risk_score(risk_level, confidence, len(probabilities) or 3),
+            "risk_score": self._risk_score(probabilities, input_data.iloc[0].to_dict()),
             "model_used": model_name,
             "main_factors": self._main_factors(input_data.iloc[0].to_dict()),
         }
@@ -118,20 +118,25 @@ class BurnoutPredictor:
         return round(float(probabilities.get(risk_level, 0.0)), 4)
 
     @staticmethod
-    def _risk_score(risk_level: str, confidence: float, class_count: int) -> float:
-        chance_floor = 1 / max(class_count, 2)
-        confidence_ratio = (confidence - chance_floor) / (1 - chance_floor)
-        confidence_ratio = min(1.0, max(0.0, confidence_ratio))
-        normalized_risk_level = risk_level.lower()
+    def _risk_score(probabilities: dict[str, float], features: dict[str, float]) -> float:
+        if not probabilities:
+            return 5.0
 
-        if normalized_risk_level == "low":
-            score = 4 - (3 * confidence_ratio)
-        elif normalized_risk_level == "medium":
-            score = 5 + (2 * confidence_ratio)
-        elif normalized_risk_level == "high":
-            score = 8 + (2 * confidence_ratio)
-        else:
-            score = 5
+        risk_index = probabilities.get("medium", 0.0) * 0.5 + probabilities.get("high", 0.0)
+        score = 1 + (9 * risk_index)
+
+        if features.get("stress_level", 0) >= 8:
+            score += 0.3
+        if features.get("sleep_quality", 24) <= 4:
+            score += 0.3
+        if features.get("social_support", 10) <= 3:
+            score += 0.2
+        if features.get("study_hours", 0) >= 12 and features.get("exam_pressure", 0) >= 8:
+            score += 0.2
+        if features.get("physical_activity", 0) >= 5:
+            score -= 0.2
+        if features.get("social_support", 0) >= 8:
+            score -= 0.2
 
         return round(min(10, max(1, score)), 1)
 

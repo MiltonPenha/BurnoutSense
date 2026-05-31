@@ -2,7 +2,7 @@
 
 ## Plataforma inteligente para apoio preventivo ao burnout acadêmico
 
-O BurnoutSense é uma aplicação web acadêmica voltada à identificação preventiva de sinais associados ao burnout em estudantes universitários. O sistema coleta registros diários, envia os indicadores para um serviço de Machine Learning e apresenta um histórico com nível de risco, fatores relevantes, alertas preventivos e recomendações geradas por IA.
+O BurnoutSense é uma aplicação web acadêmica voltada à identificação preventiva de sinais associados ao burnout em estudantes universitários. O sistema coleta registros diários, envia os indicadores para um serviço de Machine Learning e apresenta histórico, dashboard, nível de risco, fatores relevantes, alertas preventivos e recomendações geradas por IA.
 
 O projeto não possui finalidade clínica ou diagnóstica. Ele funciona como uma ferramenta computacional de apoio, acompanhamento e estudo no contexto do TCC.
 
@@ -22,7 +22,7 @@ Desenvolver uma solução full stack capaz de:
 cadastro -> login -> registro diário -> backend -> ai-service -> banco -> histórico/dashboard
 ```
 
-O frontend prioriza os resultados persistidos pelo backend, incluindo nível de risco, confiança, principais fatores e modelo utilizado. Cálculos locais existem apenas como fallback quando ainda não há resultado real salvo.
+O frontend prioriza os resultados persistidos pelo backend, incluindo nível de risco, score visual, confiança, principais fatores, modelo utilizado e origem da predição. Cálculos locais existem apenas como fallback quando ainda não há resultado real salvo.
 
 ## Funcionalidades atuais
 
@@ -52,36 +52,37 @@ O AI Service utiliza Scikit-learn para servir um modelo treinado a partir do dat
 
 Modelo atual documentado no AI Service:
 
-- Random Forest
-- Estratégia final sem `dropout_risk` e `internet_usage`
-- Métricas e limitações registradas em `ai-service/MODEL_CARD.md`
+- Random Forest.
+- Estratégia final sem `dropout_risk` e `internet_usage`.
+- Métricas e limitações registradas em `ai-service/MODEL_CARD.md`.
 
 ### Features utilizadas pelo modelo
 
-- Horas de estudo
-- Desempenho acadêmico
-- Pressão acadêmica
-- Nível de estresse
-- Ansiedade
-- Depressão
-- Qualidade do sono
-- Atividade física
-- Tempo de tela
-- Suporte social
-- Expectativa familiar
-- Estresse financeiro
+- Horas de estudo.
+- Desempenho acadêmico.
+- Pressão acadêmica.
+- Nível de estresse.
+- Ansiedade.
+- Depressão.
+- Horas de sono, mantidas no artefato como `sleep_quality` por compatibilidade com o dataset.
+- Atividade física.
+- Tempo de tela.
+- Suporte social.
+- Expectativa familiar.
+- Estresse financeiro.
 
 O campo de humor predominante é mantido como contexto visual do registro, mas não é convertido em feature enviada ao modelo, pois não há feature equivalente no treinamento atual.
 
 ### Resultado exibido
 
-O resultado preventivo separa três conceitos:
+O resultado preventivo separa quatro conceitos:
 
 - `riskLevel`: classe prevista pelo modelo (`LOW`, `MEDIUM` ou `HIGH`).
-- `riskScore`: escala visual de 1 a 10 usada na interface.
-- `confidence`: confiança/probabilidade da classe prevista.
+- `riskScore`: escala visual contínua de 1 a 10 usada na interface.
+- `confidence`: confiança/probabilidade do modelo na classe prevista.
+- `predictionSource`: origem auditável da predição (`MODEL`, `MODEL_WITH_PREVENTIVE_CALIBRATION`, `BACKEND_FALLBACK` ou `FRONTEND_LOCAL`).
 
-O `riskScore` não é fixo por classe. Ele varia dentro da faixa de cada nível: baixo entre 1 e 4, moderado entre 5 e 7 e alto entre 8 e 10, usando a confiança retornada pelo modelo.
+O `riskScore` não é uma probabilidade direta de burnout e não é diagnóstico clínico. Ele é derivado das probabilidades do modelo (`P_MEDIUM` e `P_HIGH`) com pequenos ajustes preventivos controlados. A `confidence` não deve ser confundida com o `riskScore`.
 
 ### IA generativa
 
@@ -99,6 +100,8 @@ OPENAI_API_KEY=""
 OPENAI_INSIGHTS_MODEL="gpt-5.4-mini"
 ```
 
+Gemini e OpenAI geram apenas textos de apoio no dashboard. Eles não definem `riskLevel` nem `riskScore`; a classificação principal vem do modelo Scikit-learn servido pelo `ai-service`.
+
 Sem chave de IA generativa, o sistema mantém a classificação de risco do modelo local, mas não inventa recomendações mockadas.
 
 ## Regras do registro diário
@@ -109,7 +112,7 @@ Sem chave de IA generativa, o sistema mantém a classificação de risco do mode
 - Sliders começam no ponto médio da escala.
 - A soma de sono, estudo e tempo de tela não pode ultrapassar 24 horas.
 - Humor é salvo apenas como informação contextual.
-- Cenários severos de sono muito baixo, estresse alto e pressão acadêmica alta recebem calibração preventiva para reduzir subestimação de risco alto.
+- A calibração preventiva do backend fica desligada por padrão. Se ativada por `ENABLE_PREVENTIVE_CALIBRATION=true`, ela apenas ajusta levemente o score e marca a origem como `MODEL_WITH_PREVENTIVE_CALIBRATION`.
 
 ## Arquitetura
 
@@ -122,31 +125,31 @@ BurnoutSense/
 
 ### Frontend
 
-- Next.js
-- React
-- CSS modular/global do projeto
+- Next.js.
+- React.
+- CSS modular/global do projeto.
 
 ### Backend
 
-- Node.js
-- NestJS
-- Prisma
-- JWT
-- PostgreSQL
+- Node.js.
+- NestJS.
+- Prisma.
+- JWT.
+- PostgreSQL.
 
 ### AI Service
 
-- Python
-- FastAPI
-- Scikit-learn
-- Pandas
-- NumPy
+- Python.
+- FastAPI.
+- Scikit-learn.
+- Pandas.
+- NumPy.
 
 ### Infraestrutura
 
-- Docker
-- Docker Compose
-- PostgreSQL
+- Docker.
+- Docker Compose.
+- PostgreSQL.
 
 ## Execução local
 

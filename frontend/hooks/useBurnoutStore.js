@@ -31,7 +31,11 @@ export function useBurnoutStore() {
 
     async function loadInitialData() {
       try {
-        const [nextRecords, nextProfile] = await Promise.all([getRecords(), getProfile()]);
+        const initialLoadOptions = { silentUnauthorized: true };
+        const [nextRecords, nextProfile] = await Promise.all([
+          getRecords(initialLoadOptions),
+          getProfile(initialLoadOptions)
+        ]);
 
         if (!active) {
           return;

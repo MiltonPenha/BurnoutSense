@@ -4,7 +4,8 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 const AUTH_KEYS = {
   accessToken: "burnoutsense.auth.accessToken",
-  refreshToken: "burnoutsense.auth.refreshToken"
+  refreshToken: "burnoutsense.auth.refreshToken",
+  activeSession: "burnoutsense.auth.activeSession"
 };
 
 export const SESSION_TIMEOUT_MINUTES = 30;
@@ -64,6 +65,26 @@ function writeToken(key, value) {
   }
 }
 
+function markActiveBrowserSession() {
+  if (typeof window !== "undefined") {
+    window.sessionStorage.setItem(AUTH_KEYS.activeSession, "true");
+  }
+}
+
+function hasActiveBrowserSession() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return window.sessionStorage.getItem(AUTH_KEYS.activeSession) === "true";
+}
+
+function clearActiveBrowserSession() {
+  if (typeof window !== "undefined") {
+    window.sessionStorage.removeItem(AUTH_KEYS.activeSession);
+  }
+}
+
 function notifyAuthChange() {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("burnoutsense-auth-change"));
@@ -76,11 +97,14 @@ function notifySessionExpired(reason = "expired") {
   }
 }
 
-function clearAuthTokens(reason) {
+function clearAuthTokens(reason, options = {}) {
+  const shouldShowMessage = options.showMessage ?? Boolean(reason);
+
   if (typeof window !== "undefined") {
     window.localStorage.removeItem(AUTH_KEYS.accessToken);
     window.localStorage.removeItem(AUTH_KEYS.refreshToken);
-    if (reason) {
+    clearActiveBrowserSession();
+    if (reason && shouldShowMessage) {
       notifySessionExpired(reason);
     }
     notifyAuthChange();
@@ -90,6 +114,7 @@ function clearAuthTokens(reason) {
 function persistAuthResponse(authResponse) {
   writeToken(AUTH_KEYS.accessToken, authResponse.accessToken);
   writeToken(AUTH_KEYS.refreshToken, authResponse.refreshToken);
+  markActiveBrowserSession();
 
   if (authResponse.user) {
     writeJson(STORAGE_KEYS.profile, normalizeProfile(authResponse.user));
@@ -120,22 +145,60 @@ export function isAuthenticated() {
   return Boolean(readToken(AUTH_KEYS.accessToken));
 }
 
+async function refreshAuthToken() {
+  const refreshToken = readToken(AUTH_KEYS.refreshToken);
+
+  if (!refreshToken) {
+    return false;
+  }
+
+  const response = await fetch(endpoint("/auth/refresh"), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ refreshToken })
+  }).catch(() => null);
+
+  if (!response?.ok) {
+    return false;
+  }
+
+  const authResponse = await response.json();
+  persistAuthResponse(authResponse);
+  return true;
+}
+
 async function request(path, options = {}) {
   const shouldAttachAuth = options.auth !== false;
   const shouldNotifySessionExpired = options.sessionExpiredOnUnauthorized !== false;
-  const { auth, sessionExpiredOnUnauthorized, ...fetchOptions } = options;
+  const shouldRetryAuth = options.retryAuthOnUnauthorized !== false;
+  const { auth, sessionExpiredOnUnauthorized, retryAuthOnUnauthorized, headers, ...fetchOptions } = options;
 
-  const response = await fetch(endpoint(path), {
-    ...fetchOptions,
-    headers: {
-      "Content-Type": "application/json",
-      ...(shouldAttachAuth ? authHeaders() : {}),
-      ...options.headers
+  const performRequest = () =>
+    fetch(endpoint(path), {
+      ...fetchOptions,
+      headers: {
+        "Content-Type": "application/json",
+        ...(shouldAttachAuth ? authHeaders() : {}),
+        ...headers
+      }
+    });
+
+  let response = await performRequest();
+
+  if (response.status === 401 && shouldAttachAuth && shouldRetryAuth) {
+    const refreshed = await refreshAuthToken();
+
+    if (refreshed) {
+      response = await performRequest();
     }
-  });
+  }
 
-  if (response.status === 401 && shouldNotifySessionExpired) {
-    clearAuthTokens("expired");
+  if (response.status === 401 && shouldAttachAuth) {
+    clearAuthTokens("expired", {
+      showMessage: shouldNotifySessionExpired && hasActiveBrowserSession()
+    });
   }
 
   if (!response.ok) {
@@ -278,24 +341,29 @@ export function assessmentToRecord(assessment, fallback = {}) {
     backendResult: assessment.result
       ? {
           ...assessment.result,
-          modelUsed: assessment.result.modelUsed ?? assessment.result.modelVersion
+          modelUsed: assessment.result.modelUsed ?? assessment.result.modelVersion,
+          predictionSource: assessment.result.predictionSource ?? "MODEL"
         }
       : null
   };
 }
 
-export async function getRecords() {
+export async function getRecords(options = {}) {
   if (hasBackend()) {
-    const assessments = await request("/assessments");
+    const assessments = await request("/assessments", {
+      sessionExpiredOnUnauthorized: !options.silentUnauthorized
+    });
     return sortRecords(assessments.map((assessment) => assessmentToRecord(assessment)));
   }
 
   return sortRecords(readJson(STORAGE_KEYS.records, defaultRecords));
 }
 
-export async function getRecordById(id) {
+export async function getRecordById(id, options = {}) {
   if (hasBackend()) {
-    const assessment = await request(`/assessments/${id}`);
+    const assessment = await request(`/assessments/${id}`, {
+      sessionExpiredOnUnauthorized: !options.silentUnauthorized
+    });
     return assessmentToRecord(assessment);
   }
 
@@ -365,9 +433,11 @@ export async function deleteRecord(id) {
   writeJson(STORAGE_KEYS.records, records.filter((record) => record.id !== id));
 }
 
-export async function getProfile() {
+export async function getProfile(options = {}) {
   if (hasBackend()) {
-    const user = await request("/users/me");
+    const user = await request("/users/me", {
+      sessionExpiredOnUnauthorized: !options.silentUnauthorized
+    });
     return normalizeProfile(user);
   }
 
@@ -470,6 +540,8 @@ export async function logoutUser() {
 
       await request("/auth/logout", {
         method: "POST",
+        retryAuthOnUnauthorized: false,
+        sessionExpiredOnUnauthorized: false,
         body: JSON.stringify(body)
       });
     }

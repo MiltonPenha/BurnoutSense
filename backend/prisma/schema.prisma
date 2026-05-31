@@ -18,21 +18,28 @@ enum RiskLevel {
   HIGH
 }
 
+enum PredictionSource {
+  MODEL
+  MODEL_WITH_PREVENTIVE_CALIBRATION
+  BACKEND_FALLBACK
+  FRONTEND_LOCAL
+}
+
 model User {
-  id           String       @id @default(uuid())
-  name         String
-  email        String       @unique
-  passwordHash String
-  role         UserRole     @default(STUDENT)
-  emailAlerts  Boolean      @default(true)
-  dailyReminder Boolean     @default(true)
-  course       String?
-  semester     String?
-  avatarUrl    String?
-  assessments  Assessment[]
-  sessions     AuthSession[]
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id            String        @id @default(uuid())
+  name          String
+  email         String        @unique
+  passwordHash  String
+  role          UserRole      @default(STUDENT)
+  emailAlerts   Boolean       @default(true)
+  dailyReminder Boolean       @default(true)
+  course        String?
+  semester      String?
+  avatarUrl     String?
+  assessments   Assessment[]
+  sessions      AuthSession[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   @@map("users")
 }
@@ -85,15 +92,16 @@ model Assessment {
 }
 
 model PredictionResult {
-  id           String     @id @default(uuid())
-  assessmentId String     @unique
-  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
-  riskLevel    RiskLevel
-  confidence   Float
-  riskScore    Float?
-  mainFactors  Json
-  modelVersion String
-  createdAt    DateTime   @default(now())
+  id               String           @id @default(uuid())
+  assessmentId     String           @unique
+  assessment       Assessment       @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  riskLevel        RiskLevel
+  confidence       Float
+  riskScore        Float?
+  mainFactors      Json
+  modelVersion     String
+  predictionSource PredictionSource @default(MODEL)
+  createdAt        DateTime         @default(now())
 
   @@map("prediction_results")
 }

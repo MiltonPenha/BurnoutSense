@@ -162,7 +162,7 @@ Resposta:
 }
 ```
 
-`risk_level` e a classe prevista pelo classificador. `confidence` e a probabilidade da classe prevista quando o modelo oferece `predict_proba`. `risk_score` converte a classe e a confianca para uma escala visual de 1 a 10: low varia de 1 a 4, medium de 5 a 7 e high de 8 a 10.
+`risk_level` é a classe prevista pelo classificador. `confidence` é a probabilidade da classe prevista quando o modelo oferece `predict_proba`. `risk_score` é uma escala visual contínua de 1 a 10 derivada das probabilidades do modelo: `1 + 9 * (P_MEDIUM * 0.5 + P_HIGH)`, com pequenos ajustes preventivos controlados por fatores observados. O `risk_score` não é probabilidade direta de burnout nem diagnóstico clínico.
 
 ### GET /model-info
 

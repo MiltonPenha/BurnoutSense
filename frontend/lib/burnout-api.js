@@ -121,16 +121,20 @@ export function isAuthenticated() {
 }
 
 async function request(path, options = {}) {
+  const shouldAttachAuth = options.auth !== false;
+  const shouldNotifySessionExpired = options.sessionExpiredOnUnauthorized !== false;
+  const { auth, sessionExpiredOnUnauthorized, ...fetchOptions } = options;
+
   const response = await fetch(endpoint(path), {
-    ...options,
+    ...fetchOptions,
     headers: {
       "Content-Type": "application/json",
-      ...authHeaders(),
+      ...(shouldAttachAuth ? authHeaders() : {}),
       ...options.headers
     }
   });
 
-  if (response.status === 401) {
+  if (response.status === 401 && shouldNotifySessionExpired) {
     clearAuthTokens("expired");
   }
 
@@ -419,6 +423,8 @@ export async function loginUser(credentials) {
   if (hasBackend()) {
     const authResponse = await request("/auth/login", {
       method: "POST",
+      auth: false,
+      sessionExpiredOnUnauthorized: false,
       body: JSON.stringify({
         email: credentials.email,
         password: credentials.password
@@ -435,6 +441,8 @@ export async function registerUser(payload) {
   if (hasBackend()) {
     const authResponse = await request("/auth/register", {
       method: "POST",
+      auth: false,
+      sessionExpiredOnUnauthorized: false,
       body: JSON.stringify({
         name: payload.name,
         email: payload.email,

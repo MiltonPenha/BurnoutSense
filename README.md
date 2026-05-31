@@ -73,6 +73,16 @@ Modelo atual documentado no AI Service:
 
 O campo de humor predominante é mantido como contexto visual do registro, mas não é convertido em feature enviada ao modelo, pois não há feature equivalente no treinamento atual.
 
+### Resultado exibido
+
+O resultado preventivo separa três conceitos:
+
+- `riskLevel`: classe prevista pelo modelo (`LOW`, `MEDIUM` ou `HIGH`).
+- `riskScore`: escala visual de 1 a 10 usada na interface.
+- `confidence`: confiança/probabilidade da classe prevista.
+
+O `riskScore` não é fixo por classe. Ele varia dentro da faixa de cada nível: baixo entre 1 e 4, moderado entre 5 e 7 e alto entre 8 e 10, usando a confiança retornada pelo modelo.
+
 ### IA generativa
 
 Os alertas e recomendações do dashboard podem ser gerados com Gemini, usando:

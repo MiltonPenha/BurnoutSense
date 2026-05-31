@@ -33,7 +33,7 @@ export function calculateRisk(record) {
   const qualityPenalty = Math.max(0, 7 - record.sleepQuality) * 0.24;
   const academicPressure = Math.max(0, (record.examPressure ?? 5) - 5) * 0.35;
   const screenPenalty = Math.max(0, (record.screenTime ?? 0) - 8) * 0.18;
-  const score = Math.min(10, Math.max(0, Math.round(stressWeight + tirednessWeight + sleepPenalty + qualityPenalty + academicPressure + screenPenalty)));
+  const score = Math.min(10, Math.max(1, Math.round(stressWeight + tirednessWeight + sleepPenalty + qualityPenalty + academicPressure + screenPenalty)));
 
   if (score >= 8) {
     return { score, label: "Risco alto", tone: "danger" };
@@ -54,27 +54,60 @@ export function riskFromBackendResult(result) {
   const normalizedRiskLevel = String(result.riskLevel).toUpperCase();
   const confidence = typeof result.confidence === "number" ? result.confidence : null;
   const confidencePercent = confidence === null ? null : Math.round(confidence * 100);
+  const mainFactors = Array.isArray(result.mainFactors) ? result.mainFactors : [];
+  const backendRiskScore = typeof result.riskScore === "number" ? result.riskScore : null;
   const base = {
     confidence,
     confidencePercent,
-    mainFactors: Array.isArray(result.mainFactors) ? result.mainFactors : [],
+    mainFactors,
     modelUsed: result.modelUsed ?? result.modelVersion ?? "",
     source: "backend"
   };
 
   if (normalizedRiskLevel === "HIGH") {
-    return { ...base, score: 10, label: "Risco alto", tone: "danger" };
+    return { ...base, score: normalizeRiskScore(backendRiskScore ?? scoreFromRiskLevel(normalizedRiskLevel, confidence, mainFactors)), label: "Risco alto", tone: "danger" };
   }
 
   if (normalizedRiskLevel === "MEDIUM") {
-    return { ...base, score: 6, label: "Risco moderado", tone: "warning" };
+    return { ...base, score: normalizeRiskScore(backendRiskScore ?? scoreFromRiskLevel(normalizedRiskLevel, confidence, mainFactors)), label: "Risco moderado", tone: "warning" };
   }
 
   if (normalizedRiskLevel === "LOW") {
-    return { ...base, score: 3, label: "Risco baixo", tone: "success" };
+    return { ...base, score: normalizeRiskScore(backendRiskScore ?? scoreFromRiskLevel(normalizedRiskLevel, confidence, mainFactors)), label: "Risco baixo", tone: "success" };
   }
 
   return null;
+}
+
+function normalizeRiskScore(score) {
+  const number = Number(score);
+
+  if (Number.isNaN(number)) {
+    return 5;
+  }
+
+  return Math.round(Math.min(10, Math.max(1, number)));
+}
+
+function scoreFromRiskLevel(riskLevel, confidence, mainFactors = []) {
+  const effectiveConfidence = typeof confidence === "number" ? confidence : 0.5;
+  const chanceFloor = 1 / 3;
+  const confidenceRatio = Math.min(1, Math.max(0, (effectiveConfidence - chanceFloor) / (1 - chanceFloor)));
+  const factorAdjustment = Math.min(0.4, mainFactors.length * 0.1);
+
+  if (riskLevel === "LOW") {
+    return Math.min(4, 4 - 3 * confidenceRatio + factorAdjustment);
+  }
+
+  if (riskLevel === "MEDIUM") {
+    return Math.min(7, 5 + 2 * confidenceRatio + factorAdjustment);
+  }
+
+  if (riskLevel === "HIGH") {
+    return Math.min(10, 8 + 2 * confidenceRatio + factorAdjustment);
+  }
+
+  return 5;
 }
 
 export function getRecordRisk(record) {
@@ -83,18 +116,6 @@ export function getRecordRisk(record) {
   }
 
   return riskFromBackendResult(record?.backendResult) ?? { ...calculateRisk(record), source: "local" };
-}
-
-export function riskMetaLabel(risk) {
-  if (!risk) {
-    return "";
-  }
-
-  if (risk.source !== "backend") {
-    return `${risk.score} pontos - estimativa local`;
-  }
-
-  return "";
 }
 
 export function mainFactorsForRecord(record) {

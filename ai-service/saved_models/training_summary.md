@@ -8,11 +8,11 @@ The model predicts the target column `risk_level` using academic, emotional and 
 
 ## Dataset
 
-- Source file: `C:\Users\USER\Desktop\TCC\BurnoutSense\ai-service\dataset\student_mental_health_burnout_1M.csv`
+- Source file: `C:\Users\jotan\Desktop\BurnoutSense\ai-service\dataset\student_mental_health_burnout_1M.csv`
 - Total records identified during EDA: 1000000
 - Records used in this training run: 1000000
 - Training strategy: `focused_high_recall_sampling`
-- Training timestamp: `2026-05-29T22:38:08.166814+00:00`
+- Training timestamp: `2026-05-31T04:14:20.014563+00:00`
 
 ## Target
 

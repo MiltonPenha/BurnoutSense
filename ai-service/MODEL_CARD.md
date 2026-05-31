@@ -109,6 +109,22 @@ Amostragem aplicada apenas no treino:
 
 O conjunto de teste manteve a distribuicao original para avaliar o comportamento em um cenario mais realista.
 
+## Saida do Modelo em Producao
+
+O endpoint `/predict` retorna tres informacoes diferentes:
+
+- `risk_level`: classe prevista pelo classificador (`low`, `medium` ou `high`).
+- `risk_score`: escala visual de 1 a 10 calculada a partir de `risk_level` e `confidence`.
+- `confidence`: probabilidade da classe prevista quando o modelo possui `predict_proba`.
+
+O `risk_score` nao e uma classe fixa. Para evitar exibicoes pre-setadas, ele varia dentro da faixa de cada classe:
+
+- `low`: 1 a 4.
+- `medium`: 5 a 7.
+- `high`: 8 a 10.
+
+Para `low`, maior confianca aproxima o score de 1. Para `medium` e `high`, maior confianca aproxima o score do topo da faixa. Essa regra e uma calibracao visual para o prototipo TCC1, nao uma metrica clinica.
+
 ## Metricas do Modelo Final
 
 - Accuracy: 0.8259
@@ -160,6 +176,8 @@ Ranking global do modelo final:
 - A classe `high` ainda apresenta F1 abaixo do desejado.
 - Variaveis como `depression_score` e `anxiety_score` exigem cuidado etico e de privacidade, pois podem ser sensiveis.
 - O campo `sleep_quality` precisa ser melhor padronizado entre dataset, backend e frontend.
+- O campo de humor predominante nao existe como feature do treinamento atual e nao deve influenciar a predicao.
+- O `risk_score` e uma escala visual derivada da classe e da confianca, nao uma saida clinica independente.
 - O modelo nao substitui avaliacao profissional.
 
 ## Recomendacoes

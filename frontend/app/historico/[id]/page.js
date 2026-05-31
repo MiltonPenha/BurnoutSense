@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useBurnoutStore } from "@/hooks/useBurnoutStore";
-import { formatDateLong, formatHours, getRecordRisk, mainFactorsForRecord, riskMetaLabel } from "@/lib/burnout-data";
+import { formatDateLong, formatHours, getRecordRisk, mainFactorsForRecord } from "@/lib/burnout-data";
 
 export default function HistoricoDetalhePage() {
   const params = useParams();

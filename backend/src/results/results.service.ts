@@ -79,6 +79,7 @@ export class ResultsService {
       prediction: {
         riskLevel: assessment.result.riskLevel,
         confidence: assessment.result.confidence,
+        riskScore: assessment.result.riskScore,
         mainFactors: assessment.result.mainFactors,
         modelVersion: assessment.result.modelVersion,
       },
@@ -301,14 +302,21 @@ function parseGeneratedInsights(outputText: string, model: string) {
     }
 
     return {
-      alerts: parsed.alerts,
-      recommendations: parsed.recommendations,
+      alerts: parsed.alerts.map(cleanGeneratedText).filter(Boolean),
+      recommendations: parsed.recommendations.map((item) => ({
+        title: cleanGeneratedText(item.title),
+        text: cleanGeneratedText(item.text),
+      })).filter((item) => item.title && item.text),
       generatedBy: model,
       disclaimer: 'Conteúdo gerado por IA para apoio preventivo. Não representa diagnóstico clínico.',
     };
   } catch {
     throw new BadGatewayException('Generated insights response could not be parsed.');
   }
+}
+
+function cleanGeneratedText(value: string) {
+  return String(value ?? '').replace(/^\s*(alerta|atenção|atencao|dica|recomendação|recomendacao)\s*[:：-]\s*/i, '').trim();
 }
 
 function extractGeminiOutputText(responseBody: GeminiGenerateContentResponse): string {

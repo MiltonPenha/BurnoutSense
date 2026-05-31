@@ -75,21 +75,14 @@ export function useBurnoutStore() {
   }, []);
 
   const addRecord = useCallback(async (record) => {
-    const previousRecords = records;
-    const optimisticRecords = sortRecords([record, ...records]);
-    setRecords(optimisticRecords);
-    emitStoreChange({ records: optimisticRecords });
-
     try {
       const savedRecord = await createRecord(record);
-      const nextRecords = sortRecords([savedRecord, ...optimisticRecords.filter((item) => item.id !== record.id)]);
+      const nextRecords = sortRecords([savedRecord, ...records.filter((item) => item.id !== savedRecord.id)]);
       setRecords(nextRecords);
       emitStoreChange({ records: nextRecords });
       setError(null);
       return savedRecord;
     } catch (error) {
-      setRecords(previousRecords);
-      emitStoreChange({ records: previousRecords });
       setError("Não foi possível salvar o registro.");
       throw error;
     }
@@ -129,15 +122,10 @@ export function useBurnoutStore() {
 
   const updateRecord = useCallback(async (id, record) => {
     const previousRecords = records;
-    const optimisticRecord = { ...record, id };
-    const optimisticRecords = sortRecords(records.map((item) => (item.id === id ? optimisticRecord : item)));
-
-    setRecords(optimisticRecords);
-    emitStoreChange({ records: optimisticRecords });
 
     try {
       const savedRecord = await saveRecord(id, record);
-      const nextRecords = sortRecords(optimisticRecords.map((item) => (item.id === id ? savedRecord : item)));
+      const nextRecords = sortRecords(records.map((item) => (item.id === id ? savedRecord : item)));
       setRecords(nextRecords);
       emitStoreChange({ records: nextRecords });
       setError(null);

@@ -29,6 +29,7 @@ function statusTone(value, loaded) {
 
 const TRAINING_STRATEGY_LABELS = {
   custom_class_sampling: "Amostragem balanceada por classe",
+  focused_high_recall_sampling: "Amostragem ajustada para melhorar as métricas",
   final_without_dropout_or_internet: "Sem variáveis de vazamento",
 };
 

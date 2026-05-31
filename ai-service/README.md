@@ -156,10 +156,13 @@ Resposta:
 {
   "risk_level": "high",
   "confidence": 0.72,
+  "risk_score": 9.2,
   "model_used": "Random Forest [final_without_dropout_or_internet]",
   "main_factors": ["Nivel de estresse elevado"]
 }
 ```
+
+`risk_level` e a classe prevista pelo classificador. `confidence` e a probabilidade da classe prevista quando o modelo oferece `predict_proba`. `risk_score` converte a classe e a confianca para uma escala visual de 1 a 10: low varia de 1 a 4, medium de 5 a 7 e high de 8 a 10.
 
 ### GET /model-info
 

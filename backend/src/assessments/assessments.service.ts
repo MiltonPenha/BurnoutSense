@@ -1,5 +1,6 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { BurnoutFeatureMapper } from '../ai/burnout-feature.mapper';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { RiskLevel } from '@prisma/client';
+import { BurnoutFeatureMapper, StoredAssessmentIndicators } from '../ai/burnout-feature.mapper';
 import { AiService } from '../ai/ai.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -7,6 +8,8 @@ import { CreateAssessmentDto } from './dto/create-assessment.dto';
 
 @Injectable()
 export class AssessmentsService {
+  private readonly logger = new Logger(AssessmentsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly aiService: AiService,
@@ -26,6 +29,7 @@ export class AssessmentsService {
           create: {
             riskLevel: prediction.riskLevel,
             confidence: prediction.confidence,
+            riskScore: prediction.riskScore,
             mainFactors: prediction.mainFactors,
             modelVersion: prediction.modelVersion,
           },
@@ -34,7 +38,7 @@ export class AssessmentsService {
       include: { result: true },
     });
 
-    await this.notificationsService.sendHighRiskAlert(userId, assessmentIndicators, prediction.mainFactors, prediction.riskLevel);
+    this.queueHighRiskAlert(userId, assessmentIndicators, prediction.mainFactors, prediction.riskLevel);
 
     return {
       ...assessment,
@@ -86,12 +90,14 @@ export class AssessmentsService {
             create: {
               riskLevel: prediction.riskLevel,
               confidence: prediction.confidence,
+              riskScore: prediction.riskScore,
               mainFactors: prediction.mainFactors,
               modelVersion: prediction.modelVersion,
             },
             update: {
               riskLevel: prediction.riskLevel,
               confidence: prediction.confidence,
+              riskScore: prediction.riskScore,
               mainFactors: prediction.mainFactors,
               modelVersion: prediction.modelVersion,
             },
@@ -101,7 +107,7 @@ export class AssessmentsService {
       include: { result: true },
     });
 
-    await this.notificationsService.sendHighRiskAlert(userId, assessmentIndicators, prediction.mainFactors, prediction.riskLevel);
+    this.queueHighRiskAlert(userId, assessmentIndicators, prediction.mainFactors, prediction.riskLevel);
 
     return {
       ...assessment,
@@ -120,6 +126,21 @@ export class AssessmentsService {
     }
 
     await this.prisma.assessment.delete({ where: { id } });
+  }
+
+  private queueHighRiskAlert(
+    userId: string,
+    assessmentIndicators: StoredAssessmentIndicators,
+    mainFactors: string[],
+    riskLevel: RiskLevel,
+  ) {
+    void this.notificationsService
+      .sendHighRiskAlert(userId, assessmentIndicators, mainFactors, riskLevel)
+      .catch((error) => {
+        this.logger.warn(
+          `High-risk notification failed after assessment save: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        );
+      });
   }
 }
 

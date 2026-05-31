@@ -37,12 +37,14 @@ class BurnoutPredictor:
         if not feature_names:
             raise ValueError("Modelo sem lista de features esperadas.")
 
-        risk_level = model.predict(input_data)[0]
-        confidence = self._prediction_confidence(model, input_data, str(risk_level))
+        risk_level = str(model.predict(input_data)[0])
+        probabilities = self._prediction_probabilities(model, input_data)
+        confidence = self._prediction_confidence(probabilities, risk_level)
 
         return {
-            "risk_level": str(risk_level),
+            "risk_level": risk_level,
             "confidence": confidence,
+            "risk_score": self._risk_score(risk_level, confidence, len(probabilities) or 3),
             "model_used": model_name,
             "main_factors": self._main_factors(input_data.iloc[0].to_dict()),
         }
@@ -102,17 +104,36 @@ class BurnoutPredictor:
         }
 
     @staticmethod
-    def _prediction_confidence(model: Any, input_data: pd.DataFrame, risk_level: str) -> float:
+    def _prediction_probabilities(model: Any, input_data: pd.DataFrame) -> dict[str, float]:
         if not hasattr(model, "predict_proba"):
-            return 0.0
+            return {}
 
         probabilities = model.predict_proba(input_data)[0]
         classes = [str(label) for label in model.classes_]
 
-        if risk_level not in classes:
-            return 0.0
+        return {risk_class: float(probabilities[index]) for index, risk_class in enumerate(classes)}
 
-        return round(float(probabilities[classes.index(risk_level)]), 4)
+    @staticmethod
+    def _prediction_confidence(probabilities: dict[str, float], risk_level: str) -> float:
+        return round(float(probabilities.get(risk_level, 0.0)), 4)
+
+    @staticmethod
+    def _risk_score(risk_level: str, confidence: float, class_count: int) -> float:
+        chance_floor = 1 / max(class_count, 2)
+        confidence_ratio = (confidence - chance_floor) / (1 - chance_floor)
+        confidence_ratio = min(1.0, max(0.0, confidence_ratio))
+        normalized_risk_level = risk_level.lower()
+
+        if normalized_risk_level == "low":
+            score = 4 - (3 * confidence_ratio)
+        elif normalized_risk_level == "medium":
+            score = 5 + (2 * confidence_ratio)
+        elif normalized_risk_level == "high":
+            score = 8 + (2 * confidence_ratio)
+        else:
+            score = 5
+
+        return round(min(10, max(1, score)), 1)
 
     @staticmethod
     def _main_factors(features: dict[str, float]) -> list[str]:

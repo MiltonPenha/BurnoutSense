@@ -38,17 +38,25 @@ export interface StoredAssessmentIndicators {
 }
 
 const NEUTRAL_SCORE = 5;
+const DATASET_ACADEMIC_PERFORMANCE_MIN = 50;
+const DATASET_ACADEMIC_PERFORMANCE_MAX = 90;
+const DATASET_PHYSICAL_ACTIVITY_MAX = 7;
 
 export class BurnoutFeatureMapper {
   /**
-   * Central mapping from the daily record UI to the 12 final model features.
+   * Central mapping from the daily record UI to the saved model features.
    *
    * Direct fields: study_hours, stress_level, screen_time, social_support,
-   * financial_stress, academic_performance, exam_pressure, physical_activity.
+   * financial_stress, exam_pressure.
+   * UI scale conversions: academic_performance is collected as 0-10 and mapped
+   * to the dataset grade-like range around 50-90; physical_activity is collected
+   * as 0-10 and mapped to the dataset 0-7 range.
    * Dataset compatibility note: the saved model feature is named sleep_quality,
    * but it is populated from the dataset column sleep_hours during training.
-   * Neutral defaults: anxiety_score, depression_score, family_expectation and
-   * optional sources not collected by the frontend use the midpoint of the 0-10 scale.
+   * Derived fields: anxiety_score comes from stress and academic pressure;
+   * depression_score comes from tiredness and sleep risk. family_expectation
+   * and optional sources not collected by the frontend use the midpoint of the
+   * 0-10 scale.
    * The contextual mood text is stored with the assessment, but is not mapped into
    * any model feature because the training dataset has no equivalent mood column.
    */
@@ -58,13 +66,13 @@ export class BurnoutFeatureMapper {
 
     return {
       study_hours: stored.studyHours,
-      academic_performance: stored.academicPerformance,
+      academic_performance: toDatasetAcademicPerformance(stored.academicPerformance),
       exam_pressure: deriveExamPressure(indicators, stored.stressLevel),
       stress_level: stored.stressLevel,
       anxiety_score: stored.anxietyLevel,
       depression_score: clampInt(indicators.depressionScore ?? deriveDepressionScore(stored.tirednessLevel, indicators.sleepHours), 0, 10),
       sleep_quality: sleepHours,
-      physical_activity: stored.physicalActivity,
+      physical_activity: toDatasetPhysicalActivity(stored.physicalActivity),
       screen_time: stored.screenTime,
       social_support: stored.socialSupport,
       family_expectation: clampInt(indicators.familyExpectation ?? NEUTRAL_SCORE, 0, 10),
@@ -208,13 +216,23 @@ function deriveSleepQuality(sleepHours: number | undefined): number {
 }
 
 function deriveAnxietyLevel(stressLevel: number, examPressure: number): number {
-  return Math.max(NEUTRAL_SCORE, stressLevel, examPressure);
+  return clampInt(stressLevel * 0.65 + examPressure * 0.35, 0, 10);
 }
 
 function deriveDepressionScore(tirednessLevel: number, sleepHours: number | undefined): number {
-  const sleep = clampNumber(sleepHours, 0, 24);
-  const sleepPenalty = sleep <= 4 ? 2 : 0;
-  return clampInt(Math.max(NEUTRAL_SCORE, tirednessLevel) + sleepPenalty, 0, 10);
+  const sleep = clampNumber(sleepHours ?? 7, 0, 24);
+  const shortSleepPenalty = sleep < 6 ? (6 - sleep) * 0.9 : 0;
+  const excessSleepPenalty = sleep > 10 ? Math.min(2, (sleep - 10) * 0.6) : 0;
+  return clampInt(tirednessLevel * 0.75 + shortSleepPenalty + excessSleepPenalty, 0, 10);
+}
+
+function toDatasetAcademicPerformance(uiScore: number): number {
+  const normalized = clampNumber(uiScore, 0, 10) / 10;
+  return DATASET_ACADEMIC_PERFORMANCE_MIN + normalized * (DATASET_ACADEMIC_PERFORMANCE_MAX - DATASET_ACADEMIC_PERFORMANCE_MIN);
+}
+
+function toDatasetPhysicalActivity(uiScore: number): number {
+  return (clampNumber(uiScore, 0, 10) / 10) * DATASET_PHYSICAL_ACTIVITY_MAX;
 }
 
 function deriveFinancialStress(workHours: number): number {

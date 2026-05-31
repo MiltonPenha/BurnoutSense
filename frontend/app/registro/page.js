@@ -270,6 +270,7 @@ export default function RegistroPage() {
   });
   const [loadError, setLoadError] = useState("");
   const [submitError, setSubmitError] = useState("");
+  const [submitHint, setSubmitHint] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const moodOptions = useMemo(() => moods, []);
@@ -324,7 +325,11 @@ export default function RegistroPage() {
   async function handleSubmit(event) {
     event.preventDefault();
     setSubmitError("");
+    setSubmitHint("");
     setSubmitting(true);
+    const slowSaveTimer = window.setTimeout(() => {
+      setSubmitHint("A análise preventiva ainda está sendo gerada. Aguarde mais alguns instantes.");
+    }, 4000);
 
     const academicPerformance = Number(form.academicPerformance);
     const examPressure = Number(form.examPressure);
@@ -351,7 +356,9 @@ export default function RegistroPage() {
     const validationMessage = validateRecordPayload(recordPayload);
 
     if (validationMessage) {
+      window.clearTimeout(slowSaveTimer);
       setSubmitError(validationMessage);
+      setSubmitHint("");
       setSubmitting(false);
       return;
     }
@@ -359,14 +366,20 @@ export default function RegistroPage() {
     try {
       if (editing) {
         await updateRecord(editId, recordPayload);
+        window.clearTimeout(slowSaveTimer);
+        setSubmitHint("");
         window.sessionStorage.setItem("burnoutsense.recordSaved", "updated");
         router.push("/historico");
       } else {
         const savedRecord = await addRecord(recordPayload);
+        window.clearTimeout(slowSaveTimer);
+        setSubmitHint("");
         window.sessionStorage.setItem("burnoutsense.recordSaved", "created");
         router.push(`/historico/${savedRecord.id}`);
       }
     } catch (error) {
+      window.clearTimeout(slowSaveTimer);
+      setSubmitHint("");
       setSubmitError(formatSubmitError(error));
       setSubmitting(false);
     }
@@ -405,6 +418,7 @@ export default function RegistroPage() {
           <span>{submitError}</span>
         </div>
       ) : null}
+      {submitHint ? <p className="page-kicker" role="status">{submitHint}</p> : null}
 
       <form className="record-form" onSubmit={handleSubmit}>
         <section className="record-status-grid" aria-label="Indicadores principais">

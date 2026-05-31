@@ -47,6 +47,7 @@ function buildInsightsCacheKey(record) {
     financialStress: record.financialStress,
     riskLevel: record.backendResult?.riskLevel,
     confidence: record.backendResult?.confidence,
+    riskScore: record.backendResult?.riskScore,
     mainFactors: record.backendResult?.mainFactors
   });
 }
@@ -54,7 +55,8 @@ function buildInsightsCacheKey(record) {
 function readCachedInsights(record) {
   try {
     const cache = JSON.parse(window.localStorage.getItem(INSIGHTS_CACHE_KEY) ?? "{}");
-    return cache[buildInsightsCacheKey(record)] ?? null;
+    const cachedInsights = cache[buildInsightsCacheKey(record)] ?? null;
+    return cachedInsights ? normalizeGeneratedInsights(cachedInsights) : null;
   } catch {
     return null;
   }
@@ -63,14 +65,25 @@ function readCachedInsights(record) {
 function writeCachedInsights(record, generatedInsights) {
   try {
     const cache = JSON.parse(window.localStorage.getItem(INSIGHTS_CACHE_KEY) ?? "{}");
-    cache[buildInsightsCacheKey(record)] = {
-      alerts: generatedInsights.alerts ?? [],
-      recommendations: generatedInsights.recommendations ?? []
-    };
+    cache[buildInsightsCacheKey(record)] = normalizeGeneratedInsights(generatedInsights);
     window.localStorage.setItem(INSIGHTS_CACHE_KEY, JSON.stringify(cache));
   } catch {
     // Cache is only a performance hint; generation still works without it.
   }
+}
+
+function cleanGeneratedText(value) {
+  return String(value ?? "").replace(/^\s*(alerta|atenção|atencao|dica|recomendação|recomendacao)\s*[:：-]\s*/i, "").trim();
+}
+
+function normalizeGeneratedInsights(generatedInsights) {
+  return {
+    alerts: (generatedInsights.alerts ?? []).map(cleanGeneratedText).filter(Boolean),
+    recommendations: (generatedInsights.recommendations ?? []).map((item) => ({
+      title: cleanGeneratedText(item.title),
+      text: cleanGeneratedText(item.text)
+    })).filter((item) => item.title && item.text)
+  };
 }
 
 function MetricCard({ icon, label, note, tone = "blue", value }) {
@@ -106,6 +119,7 @@ export default function DashboardPage() {
   const latestRecordInsightKey = latestRecord ? buildInsightsCacheKey(latestRecord) : "";
   const alerts = insights.alerts;
   const recommendations = insights.recommendations;
+  const displayedRiskScore = Math.round(risk?.score ?? 0);
 
   useEffect(() => {
     const savedRecordStatus = window.sessionStorage.getItem("burnoutsense.recordSaved");
@@ -160,11 +174,12 @@ export default function DashboardPage() {
           return;
         }
 
-        writeCachedInsights(latestRecord, generatedInsights);
+        const normalizedInsights = normalizeGeneratedInsights(generatedInsights);
+        writeCachedInsights(latestRecord, normalizedInsights);
 
         setInsights({
-          alerts: generatedInsights.alerts ?? [],
-          recommendations: generatedInsights.recommendations ?? [],
+          alerts: normalizedInsights.alerts,
+          recommendations: normalizedInsights.recommendations,
           loading: false,
           error: ""
         });
@@ -243,7 +258,7 @@ export default function DashboardPage() {
               <p className="risk-support">{riskDescription(risk.tone)}</p>
             </div>
             <div className="risk-actions">
-              <span className="risk-score">{risk.score}</span>
+              <span className="risk-score">{displayedRiskScore}</span>
               <Link className="button secondary" href="/historico">Ver análise</Link>
             </div>
           </div>

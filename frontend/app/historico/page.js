@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useBurnoutStore } from "@/hooks/useBurnoutStore";
-import { emojiForMood, formatDateShort, formatHours, getRecordRisk, riskMetaLabel } from "@/lib/burnout-data";
+import { emojiForMood, formatDateShort, formatHours, getRecordRisk } from "@/lib/burnout-data";
 
 export default function HistoricoPage() {
   const { deleteRecord, records } = useBurnoutStore();

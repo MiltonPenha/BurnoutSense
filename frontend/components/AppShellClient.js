@@ -191,7 +191,7 @@ function MobileHeader({ isOpen, onToggle }) {
 function Sidebar({ className = "", onLogout, onNavigate, pathname }) {
   const { latestRecord, profile, ready } = useBurnoutStore();
   const risk = latestRecord ? getRecordRisk(latestRecord) : null;
-  const score = risk?.score ?? 0;
+  const score = Math.round(risk?.score ?? 0);
   const circumference = 2 * Math.PI * 44;
   const progress = Math.min(1, score / 10);
   const initials = profile.name?.trim()?.slice(0, 1)?.toUpperCase() || "E";

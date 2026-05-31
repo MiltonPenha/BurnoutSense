@@ -90,6 +90,7 @@ model PredictionResult {
   assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
   riskLevel    RiskLevel
   confidence   Float
+  riskScore    Float?
   mainFactors  Json
   modelVersion String
   createdAt    DateTime   @default(now())

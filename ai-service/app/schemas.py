@@ -26,6 +26,7 @@ class PredictionResponse(BaseModel):
 
     risk_level: str
     confidence: float
+    risk_score: float = Field(..., ge=1, le=10)
     model_used: str
     main_factors: list[str]
 

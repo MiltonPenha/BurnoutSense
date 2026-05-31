@@ -77,7 +77,7 @@ function MetricCard({ icon, label, note, tone = "blue", value }) {
   return (
     <article className={`card metric-card metric-${tone}`}>
       <div className="metric-label">
-        <span className="metric-icon emoji-icon" aria-hidden="true">{icon}</span>
+        <span className="metric-icon emoji-icon" aria-hidden="true"><span className="emoji-glyph">{icon}</span></span>
         <span>{label}</span>
       </div>
       <div className="metric-value">{value}</div>
@@ -89,7 +89,7 @@ function MetricCard({ icon, label, note, tone = "blue", value }) {
 function MiniStat({ icon, label, value, tone }) {
   return (
     <article className={`card overview-card stat-${tone}`}>
-      <span className="overview-icon emoji-icon" aria-hidden="true">{icon}</span>
+      <span className="overview-icon emoji-icon" aria-hidden="true"><span className="emoji-glyph">{icon}</span></span>
       <div>
         <strong>{value}</strong>
         <span>{label}</span>

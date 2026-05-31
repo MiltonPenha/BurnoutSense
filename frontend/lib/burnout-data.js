@@ -33,7 +33,7 @@ export function calculateRisk(record) {
   const qualityPenalty = Math.max(0, 7 - record.sleepQuality) * 0.24;
   const academicPressure = Math.max(0, (record.examPressure ?? 5) - 5) * 0.35;
   const screenPenalty = Math.max(0, (record.screenTime ?? 0) - 8) * 0.18;
-  const score = Math.round(stressWeight + tirednessWeight + sleepPenalty + qualityPenalty + academicPressure + screenPenalty);
+  const score = Math.min(10, Math.max(0, Math.round(stressWeight + tirednessWeight + sleepPenalty + qualityPenalty + academicPressure + screenPenalty)));
 
   if (score >= 8) {
     return { score, label: "Risco alto", tone: "danger" };
@@ -63,7 +63,7 @@ export function riskFromBackendResult(result) {
   };
 
   if (normalizedRiskLevel === "HIGH") {
-    return { ...base, score: 9, label: "Risco alto", tone: "danger" };
+    return { ...base, score: 10, label: "Risco alto", tone: "danger" };
   }
 
   if (normalizedRiskLevel === "MEDIUM") {

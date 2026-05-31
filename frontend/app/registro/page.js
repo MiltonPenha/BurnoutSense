@@ -446,7 +446,7 @@ export default function RegistroPage() {
             </div>
             <div className="field">
               <label htmlFor="sleepHours">Horas de sono</label>
-              <input className="input" id="sleepHours" min="0" max="18" required step="0.5" type="number" value={form.sleepHours} onChange={(event) => updateField("sleepHours", event.target.value)} />
+              <input className="input" id="sleepHours" min="0.5" max="18" required step="0.5" type="number" value={form.sleepHours} onChange={(event) => updateField("sleepHours", event.target.value)} />
             </div>
             <div className="field">
               <label htmlFor="studyHours">Horas de estudo</label>
@@ -556,6 +556,10 @@ function validateRecordPayload(record) {
     if (!Number.isFinite(value) || value < 0 || value > 24) {
       return `Informe um valor entre 0 e 24 para ${label}.`;
     }
+  }
+
+  if (record.sleepHours <= 0) {
+    return "Informe uma quantidade de sono maior que zero.";
   }
 
   const dailyTrackedHours = record.sleepHours + record.studyHours + record.screenTime;

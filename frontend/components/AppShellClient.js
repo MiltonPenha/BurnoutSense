@@ -177,7 +177,7 @@ function MobileHeader({ isOpen, onToggle }) {
     <header className="mobile-header">
       <Link className="mobile-brand" href="/dashboard" aria-label="Ir para o dashboard">
         <span className="mobile-brand-mark">
-          <Image className="brand-logo" src="/imgs/logo-BurnoutSense.svg" alt="" width={30} height={30} />
+          <Image className="brand-logo" src="/imgs/logo-BurnoutSense.svg" alt="" width={38} height={38} />
         </span>
         <span>BurnoutSense</span>
       </Link>

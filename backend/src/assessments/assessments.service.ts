@@ -132,6 +132,10 @@ function validateStoredAssessmentIndicators(assessmentIndicators: { date: Date; 
     throw new BadRequestException('A data do registro não pode ser futura.');
   }
 
+  if (assessmentIndicators.sleepHours <= 0) {
+    throw new BadRequestException('Informe uma quantidade de sono maior que zero.');
+  }
+
   const dailyTrackedHours = assessmentIndicators.sleepHours + assessmentIndicators.studyHours + assessmentIndicators.screenTime;
 
   if (dailyTrackedHours > 24) {

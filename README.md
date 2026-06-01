@@ -29,12 +29,15 @@ O frontend prioriza os resultados persistidos pelo backend, incluindo nível de 
 - Cadastro e login de usuários.
 - Registro diário de indicadores acadêmicos e de bem-estar.
 - Edição e exclusão de registros.
+- Edição de perfil com curso, período, foto local e preferências de notificação.
+- Exclusão de conta e dados vinculados.
 - Validação de data, impedindo registros futuros.
 - Validação de horas, impedindo que sono, estudo e tempo de tela ultrapassem 24 horas no mesmo dia.
 - Classificação de risco via AI Service.
 - Histórico de registros com risco, humor, estresse, sono e pressão acadêmica.
 - Dashboard com métricas consolidadas.
 - Alertas preventivos e recomendações geradas por IA generativa.
+- Alertas por e-mail para risco alto e lembrete diário opcional, quando SMTP estiver configurado.
 - Tela `/status` para verificar backend, banco, AI Service e carregamento do modelo.
 
 ## Inteligência Artificial
@@ -108,7 +111,8 @@ Sem chave de IA generativa, o sistema mantém a classificação de risco do mode
 
 - A data pode ser hoje ou uma data passada.
 - Datas futuras são bloqueadas no frontend e no backend.
-- Horas de sono, estudo e tempo de tela começam em `0`.
+- Horas de sono, estudo e tempo de tela começam em `0` no formulário.
+- Para salvar, horas de sono precisam ser maiores que `0`.
 - Sliders começam no ponto médio da escala.
 - A soma de sono, estudo e tempo de tela não pode ultrapassar 24 horas.
 - Humor é salvo apenas como informação contextual.
@@ -169,7 +173,9 @@ Resumo do fluxo recomendado:
 
 Os dados coletados têm finalidade acadêmica e preventiva, limitada ao acompanhamento dos indicadores informados pelo estudante. O projeto deve manter minimização de dados, uso restrito ao contexto do TCC, transparência sobre limitações do modelo e aviso claro de que a análise não substitui avaliação clínica.
 
-Como evolução futura, recomenda-se implementar exclusão completa de conta e dados, revisão de consentimento e políticas formais para eventual uso fora do ambiente acadêmico.
+A exclusão completa de conta e dados vinculados já está disponível pela tela de perfil e pelo endpoint `DELETE /users/me`.
+
+Como evolução futura, recomenda-se reforçar revisão de consentimento, políticas formais para eventual uso fora do ambiente acadêmico e documentação operacional de retenção, exportação e auditoria de dados.
 
 ## Integrantes
 

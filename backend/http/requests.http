@@ -91,7 +91,31 @@ Authorization: Bearer {{accessToken}}
 GET {{baseUrl}}/results/{{assessmentId}}
 Authorization: Bearer {{accessToken}}
 
-### Simulated AI prediction
+### Generate dashboard insights
+GET {{baseUrl}}/results/{{assessmentId}}/insights
+Authorization: Bearer {{accessToken}}
+
+### Update assessment
+PATCH {{baseUrl}}/assessments/{{assessmentId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "studyHours": 7,
+  "sleepHours": 6,
+  "sleepQuality": 6,
+  "stressLevel": 7,
+  "tirednessLevel": 6,
+  "academicPerformance": 7,
+  "examPressure": 7,
+  "screenTime": 8,
+  "socialSupport": 6,
+  "financialStress": 4,
+  "physicalActivity": 3,
+  "motivationLevel": 6
+}
+
+### AI prediction through ai-service
 POST {{baseUrl}}/ai/predict
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json
@@ -108,3 +132,6 @@ Content-Type: application/json
   "physicalActivity": 3,
   "motivationLevel": 7
 }
+
+### System status
+GET {{baseUrl}}/status

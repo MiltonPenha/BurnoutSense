@@ -265,8 +265,8 @@ export default function DashboardPage() {
 
           <div className="overview-grid">
             <MiniStat icon="📈" label="registros acompanhados" value={records.length} tone="blue" />
-            <MiniStat icon="⚡" label="média de estresse" value={`${average(records, "stress")}/10`} tone="amber" />
-            <MiniStat icon="🌙" label="média de sono" value={`${average(records, "sleepQuality")}/10`} tone="mint" />
+            <MiniStat icon="⚡" label="média de nível de estresse" value={`${average(records, "stress")}/10`} tone="amber" />
+            <MiniStat icon="🌙" label="média de qualidade do sono" value={`${average(records, "sleepQuality")}/10`} tone="mint" />
           </div>
 
           <div className="metrics-grid">

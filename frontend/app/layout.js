@@ -31,6 +31,11 @@ export const metadata = {
   ],
   authors: [{ name: "Equipe BurnoutSense" }],
   creator: "Equipe BurnoutSense",
+  icons: {
+    icon: [{ url: "/imgs/logo-BurnoutSense.svg", type: "image/svg+xml" }],
+    shortcut: "/imgs/logo-BurnoutSense.svg",
+    apple: "/imgs/logo-BurnoutSense.svg"
+  },
   openGraph: {
     title: "BurnoutSense",
     description:

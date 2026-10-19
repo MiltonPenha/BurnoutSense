@@ -3,7 +3,6 @@ from __future__ import annotations
 import re
 
 import pandas as pd
-from sklearn.preprocessing import LabelEncoder
 
 
 TARGET_ALIASES = [
@@ -39,8 +38,6 @@ FEATURE_ALIASES = {
     "financial_stress": ["financial_stress", "financial_pressure", "money_stress"],
     "dropout_risk": ["dropout_risk", "dropout", "evasion_risk", "risco_de_evasao"],
 }
-
-DEFAULT_EXCLUDED_FEATURES = ["dropout_risk"]
 
 
 def standardize_column_name(column: str) -> str:
@@ -112,10 +109,3 @@ def normalize_risk_label(value: str) -> str:
     if normalized in {"high", "alto", "alta", "2"}:
         return "high"
     return value.strip().lower()
-
-
-def encode_categorical_columns(df: pd.DataFrame) -> pd.DataFrame:
-    encoded = df.copy()
-    for column in encoded.select_dtypes(include=["object", "category", "bool"]).columns:
-        encoded[column] = LabelEncoder().fit_transform(encoded[column].astype(str))
-    return encoded

@@ -116,7 +116,7 @@ ou pergunta exata. `validate_record` rejeita campos administrativos e quaisquer
 colunas extras, inclusive metadados de exportação, sem registrar seu conteúdo.
 Não há identificadores de conta, mecanismos de vinculação ou exemplos pessoais.
 
-### ESB-eu e reutilização na Etapa 2
+### ESB-eu e cálculo dos escores (Etapa 2)
 
 O Anexo 1 confirma o mapeamento e apresenta somas diretas, sem inversão:
 
@@ -127,20 +127,48 @@ O Anexo 1 confirma o mapeamento e apresenta somas diretas, sem inversão:
 | Ineficácia da formação (`INEF`) | 11–14 | `False` |
 
 Todos os itens são obrigatórios e aceitam inteiros de 0 a 4: Nunca, Raramente,
-Às vezes, Frequentemente e Todos os dias. Não há cálculo de médias, pontos de
-corte, porcentagens ou classes de risco no novo módulo.
+Às vezes, Frequentemente e Todos os dias. `form_schema.py` mantém apenas as
+definições e validações; o cálculo está em `training/esbeu_scoring.py`.
 
-`esbeu_scoring.py`, na próxima etapa, poderá consumir `ESBEU_FIELDS`,
-`ESBEU_BY_DIMENSION` e os valores já validados. Primeiro será necessário definir
-explicitamente a política de registros incompletos; esta etapa rejeita ausências
-e não imputa respostas. Exemplo de uso sem dados de participantes:
+`calculate_esbeu_scores(record)` recebe um mapeamento com os 14 IDs canônicos,
+revalida cada item usando `validate_value` e retorna a dataclass imutável
+`EsbeuScores`, com médias aritméticas sem arredondamento:
+
+- `overall`: soma dos 14 itens dividida por 14.
+- `emotional_physical_exhaustion`: média dos 6 itens DEF.
+- `distancing`: média dos 4 itens DIST.
+- `training_inefficacy`: média dos 4 itens INEF.
+
+A média geral não é a média simples das três dimensões. Os agrupamentos vêm
+de `ESBEU_BY_DIMENSION`; as definições não são duplicadas no módulo de cálculo.
+Todos os resultados usam a escala original 0–4, sem pontos de corte, diagnóstico,
+porcentagens, inversões ou classificação de risco.
+
+Somente inteiros Python de 0 a 4 são aceitos. Ausências, `None`, booleanos,
+strings, floats (inclusive `2.0`) e respostas especiais geram
+`ResponseValidationError`, identificando o item sem expor seu valor. Não há
+imputação nem cálculo parcial. O mapeamento recebido não é modificado.
+
+Um registro analítico completo, já aprovado por `validate_record`, também pode
+ser fornecido. O cálculo lê somente os itens ESB-eu; não lê nem retorna campos
+extras. A validação de consentimento/elegibilidade e a exclusão de campos
+administrativos continuam sob responsabilidade de `form_schema` e do futuro
+importador. O cálculo isolado não admite participantes na base de pesquisa.
+
+Exemplo inteiramente sintético, executado a partir de `ai-service`:
 
 ```python
-from training.form_schema import ESBEU_BY_DIMENSION, validate_schema, validate_value
+from training.esbeu_scoring import calculate_esbeu_scores
+from training.form_schema import ESBEU_FIELDS
 
-validate_schema()  # verifica integridade do instrumento
-assert validate_value("esbeu_01", 0) == 0  # exemplo inteiramente sintético
+synthetic_record = {field.identifier: 2 for field in ESBEU_FIELDS}
+scores = calculate_esbeu_scores(synthetic_record)
+assert scores.overall == 2.0
 ```
+
+Não há dependências adicionais, acesso a arquivos/banco ou integração com a API
+legada. As próximas etapas podem consumir as quatro médias sem repetir fórmulas.
+Políticas de dados incompletos permanecem reservadas para discussão futura.
 
 ### Testes e auditoria do legado
 
@@ -148,8 +176,13 @@ Na pasta `ai-service`, sem instalar dependências adicionais:
 
 ```bash
 python -m unittest discover -s tests -v
+python -m unittest discover -s tests -p test_esbeu_scoring.py -v
 python -m compileall -q app training tests
 ```
+
+`tests/test_esbeu_scoring.py` cobre extremos, resultados manuais, agrupamentos,
+ponderação correta da média geral, contribuição individual dos itens, respostas
+inválidas, imutabilidade, preservação da entrada e compatibilidade com a Etapa 1.
 
 Os testes cobrem os 39 campos, distribuição 3/22/14, exclusão administrativa,
 imutabilidade, duplicações, integridade das definições, tipos, alternativas,

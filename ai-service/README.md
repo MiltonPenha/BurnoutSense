@@ -242,6 +242,92 @@ responsabilidades futuras. Nenhuma dependência adicional foi necessária.
 
 Testes específicos: `python -m unittest discover -s tests -p test_import_forms.py -v`.
 
+### Pré-processamento para regressão (Etapa 4)
+
+`training/regression_preprocessing.py` é independente de `preprocess.py`, ainda
+utilizado pelo treinamento de classificação. Não lê arquivos, treina modelos ou
+produz métricas. Reutiliza o esquema e `calculate_esbeu_scores`.
+
+`prepare_regression_data(records, predictors=ALLOWED_PREDICTORS)` recebe registros
+canônicos completos e elegíveis, inclusive `ImportResult.records`, revalida-os e
+retorna `RegressionData`: `X` (DataFrame canônico), `y` (Series `esbeu_overall`) e
+`predictors` (tupla ordenada). Os índices posicionais de X/y coincidem e preservam
+a ordem da entrada. Nenhum ajuste ocorre nessa preparação. O contêiner é frozen;
+os DataFrames/Series retornados são cópias independentes, mas continuam mutáveis.
+
+A lista explícita permitida contém os 22 campos contextuais:
+`age_range`, `course_area`, `semester`, `course_shift`, `subject_count`,
+`mandatory_hours_week`, `independent_hours_week`, `employment`, `work_hours_week`,
+`sleep_hours`, `sleep_quality`, `physical_activity_days`, `subject_overload`,
+`assessment_pressure`, `extraclass_overload`, `study_rest_difficulty`,
+`study_work_difficulty`, `teacher_difficulties`, `peer_difficulties`,
+`personal_support`, `academic_support`, `financial_concern`.
+
+`validate_predictors` permite apenas subconjuntos não vazios e sem duplicatas
+dessa lista. Itens/escores ESB-eu, consentimento, elegibilidade, e-mail, metadados
+e campos derivados/desconhecidos são proibidos. Registros com extras também são
+rejeitados pelo esquema. Alterar os itens do desfecho não altera X. Não existe
+seleção automática por tipo numérico nem seleção baseada em y.
+
+`build_regression_preprocessor(predictors=ALLOWED_PREDICTORS, scale_numeric=True)`
+retorna um `Pipeline` **não ajustado**, com `ContextFrameValidator` seguido de
+`ColumnTransformer`. X deve conter exatamente os preditores configurados, na
+mesma ordem, tanto no fit quanto no transform. O validador rejeita ausências,
+tipos incorretos, alternativas inválidas e colunas extras antes da codificação.
+
+- Valores quantitativos e ordinais inteiros mantêm os valores canônicos antes
+  do escalonamento opcional por `StandardScaler`.
+- Categorias ordinais textuais (`age_range`, `physical_activity_days`) seguem
+  os índices 0-based das alternativas ordenadas do esquema. São postos ordinais,
+  não idades exatas ou intervalos de duração presumidos.
+- Categorias nominais usam `OneHotEncoder`, sem ordem artificial. Não há campos
+  contextuais binários no instrumento atual; os critérios binários são excluídos.
+- `study_work_difficulty` usa One-Hot para as respostas 0–4 e `Não se aplica`.
+  Essa estratégia preserva as alternativas sem atribuir posição ordinal ao NA.
+  Não se faz imputação numérica para esse campo nem se confunde NA com zero.
+- As categorias One-Hot são aprendidas apenas no treino. Categorias não vistas
+  nesse ajuste, mesmo válidas no instrumento, causam erro explícito em novos
+  registros, sem reajustar o codificador. Isso inclui NA ausente no treino.
+- Todos os campos são obrigatórios: ausências são rejeitadas, sem imputação ou
+  criação de desfechos parciais. Registros vazios/inelegíveis são rejeitados.
+
+Exemplo com registros inteiramente fictícios, em `ai-service`:
+
+```python
+from training.form_schema import ANALYTICAL_FIELDS
+from training.regression_preprocessing import (
+    prepare_regression_data, build_regression_preprocessor,
+)
+
+synthetic = {f.identifier: f.choices[0] if f.choices else f.minimum
+             for f in ANALYTICAL_FIELDS}
+data = prepare_regression_data([synthetic, dict(synthetic)])
+X_train, X_test = data.X.iloc[:1], data.X.iloc[1:]
+processor = build_regression_preprocessor(data.predictors)
+train_matrix = processor.fit_transform(X_train)
+test_matrix = processor.transform(X_test)
+feature_names = processor.get_feature_names_out()
+```
+
+João deverá dividir os registros/índices de X e y antes do ajuste. Para validação
+cruzada, inserir o pré-processador não ajustado no Pipeline de cada estimador,
+ajustando novamente somente no treino de cada fold. Nunca ajustar antes da
+divisão nem usar `fit_transform` no conjunto de teste. Para preservar unidades,
+`scale_numeric=False` desativa a padronização. A saída é uma matriz densa; nomes
+e ordem das características ficam disponíveis após fit, com prefixos
+`numeric__`/`categorical__`. As definições e unidades originais permanecem em
+`FIELDS_BY_ID`; os passos ajustados expõem categorias e parâmetros aprendidos.
+
+Testes: `python -m unittest discover -s tests -p test_regression_preprocessing.py -v`.
+A suíte completa permanece `python -m unittest discover -s tests -v`. Os testes
+usam apenas dados sintéticos e cobrem isolamento de estatísticas, categorias,
+proibição de preditores e estabilidade da transformação. Nenhuma dependência
+foi adicionada. Verificação local realizada com scikit-learn 1.8.0/pandas 2.3.3;
+as versões fixadas em requirements (1.5.1/2.2.2) não foram executadas neste ambiente.
+O legado continua com sua imputação e aliases próprios, sem reutilização dessas
+regras no fluxo de regressão. A conferência dos cabeçalhos do CSV oficial continua
+pendente. Modelos e avaliação pertencem à Etapa 5 e não foram implementados aqui.
+
 ### Testes e auditoria do legado
 
 Na pasta `ai-service`, sem instalar dependências adicionais:

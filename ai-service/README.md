@@ -92,9 +92,10 @@ matrícula é a física 4 e lógica 3. Os 39 campos analíticos usam as ordens f
 
 As funções recebem valores **canônicos Python**, não células brutas de CSV.
 Por exemplo, `7.5` é aceito, enquanto `"7,5"`, `"7.5"`, `"0 — Nunca"`, `NaN`,
-strings vazias e marcadores improvisados são rejeitados. O importador futuro
-deverá analisar explicitamente decimais e alternativas rotuladas; conversões,
-normalização de cabeçalhos e serialização de enums estão fora desta etapa.
+strings vazias e marcadores improvisados são rejeitados. O importador da Etapa 3
+faz conversões explícitas na fronteira CSV; os validadores canônicos continuam
+sem coerção textual. Não há normalização automática de cabeçalhos ou serialização
+de enums neste módulo de esquema.
 
 ### Elegibilidade e privacidade
 
@@ -169,6 +170,77 @@ assert scores.overall == 2.0
 Não há dependências adicionais, acesso a arquivos/banco ou integração com a API
 legada. As próximas etapas podem consumir as quatro médias sem repetir fórmulas.
 Políticas de dados incompletos permanecem reservadas para discussão futura.
+
+### Importador Google Forms (Etapa 3)
+
+`training.import_forms.import_forms_csv(source, header_mapping, *, delimiter=",",
+encoding="utf-8-sig")` aceita caminho (`str`/`Path`) ou stream de texto.
+Caminhos são abertos somente para leitura, com suporte ao BOM UTF-8. Streams
+devem estar decodificados; não são fechados nem modificados, mas a leitura avança.
+
+O mapeamento é **cabeçalho literal → ID canônico**, em mapping ou sequência de
+pares. Exige os 39 campos exatamente uma vez. Não normaliza numeração, acentos,
+espaços, pontuação ou quebras de linha e não presume cabeçalhos oficiais.
+Cabeçalhos ausentes, vazios ou duplicados e mapas ambíguos abortam a operação.
+
+Exemplo inteiramente sintético, a partir de `ai-service`:
+
+```python
+import csv
+from io import StringIO
+from training.form_schema import ANALYTICAL_FIELDS
+from training.import_forms import import_forms_csv
+
+mapping = {f"Pergunta fictícia {i}": field.identifier
+           for i, field in enumerate(ANALYTICAL_FIELDS, 1)}
+stream = StringIO(newline="")
+writer = csv.writer(stream)
+writer.writerow(mapping)
+writer.writerow([field.choices[0] if field.choices else field.minimum
+                 for field in ANALYTICAL_FIELDS])
+stream.seek(0)
+result = import_forms_csv(stream, mapping)
+assert result.eligible_count == 1
+```
+
+A conversão é restrita: inteiros textuais, decimais com ponto/vírgula (sem
+milhares ou expoentes) e alternativas `n — texto` com rótulo canônico exato.
+Categorias mantêm o texto integral; não há múltipla seleção no esquema atual.
+Floats textuais como `2.0` não são aceitos nos itens inteiros. Células vazias ou
+só com espaços representam ausência. `Não se aplica` mantém o enum canônico
+somente no campo autorizado. Não há imputação nem conversão estatística.
+
+Todos os campos passam por `validate_value` antes de `validate_record`.
+Respostas negativas com campos válidos são inelegíveis; linhas incompletas,
+inclusive com consentimento negativo, são estruturalmente inválidas. Essa
+precedência não altera o contrato de elegibilidade da Etapa 1. Linhas com
+quantidade incorreta de células são rejeitadas. Não há cálculo de escores.
+
+`ImportResult` retorna `rows_read`, `eligible_count`, `ineligible_count`,
+`rejected_count`, `records`, `issues` e `excluded_columns`. Apenas registros
+elegíveis são retidos, na ordem original, em tuplas de mapas somente de leitura.
+`RowIssue` contém linha lógica CSV (cabeçalho = 1, independente de células
+multilinha), tipo `invalid`/`ineligible`, ID canônico quando aplicável e motivo.
+Informa-se o primeiro erro da linha; respostas rejeitadas não são armazenadas.
+
+Somente colunas explicitamente aprovadas entram na saída. Extras, como e-mail
+administrativo e timestamp, são descartados e sinalizados exclusivamente pelas
+posições a partir de 1 em `excluded_columns`, sem nomes ou conteúdos. Cabeçalhos
+administrativos conhecidos não podem ser mapeados. O responsável pelo mapa deve
+conferir a origem semântica de cada coluna; o importador não tenta adivinhá-la.
+
+CSV vazio aborta; somente cabeçalhos retorna zero registros. Falhas de leitura,
+codificação e sintaxe geram `FormsImportError` sanitizado, sem resultados parciais
+ou exceção interna encadeada. Erros de célula rejeitam somente a linha. Não se
+devem registrar streams nem respostas brutas em logs.
+
+**Pendência:** conferir os cabeçalhos literais em documentação aprovada antes da
+primeira importação real. Não se declara reconhecimento automático do CSV
+oficial. Nenhuma resposta real foi acessada. A Etapa 4 poderá consumir
+`result.records`; serialização de enums e pré-processamento estatístico são
+responsabilidades futuras. Nenhuma dependência adicional foi necessária.
+
+Testes específicos: `python -m unittest discover -s tests -p test_import_forms.py -v`.
 
 ### Testes e auditoria do legado
 

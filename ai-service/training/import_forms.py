@@ -10,6 +10,8 @@ from typing import TextIO
 
 from training.form_schema import (
     ADMINISTRATIVE_HEADERS,
+    ANALYTICAL_FIELDS,
+    ELIGIBILITY_FIELDS,
     FIELDS_BY_ID,
     IneligibleRecordError,
     ResponseValidationError,
@@ -46,6 +48,32 @@ class ImportResult:
 
 
 HeaderMapping = Mapping[str, str] | Sequence[tuple[str, str]]
+
+OFFICIAL_ADMINISTRATIVE_HEADERS = (
+    "Carimbo de data/hora", "E-mail para recebimento da cópia do TCLE",
+)
+
+
+def official_header_mapping() -> Mapping[str, str]:
+    """Literal headers from the schema and the documented export conventions.
+
+    The administrative email occupies physical position 3; numbered analytical
+    questions after it use physical order minus one. ESB-eu has no prefix.
+    Only the documented work-hours header receives an extra trailing space.
+    """
+    mapping = {}
+    for field in ANALYTICAL_FIELDS:
+        if field.group == "esbeu":
+            header = field.question
+        else:
+            number = field.form_order - (1 if field.form_order > 3 else 0)
+            header = f"{number}. {field.question}"
+        if field.identifier == "work_hours_week":
+            header += " "
+        if header in mapping:
+            raise FormsImportError("Cabeçalhos oficiais ambíguos no esquema.")
+        mapping[header] = field.identifier
+    return MappingProxyType(mapping)
 
 
 def _mapping_pairs(header_mapping: HeaderMapping) -> tuple[tuple[str, str], ...]:
@@ -95,7 +123,7 @@ def _convert(identifier: str, raw: str) -> Value:
 
 
 def _read(stream: TextIO, pairs: tuple[tuple[str, str], ...],
-          delimiter: str) -> ImportResult:
+          delimiter: str, allowed_extra_headers: tuple[str, ...] | None) -> ImportResult:
     reader = csv.reader(stream, delimiter=delimiter, strict=True)
     headers = next(reader, None)
     if not headers:
@@ -107,7 +135,12 @@ def _read(stream: TextIO, pairs: tuple[tuple[str, str], ...],
     positions = {header: i for i, header in enumerate(headers)}
     if any(header not in positions for header, _ in pairs):
         raise FormsImportError("Cabeçalhos mapeados ausentes; confira o delimitador.")
+    if allowed_extra_headers is not None:
+        expected = {header for header, _ in pairs} | set(allowed_extra_headers)
+        if set(headers) != expected:
+            raise FormsImportError("Cabeçalhos incompatíveis com o formato configurado.")
     columns = tuple((positions[header], identifier) for header, identifier in pairs)
+    by_identifier = {identifier: index for index, identifier in columns}
     approved = {index for index, _ in columns}
     excluded = tuple(i + 1 for i in range(len(headers)) if i not in approved)
     records, issues = [], []
@@ -120,6 +153,11 @@ def _read(stream: TextIO, pairs: tuple[tuple[str, str], ...],
                                    "Quantidade de células difere do cabeçalho."))
             continue
         try:
+            # A valid negative criterion ends participation, even with later blanks.
+            for field in ELIGIBILITY_FIELDS:
+                criterion = _convert(field.identifier, row[by_identifier[field.identifier]])
+                if criterion != field.choices[0]:
+                    raise IneligibleRecordError()
             record = {identifier: _convert(identifier, row[index])
                       for index, identifier in columns}
             validated = validate_record(record)
@@ -137,13 +175,17 @@ def _read(stream: TextIO, pairs: tuple[tuple[str, str], ...],
 
 
 def import_forms_csv(source: str | Path | TextIO, header_mapping: HeaderMapping,
-                     *, delimiter: str = ",", encoding: str = "utf-8-sig") -> ImportResult:
+                     *, delimiter: str = ",", encoding: str = "utf-8-sig",
+                     allowed_extra_headers: tuple[str, ...] | None = None) -> ImportResult:
     """Import an explicitly mapped CSV, without changing or closing caller streams.
 
     Headers match literally. Maps must cover all 39 fields once; extra columns
     are excluded and reported by 1-based position only. Numeric parsing is
-    strict; categorical strings are preserved. All fields are validated before
-    eligibility, so incomplete negative-consent rows are structurally rejected.
+    strict; categorical strings are preserved. Eligibility is checked in form
+    order: a valid negative skips later fields; earlier missing/invalid criteria
+    reject the row. All positive criteria require complete analytical validation.
+    If allowed_extra_headers is provided, the exact mapped+extra header set is
+    required; otherwise extra columns are discarded as before.
     Row numbers identify logical CSV records (header = 1), not physical lines.
     Encoding applies to paths; text streams must already be decoded correctly.
     File/configuration failures abort the import; cell failures reject one row.
@@ -155,8 +197,8 @@ def import_forms_csv(source: str | Path | TextIO, header_mapping: HeaderMapping,
     try:
         if isinstance(source, (str, Path)):
             with open(source, encoding=encoding, newline="") as stream:
-                return _read(stream, pairs, delimiter)
-        return _read(source, pairs, delimiter)
+                return _read(stream, pairs, delimiter, allowed_extra_headers)
+        return _read(source, pairs, delimiter, allowed_extra_headers)
     except (UnicodeError, LookupError):
         failure = "Falha na codificação do CSV."
     except csv.Error:
@@ -165,3 +207,12 @@ def import_forms_csv(source: str | Path | TextIO, header_mapping: HeaderMapping,
         failure = "Não foi possível ler o CSV."
     # Raise outside the handler: the error object must not retain raw exceptions.
     raise FormsImportError(failure)
+
+
+def import_official_forms_csv(source: str | Path | TextIO, *, delimiter: str = ",",
+                              encoding: str = "utf-8-sig") -> ImportResult:
+    """Require the documented 41-column export, without fuzzy header matching."""
+    return import_forms_csv(
+        source, official_header_mapping(), delimiter=delimiter, encoding=encoding,
+        allowed_extra_headers=OFFICIAL_ADMINISTRATIVE_HEADERS,
+    )

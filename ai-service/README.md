@@ -210,11 +210,15 @@ Floats textuais como `2.0` não são aceitos nos itens inteiros. Células vazias
 só com espaços representam ausência. `Não se aplica` mantém o enum canônico
 somente no campo autorizado. Não há imputação nem conversão estatística.
 
-Todos os campos passam por `validate_value` antes de `validate_record`.
-Respostas negativas com campos válidos são inelegíveis; linhas incompletas,
-inclusive com consentimento negativo, são estruturalmente inválidas. Essa
-precedência não altera o contrato de elegibilidade da Etapa 1. Linhas com
-quantidade incorreta de células são rejeitadas. Não há cálculo de escores.
+A partir da Etapa 4.1, a estrutura CSV é verificada primeiro (incluindo número
+de células). Depois, consentimento, idade e matrícula são validados em sequência
+com `validate_value`. Uma negativa válida interrompe a participação: campos
+posteriores vazios ou incompatíveis não invalidam essa recusa. Critério ausente
+ou inválido antes da interrupção é erro, mesmo se houver uma negativa posterior.
+Com os três critérios positivos, todos os 39 campos passam pela conversão e por
+`validate_record`. Nenhum registro inelegível é retornado para análise. O esquema
+canônico permanece inalterado; o importador agora respeita os saltos do formulário.
+Não há cálculo automático de escores.
 
 `ImportResult` retorna `rows_read`, `eligible_count`, `ineligible_count`,
 `rejected_count`, `records`, `issues` e `excluded_columns`. Apenas registros
@@ -234,13 +238,56 @@ codificação e sintaxe geram `FormsImportError` sanitizado, sem resultados parc
 ou exceção interna encadeada. Erros de célula rejeitam somente a linha. Não se
 devem registrar streams nem respostas brutas em logs.
 
-**Pendência:** conferir os cabeçalhos literais em documentação aprovada antes da
-primeira importação real. Não se declara reconhecimento automático do CSV
-oficial. Nenhuma resposta real foi acessada. A Etapa 4 poderá consumir
+O modo configurável continua exigindo um mapa literal aprovado. A Etapa 4.1
+acrescenta um modo oficial descrito abaixo, baseado nas convenções documentadas,
+sem consultar respostas de participantes. A Etapa 4 poderá consumir
 `result.records`; serialização de enums e pré-processamento estatístico são
 responsabilidades futuras. Nenhuma dependência adicional foi necessária.
 
 Testes específicos: `python -m unittest discover -s tests -p test_import_forms.py -v`.
+
+### Compatibilidade com a exportação oficial (Etapa 4.1)
+
+`official_header_mapping()` gera um mapa somente de leitura com os 39 campos,
+usando enunciados e ordens de `form_schema.py`. As perguntas lógicas 1–25 usam
+`n. enunciado`: após a posição física 3 (e-mail), subtrai-se uma posição. Os
+14 enunciados ESB-eu são usados sem prefixos. O cabeçalho de `work_hours_week`
+recebe exatamente um espaço final, conforme a exportação descrita. Não há trim,
+fuzzy matching ou associação pela posição das colunas recebidas.
+
+`import_official_forms_csv(source, *, delimiter=",", encoding="utf-8-sig")` exige
+exatamente esses 39 cabeçalhos e as colunas `Carimbo de data/hora` e
+`E-mail para recebimento da cópia do TCLE`, totalizando 41. A ordem física do CSV
+pode variar; o mapeamento continua literal. Cabeçalhos desconhecidos, ausentes
+ou duplicados abortam com erro seguro. As duas colunas administrativas são
+descartadas sem armazenar seus nomes/valores nos diagnósticos do resultado.
+
+O importador configurável `import_forms_csv` permanece disponível. O parâmetro
+opcional `allowed_extra_headers` exige o conjunto exato de cabeçalhos mapeados
+mais os extras declarados; `None` mantém o descarte/sinalização de extras da
+Etapa 3. `import_official_forms_csv` usa esse controle para verificar as 41 colunas.
+
+Inteiros simples 0–4 e alternativas com travessão, como `2 — Às vezes` e
+`2 — Moderadamente`, passam pela conversão já existente, com rótulos exatos do
+esquema. Decimais como `5,5`, `5.5` e `8.0` são aceitos nos campos numéricos
+decimais. Campos inteiros continuam rejeitando `2.0`; o contrato canônico não
+foi relaxado. `Não se aplica` continua distinto de zero e ausência. Não houve
+alteração de itens, inversão, dimensões ou fórmulas ESB-eu.
+
+Uso futuro, apenas com arquivo local autorizado fora do repositório:
+`result = import_official_forms_csv(private_path)` (importar a função de
+`training.import_forms`). Nenhum arquivo real foi aberto para implementar ou
+verificar esta etapa. A compatibilidade foi testada exclusivamente com CSVs
+manualmente sintetizados segundo o formato documentado na solicitação. Se a
+exportação mudar, o modo oficial falhará explicitamente; revisar a documentação
+de cabeçalhos ou fornecer mapa aprovado, sem inspecionar respostas privadas.
+
+Testes: `python -m unittest discover -s tests -p test_official_forms_csv.py -v`.
+A suíte completa permanece `python -m unittest discover -s tests -v`. Os testes
+incluem interrupções por consentimento/idade/matrícula, privacidade, espaço final,
+41 colunas e cálculos independentes sobre exemplos ESB-eu sintéticos. O teste
+anterior de inelegibilidade foi atualizado para a nova precedência solicitada,
+sem retirar as verificações de erro dos critérios e dos registros elegíveis.
 
 ### Pré-processamento para regressão (Etapa 4)
 
@@ -325,8 +372,8 @@ proibição de preditores e estabilidade da transformação. Nenhuma dependênci
 foi adicionada. Verificação local realizada com scikit-learn 1.8.0/pandas 2.3.3;
 as versões fixadas em requirements (1.5.1/2.2.2) não foram executadas neste ambiente.
 O legado continua com sua imputação e aliases próprios, sem reutilização dessas
-regras no fluxo de regressão. A conferência dos cabeçalhos do CSV oficial continua
-pendente. Modelos e avaliação pertencem à Etapa 5 e não foram implementados aqui.
+regras no fluxo de regressão. O formato documentado do CSV oficial é tratado na
+Etapa 4.1 acima. Modelos e avaliação pertencem à Etapa 5 e não foram implementados aqui.
 
 ### Testes e auditoria do legado
 
@@ -378,9 +425,10 @@ orientações mencionam envio automático do TCLE e o termo descreve envio pela
 equipe. A equipe deve conferir a navegação e o procedimento no Google Forms;
 esta implementação não acessa nem altera o formulário online.
 
-As regras ocultas de validação do Google Forms e os cabeçalhos exatos da futura
-exportação não aparecem no PDF. Devem ser conferidos antes de criar o importador,
-sem acessar respostas reais nesta etapa. O mapeamento e a pontuação direta dos
+As regras ocultas de validação do Google Forms não aparecem no PDF. O formato
+de cabeçalhos documentado posteriormente na Etapa 4.1 está implementado sem
+acessar respostas reais. Mudanças futuras exigem revisão explícita do mapa.
+O mapeamento e a pontuação direta dos
 14 itens foram confirmados; não há recodificação presumida pendente.
 
 O arquivo de modelo treinado não está presente no checkout; a verificação da API

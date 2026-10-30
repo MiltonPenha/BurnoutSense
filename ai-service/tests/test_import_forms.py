@@ -109,7 +109,8 @@ class ImportFormsTests(unittest.TestCase):
             self.assertEqual(result.records, ())
             record["esbeu_01"] = ""
             result = import_forms_csv(synthetic_csv([record]), MAPPING)
-            self.assertEqual((result.ineligible_count, result.rejected_count), (0, 1))
+            # Etapa 4.1: later unanswered fields no longer invalidate a valid refusal.
+            self.assertEqual((result.ineligible_count, result.rejected_count), (1, 0))
 
     def test_empty_and_header_only(self):
         with self.assertRaises(FormsImportError):

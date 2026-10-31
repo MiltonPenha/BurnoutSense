@@ -37,6 +37,7 @@ model User {
   semester      String?
   avatarUrl     String?
   assessments   Assessment[]
+  esbeuAssessments EsbeuAssessment[]
   sessions      AuthSession[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
@@ -104,4 +105,31 @@ model PredictionResult {
   createdAt        DateTime         @default(now())
 
   @@map("prediction_results")
+}
+
+// Separate from historical classification; no research CSV is imported here.
+model EsbeuAssessment {
+  id                 String   @id @default(uuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  context            Json
+  observedItems      Json?
+  estimatedOverall   Float
+  observedOverall    Float?
+  observedExhaustion Float?
+  observedDistancing Float?
+  observedInefficacy Float?
+  modelName          String
+  modelVersion       String
+  datasetVersion     String
+  contractVersion    String
+  formVersion        String
+  consentVersion     String
+  consentAcceptedAt  DateTime
+  adultConfirmed     Boolean
+  enrolledConfirmed  Boolean
+  createdAt          DateTime @default(now())
+
+  @@index([userId, createdAt, id])
+  @@map("esbeu_assessments")
 }

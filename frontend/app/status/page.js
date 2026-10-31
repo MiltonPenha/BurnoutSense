@@ -27,26 +27,12 @@ function statusTone(value, loaded) {
   return "danger";
 }
 
-const TRAINING_STRATEGY_LABELS = {
-  custom_class_sampling: "Amostragem balanceada por classe",
-  focused_high_recall_sampling: "Amostragem ajustada para melhorar as métricas",
-  final_without_dropout_or_internet: "Sem variáveis de vazamento",
-};
-
 function formatModelName(modelName) {
   if (!modelName) {
     return "Modelo não informado";
   }
 
   return modelName.includes("Random Forest") ? "Random Forest" : modelName;
-}
-
-function formatTrainingStrategy(strategy) {
-  if (!strategy) {
-    return "";
-  }
-
-  return TRAINING_STRATEGY_LABELS[strategy] ?? strategy.replaceAll("_", " ");
 }
 
 function StatusCard({ label, note, status, tone }) {
@@ -97,9 +83,8 @@ export default function StatusPage() {
 
   const modelStatus = status?.model?.loaded ? "loaded" : status?.model?.status;
   const modelName = formatModelName(status?.model?.modelName);
-  const trainingStrategy = formatTrainingStrategy(status?.model?.trainingStrategy);
   const modelNote = status?.model?.loaded
-    ? trainingStrategy || "Estratégia de treinamento não informada"
+    ? `ESB-eu 0–4 · ${status?.model?.datasetVersion ?? "versão não informada"}`
     : normalizeStatusLabel(modelStatus);
 
   return (

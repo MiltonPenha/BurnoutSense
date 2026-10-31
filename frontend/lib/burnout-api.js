@@ -1,4 +1,4 @@
-import { defaultProfile, defaultRecords, sortRecords, STORAGE_KEYS } from "@/lib/burnout-data";
+import { defaultProfile, defaultRecords, STORAGE_KEYS } from "@/lib/burnout-data";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -16,20 +16,6 @@ function hasBackend() {
 
 function endpoint(path) {
   return `${API_URL}${path}`;
-}
-
-function clampNumber(value, min, max) {
-  const number = Number(value);
-
-  if (Number.isNaN(number)) {
-    return min;
-  }
-
-  return Math.min(max, Math.max(min, number));
-}
-
-function clampInt(value, min, max) {
-  return Math.round(clampNumber(value, min, max));
 }
 
 function readJson(key, fallback) {
@@ -252,186 +238,13 @@ function normalizeSemester(semester) {
   return semester ?? "";
 }
 
-function moodFromAssessment(assessment) {
-  if (assessment.anxietyLevel >= 8) {
-    return "Ansioso";
-  }
-
-  if (assessment.motivationLevel <= 3) {
-    return "Desmotivado";
-  }
-
-  if (assessment.stressLevel >= 8) {
-    return "Irritado";
-  }
-
-  if (assessment.motivationLevel >= 8) {
-    return "Calmo";
-  }
-
-  return "Cansado";
-}
-
-function resultNotes(result) {
-  if (!result?.mainFactors) {
-    return "";
-  }
-
-  if (Array.isArray(result.mainFactors)) {
-    return result.mainFactors.join(", ");
-  }
-
-  return JSON.stringify(result.mainFactors);
-}
-
-export function recordToAssessmentDto(record) {
-  const stress = clampInt(record.stress, 0, 10);
-  const tiredness = clampInt(record.tiredness, 0, 10);
-  const studyHours = clampNumber(record.studyHours, 0, 24);
-  const pendingTasks = clampInt(record.pendingTasks, 0, 30);
-
-  return {
-    date: record.date,
-    studyHours,
-    sleepHours: clampNumber(record.sleepHours, 0, 24),
-    workHours: clampNumber(record.workHours, 0, 24),
-    pendingTasks,
-    hasImportantExamOrDelivery: Boolean(record.importantDelivery),
-    sleepQuality: clampInt(record.sleepQuality, 0, 10),
-    stressLevel: stress,
-    tirednessLevel: tiredness,
-    academicPerformance: clampInt(record.academicPerformance ?? Math.max(0, 10 - pendingTasks), 0, 10),
-    examPressure: clampInt(record.examPressure ?? (record.importantDelivery ? 8 : stress), 0, 10),
-    screenTime: clampNumber(record.screenTime ?? studyHours, 0, 24),
-    socialSupport: clampInt(record.socialSupport ?? 5, 0, 10),
-    financialStress: clampInt(record.financialStress ?? 5, 0, 10),
-    physicalActivity: clampInt(record.physicalActivity ?? 5, 0, 10),
-    mood: record.mood,
-    dailyDescription: record.notes
-  };
-}
-
-export function assessmentToRecord(assessment, fallback = {}) {
-  const date = assessment.date ? assessment.date.slice(0, 10) : assessment.createdAt ? assessment.createdAt.slice(0, 10) : fallback.date;
-  const estimatedPendingTasks = Math.max(0, 10 - Number(assessment.academicPerformance ?? 8));
-  const tiredness = assessment.tirednessLevel ?? clampInt(Math.max(assessment.stressLevel ?? 5, 11 - (assessment.motivationLevel ?? 6)), 1, 10);
-  const examPressure = assessment.examPressure ?? fallback.examPressure ?? (fallback.importantDelivery ? 8 : Math.max(5, assessment.stressLevel ?? 5));
-  const importantDelivery =
-    assessment.hasImportantExamOrDelivery ?? fallback.importantDelivery ?? fallback.hasImportantExamOrDelivery ?? examPressure >= 7;
-
-  return {
-    id: assessment.id ?? fallback.id,
-    date: date ?? new Date().toISOString().slice(0, 10),
-    sleepHours: assessment.sleepHours ?? fallback.sleepHours ?? 7,
-    studyHours: assessment.studyHours ?? fallback.studyHours ?? 0,
-    workHours: assessment.workHours ?? fallback.workHours ?? 0,
-    pendingTasks: assessment.pendingTasks ?? fallback.pendingTasks ?? estimatedPendingTasks,
-    importantDelivery,
-    screenTime: assessment.screenTime ?? fallback.screenTime ?? 0,
-    academicPerformance: assessment.academicPerformance ?? fallback.academicPerformance ?? 7,
-    examPressure,
-    sleepQuality: assessment.sleepQuality ?? fallback.sleepQuality ?? 7,
-    stress: assessment.stressLevel ?? fallback.stress ?? 5,
-    tiredness: tiredness ?? fallback.tiredness ?? 5,
-    physicalActivity: assessment.physicalActivity ?? fallback.physicalActivity ?? 5,
-    socialSupport: assessment.socialSupport ?? fallback.socialSupport ?? 6,
-    financialStress: assessment.financialStress ?? fallback.financialStress ?? 3,
-    mood: assessment.mood ?? fallback.mood ?? moodFromAssessment(assessment),
-    notes: assessment.dailyDescription ?? fallback.notes ?? resultNotes(assessment.result),
-    backendResult: assessment.result
-      ? {
-          ...assessment.result,
-          modelUsed: assessment.result.modelUsed ?? assessment.result.modelVersion,
-          predictionSource: assessment.result.predictionSource ?? "MODEL"
-        }
-      : null
-  };
-}
-
-export async function getRecords(options = {}) {
-  if (hasBackend()) {
-    const assessments = await request("/assessments", {
-      sessionExpiredOnUnauthorized: !options.silentUnauthorized
-    });
-    return sortRecords(assessments.map((assessment) => assessmentToRecord(assessment)));
-  }
-
-  return sortRecords(readJson(STORAGE_KEYS.records, defaultRecords));
-}
-
-export async function getRecordById(id, options = {}) {
-  if (hasBackend()) {
-    const assessment = await request(`/assessments/${id}`, {
-      sessionExpiredOnUnauthorized: !options.silentUnauthorized
-    });
-    return assessmentToRecord(assessment);
-  }
-
-  const records = readJson(STORAGE_KEYS.records, defaultRecords);
-  return records.find((record) => record.id === id) ?? null;
-}
-
-export async function getAssessmentResult(assessmentId) {
-  if (hasBackend()) {
-    return request(`/results/${assessmentId}`);
-  }
-
-  const record = await getRecordById(assessmentId);
-  return record?.backendResult ?? null;
-}
-
-export async function getAssessmentInsights(assessmentId) {
-  if (!hasBackend()) {
-    throw new Error("Generated insights require the backend API.");
-  }
-
-  return request(`/results/${assessmentId}/insights`);
-}
-
-export async function createRecord(record) {
-  if (hasBackend()) {
-    const assessment = await request("/assessments", {
-      method: "POST",
-      body: JSON.stringify(recordToAssessmentDto(record))
-    });
-
-    return assessmentToRecord(assessment, record);
-  }
-
-  const records = readJson(STORAGE_KEYS.records, defaultRecords);
-  const nextRecords = sortRecords([record, ...records]);
-  writeJson(STORAGE_KEYS.records, nextRecords);
-  return record;
-}
-
-export async function updateRecord(id, record) {
-  if (hasBackend()) {
-    const assessment = await request(`/assessments/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify(recordToAssessmentDto(record))
-    });
-
-    return assessmentToRecord(assessment, { ...record, id });
-  }
-
-  const records = readJson(STORAGE_KEYS.records, defaultRecords);
-  const nextRecord = { ...record, id };
-  const nextRecords = sortRecords(records.map((item) => (item.id === id ? nextRecord : item)));
-  writeJson(STORAGE_KEYS.records, nextRecords);
-  return nextRecord;
-}
-
-export async function deleteRecord(id) {
-  if (hasBackend()) {
-    await request(`/assessments/${id}`, {
-      method: "DELETE"
-    });
-    return;
-  }
-
-  const records = readJson(STORAGE_KEYS.records, defaultRecords);
-  writeJson(STORAGE_KEYS.records, records.filter((record) => record.id !== id));
-}
+// The previous assessment representation is retired. New ESB-eu UI/persistence
+// integration is explicit; there is no local prediction or fabricated fallback.
+export async function getRecords() { return [...defaultRecords]; }
+export async function getRecordById() { return null; }
+export async function createRecord() { throw new Error("Integração do formulário ESB-eu pendente."); }
+export async function updateRecord() { throw new Error("Integração do formulário ESB-eu pendente."); }
+export async function deleteRecord() { throw new Error("Integração do histórico ESB-eu pendente."); }
 
 export async function getProfile(options = {}) {
   if (hasBackend()) {

@@ -5,7 +5,6 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { endSession, isAuthenticated, logoutUser, SESSION_TIMEOUT_MINUTES } from "@/lib/burnout-api";
-import { getRecordRisk } from "@/lib/burnout-data";
 import { useBurnoutStore } from "@/hooks/useBurnoutStore";
 
 const navItems = [
@@ -189,11 +188,7 @@ function MobileHeader({ isOpen, onToggle }) {
 }
 
 function Sidebar({ className = "", onLogout, onNavigate, pathname }) {
-  const { latestRecord, profile, ready } = useBurnoutStore();
-  const risk = latestRecord ? getRecordRisk(latestRecord) : null;
-  const score = Math.round(risk?.score ?? 0);
-  const circumference = 2 * Math.PI * 44;
-  const progress = Math.min(1, score / 10);
+  const { profile, ready } = useBurnoutStore();
   const initials = profile.name?.trim()?.slice(0, 1)?.toUpperCase() || "E";
 
   useEffect(() => {
@@ -217,26 +212,10 @@ function Sidebar({ className = "", onLogout, onNavigate, pathname }) {
           </span>
         </Link>
 
-        <section className={`risk-orb tone-${risk?.tone ?? "neutral"}`} aria-label="Resumo do risco atual">
-          <div className="risk-orb-graphic">
-            <svg viewBox="0 0 104 104" aria-hidden="true">
-              <circle className="risk-orb-track" cx="52" cy="52" r="44" />
-              <circle
-                className="risk-orb-progress"
-                cx="52"
-                cy="52"
-                r="44"
-                strokeDasharray={circumference}
-                strokeDashoffset={circumference * (1 - progress)}
-              />
-            </svg>
-            <div className="risk-orb-core">
-              <strong>{score}</strong>
-              <span>risco</span>
-            </div>
-          </div>
-          <strong>{ready && risk ? risk.label : "Sem registro"}</strong>
-          <span>{latestRecord ? "Última atualização: hoje" : "Crie seu primeiro registro"}</span>
+        <section className="risk-orb tone-neutral" aria-label="Metodologia ESB-eu">
+          <strong>ESB-eu</strong>
+          <span>Escore contínuo de 0 a 4</span>
+          <span>Nova interface em integração</span>
         </section>
 
         <nav className="sidebar-nav" aria-label="Navegação principal">

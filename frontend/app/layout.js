@@ -20,7 +20,7 @@ export const metadata = {
     template: "%s | BurnoutSense"
   },
   description:
-    "Plataforma web para acompanhamento preventivo de indicadores acadêmicos, emocionais e comportamentais relacionados ao risco de burnout estudantil.",
+    "Plataforma acadêmica para acompanhamento do escore contínuo ESB-eu e do contexto estudantil.",
   keywords: [
     "BurnoutSense",
     "burnout acadêmico",
@@ -39,7 +39,7 @@ export const metadata = {
   openGraph: {
     title: "BurnoutSense",
     description:
-      "Acompanhamento preventivo de rotina acadêmica, bem-estar e risco estimado de burnout estudantil.",
+      "Acompanhamento de rotina acadêmica e escore contínuo ESB-eu de 0 a 4.",
     siteName: "BurnoutSense",
     locale: "pt_BR",
     type: "website"

@@ -84,10 +84,25 @@ __pycache__/
 Thumbs.db
 
 # Local datasets can be very large
-ai-service/dataset/*.csv
+*.csv
+*.tsv
+*.xls
+*.xlsx
+*.parquet
+*.feather
+*.arrow
+*.private.*
+**/dataset/
+**/datasets/
+**/private/
 
 # Trained model artifacts are generated locally and may exceed GitHub size limits
-ai-service/saved_models/*.pkl
+*.pkl
+*.pickle
+*.joblib
+*.npy
+*.npz
+ai-service/saved_models/
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache

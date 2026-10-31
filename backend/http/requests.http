@@ -1,137 +1,18 @@
 @baseUrl = http://localhost:3001
-@accessToken = paste-access-token-here
-@refreshToken = paste-refresh-token-here
-@assessmentId = paste-assessment-id-here
+@accessToken = PREENCHA_LOCALMENTE
 
-### Register
-POST {{baseUrl}}/auth/register
-Content-Type: application/json
-
-{
-  "name": "Student Name",
-  "email": "student@example.com",
-  "password": "Student123"
-}
-
-### Login
-POST {{baseUrl}}/auth/login
-Content-Type: application/json
-
-{
-  "email": "student@example.com",
-  "password": "Student123"
-}
-
-### Refresh tokens
-POST {{baseUrl}}/auth/refresh
-Content-Type: application/json
-
-{
-  "refreshToken": "{{refreshToken}}"
-}
-
-### Logout
-POST {{baseUrl}}/auth/logout
-Authorization: Bearer {{accessToken}}
-Content-Type: application/json
-
-{
-  "refreshToken": "{{refreshToken}}"
-}
-
-### Current user
-GET {{baseUrl}}/users/me
+### Metadados do modelo independente (JWT)
+GET {{baseUrl}}/ai/model
 Authorization: Bearer {{accessToken}}
 
-### Delete current user and related data
-DELETE {{baseUrl}}/users/me
+### Métricas agregadas da base final
+GET {{baseUrl}}/ai/metrics
 Authorization: Bearer {{accessToken}}
 
-### Test notification preferences
-POST {{baseUrl}}/notifications/test
-Authorization: Bearer {{accessToken}}
-Content-Type: application/json
-
-{
-  "emailAlerts": true,
-  "dailyReminder": true
-}
-
-### Create assessment
-POST {{baseUrl}}/assessments
-Authorization: Bearer {{accessToken}}
-Content-Type: application/json
-
-{
-  "studyHours": 8,
-  "sleepQuality": 3,
-  "stressLevel": 9,
-  "anxietyLevel": 7,
-  "academicPerformance": 5,
-  "screenTime": 9,
-  "socialSupport": 3,
-  "financialStress": 6,
-  "physicalActivity": 1,
-  "motivationLevel": 4
-}
-
-### List assessment history
-GET {{baseUrl}}/assessments
-Authorization: Bearer {{accessToken}}
-
-### Find one assessment
-GET {{baseUrl}}/assessments/{{assessmentId}}
-Authorization: Bearer {{accessToken}}
-
-### Delete one assessment
-DELETE {{baseUrl}}/assessments/{{assessmentId}}
-Authorization: Bearer {{accessToken}}
-
-### Find prediction result
-GET {{baseUrl}}/results/{{assessmentId}}
-Authorization: Bearer {{accessToken}}
-
-### Generate dashboard insights
-GET {{baseUrl}}/results/{{assessmentId}}/insights
-Authorization: Bearer {{accessToken}}
-
-### Update assessment
-PATCH {{baseUrl}}/assessments/{{assessmentId}}
-Authorization: Bearer {{accessToken}}
-Content-Type: application/json
-
-{
-  "studyHours": 7,
-  "sleepHours": 6,
-  "sleepQuality": 6,
-  "stressLevel": 7,
-  "tirednessLevel": 6,
-  "academicPerformance": 7,
-  "examPressure": 7,
-  "screenTime": 8,
-  "socialSupport": 6,
-  "financialStress": 4,
-  "physicalActivity": 3,
-  "motivationLevel": 6
-}
-
-### AI prediction through ai-service
-POST {{baseUrl}}/ai/predict
-Authorization: Bearer {{accessToken}}
-Content-Type: application/json
-
-{
-  "studyHours": 6,
-  "sleepQuality": 6,
-  "stressLevel": 6,
-  "anxietyLevel": 5,
-  "academicPerformance": 7,
-  "screenTime": 5,
-  "socialSupport": 7,
-  "financialStress": 4,
-  "physicalActivity": 3,
-  "motivationLevel": 7
-}
-
-### System status
+### Status dos serviços
 GET {{baseUrl}}/status
+Authorization: Bearer {{accessToken}}
+
+# Para previsão, obtenha o exemplo artificial em GET /v1/examples do FastAPI.
+# Envie prediction_request como corpo JSON de POST /ai/predict com JWT.
+# Não cole respostas reais, chaves ou identificadores neste arquivo versionado.

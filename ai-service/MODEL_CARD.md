@@ -1,188 +1,25 @@
-# BurnoutSense Model Card
+# Modelo contextual ESB-eu — base final v1
 
-## Objetivo do Modelo
+## Uso e procedência
 
-O microsservico de IA do BurnoutSense e um prototipo academico para classificacao preventiva de risco de burnout academico em estudantes universitarios.
+Regressão acadêmica do escore geral observado da ESB-eu (média dos 14 itens, 0–4), usando somente 22 campos contextuais. Dados reais de formulário; não são dados artificiais. Testes de software e exemplos HTTP são gerados do esquema e não reproduzem participantes.
 
-O modelo nao possui finalidade clinica ou diagnostica. O resultado deve ser interpretado como uma estimativa computacional de apoio preventivo.
+Versão: `BurnoutSense-final-v1-20261030`. Foram recebidas 39 respostas: 36 elegíveis e válidas, 2 inelegíveis e 1 rejeitada por valor inválido em `work_hours_week`. O artefato final é Ridge com alpha=10, pipeline completo e 40 atributos transformados. O artefato e a base ficam em armazenamento local privado.
 
-## Dataset
+## Seleção e validação
 
-Dataset de referencia:
+Grade predefinida com 24 configurações dos cinco modelos; CV aninhada 5×3 externa e 3 interna, seed 42. A seleção interna minimiza MAE, seguida de RMSE, dispersão e simplicidade em empates exatos. Foram 1.228 ajustes por execução, sem falhas. A repetição reproduziu as métricas. O reajuste final usa os 36 registros; métricas de treino não são apresentadas como teste.
 
-```text
-Student Lifestyle, Mental Health & Burnout Insight
-```
+Random Forest teve menor MAE externo médio (0,3601), mas Ridge foi selecionado na avaliação interna final (alpha=10). Não se trocou o vencedor depois de examinar os folds externos. Veja [tabela e interpretação](../docs/ESBEU_METRICS.md).
 
-https://www.kaggle.com/datasets/ayeshasiddiqa123/student-health
+## Limites
 
-Arquivo local utilizado no treinamento atual:
+A amostra é pequena, com categorias raras e categorias previstas pelo formulário ausentes do treino. O vocabulário completo do esquema mantém colunas estáveis; uma categoria ausente não possui efeito específico aprendido. Categoria desconhecida é rejeitada. Não há imputação com base no conjunto completo, seleção de atributos pelo alvo ou uso dos itens ESB-eu como entrada.
 
-```text
-dataset/student_mental_health_burnout_1M.csv
-```
+Os resultados são validação interna para esta versão da base, sem coorte externa independente. A dispersão dos folds não é intervalo de confiança. R² negativo é preservado; o procedimento completo de seleção apresentou R² médio -0,0513, o que limita afirmações de generalização. Não se infere eficácia clínica nem se classificam pessoas. Novas respostas exigem nova versão e nova execução registrada, sem sobrescrever esta base final.
 
-O dataset local analisado possui 1.000.000 registros, sem valores ausentes e sem duplicados.
+## Inferência e privacidade
 
-Distribuicao da variavel-alvo:
+Saída `esbeu_overall`, contínua e finita em 0–4. Valores fora desse domínio são rejeitados, sem corte silencioso. Não há intervalo individual ou confiança percentual calibrada. Escore observado e estimado possuem contratos distintos.
 
-- `Low`: 766.645
-- `Medium`: 218.275
-- `High`: 15.080
-
-A classe `High` representa aproximadamente 1,5% do dataset. Esse desbalanceamento e a principal limitacao tecnica do modelo.
-
-## Variavel-Alvo
-
-A variavel-alvo e:
-
-```text
-risk_level
-```
-
-Os rotulos originais sao normalizados como:
-
-```text
-Low    -> low
-Medium -> medium
-High   -> high
-```
-
-## Features Finais
-
-O modelo final usa:
-
-- `study_hours`
-- `academic_performance`
-- `exam_pressure`
-- `stress_level`
-- `anxiety_score`
-- `depression_score`
-- `sleep_quality`
-- `physical_activity`
-- `screen_time`
-- `social_support`
-- `family_expectation`
-- `financial_stress`
-
-Nota: a feature `sleep_quality` recebe a coluna `sleep_hours` do dataset. No produto, o nome deve ser revisado com cuidado para diferenciar horas de sono de qualidade percebida do sono.
-
-## Features Removidas do Modelo Final
-
-- `dropout_risk`: removida por ser uma variavel de risco derivada/adjacente, com potencial de vazamento e baixa compatibilidade com o fluxo atual do produto.
-- `internet_usage`: removida por alta redundancia com `screen_time` (`correlacao ~= 0.89`).
-
-As colunas `burnout_score` e `mental_health_index` nao sao usadas como features porque parecem indicadores agregados fortemente relacionados ao alvo, o que caracterizaria vazamento de dados.
-
-## Modelos Avaliados
-
-Foram comparados:
-
-- DummyClassifier como baseline
-- LogisticRegression com `class_weight="balanced"`
-- RandomForestClassifier
-- ExtraTreesClassifier
-- HistGradientBoostingClassifier com pesos de amostra
-- LinearSVC com `class_weight="balanced"`
-
-Foram testados cenarios com todas as features, sem `dropout_risk` e sem `dropout_risk`/`internet_usage`.
-
-## Modelo Final
-
-Modelo selecionado:
-
-```text
-Random Forest [final_without_dropout_or_internet]
-```
-
-Estrategia de treino:
-
-```text
-focused_high_recall_sampling
-```
-
-Amostragem aplicada apenas no treino:
-
-- `high`: 40.000
-- `medium`: 70.000
-- `low`: 100.000
-
-O conjunto de teste manteve a distribuicao original para avaliar o comportamento em um cenario mais realista.
-
-## Saida do Modelo em Producao
-
-O endpoint `/predict` retorna tres informacoes diferentes:
-
-- `risk_level`: classe prevista pelo classificador (`low`, `medium` ou `high`).
-- `risk_score`: escala visual contínua de 1 a 10 calculada a partir das probabilidades do modelo.
-- `confidence`: probabilidade da classe prevista quando o modelo possui `predict_proba`.
-
-O `risk_score` não é uma classe fixa e não usa `confidence` diretamente como pontuação de risco. Quando o modelo oferece `predict_proba`, o serviço calcula:
-
-```text
-riskIndex = P_MEDIUM * 0.5 + P_HIGH
-riskScore = 1 + 9 * riskIndex
-```
-
-Depois aplica pequenos ajustes preventivos controlados por fatores observados, como estresse muito alto, poucas horas de sono, baixo suporte social e atividade física protetiva. Essa regra é uma escala visual para o protótipo TCC1, não uma métrica clínica nem probabilidade direta de burnout.
-
-## Metricas do Modelo Final
-
-- Accuracy: 0.8259
-- Balanced accuracy: 0.7542
-- Precision macro: 0.6390
-- Recall macro: 0.7542
-- F1 macro: 0.6804
-- High precision: 0.3917
-- High recall: 0.6430
-- High F1-score: 0.4868
-
-Matriz de confusao, na ordem `high`, `low`, `medium`:
-
-```text
-[[2424, 2, 1344], [48, 161699, 29914], [3717, 8504, 42348]]
-```
-
-## Criterios de Qualidade
-
-Metas definidas para o TCC:
-
-- Accuracy >= 0.80: atingida
-- F1 macro >= 0.70: nao atingida
-- Recall da classe high >= 0.70: nao atingida
-- F1 da classe high >= 0.65: nao atingida
-
-O modelo final e tecnicamente mais defensavel por evitar features problemáticas, mas ainda precisa ser melhorado para capturar a classe `high` com qualidade suficiente.
-
-## Importancia das Features
-
-Ranking global do modelo final:
-
-- `stress_level`: 0.262925
-- `anxiety_score`: 0.174816
-- `depression_score`: 0.151558
-- `sleep_quality`: 0.086222
-- `exam_pressure`: 0.071902
-- `social_support`: 0.064352
-- `study_hours`: 0.039573
-- `financial_stress`: 0.034136
-- `family_expectation`: 0.030181
-- `academic_performance`: 0.028511
-- `screen_time`: 0.027913
-- `physical_activity`: 0.027912
-
-## Limitacoes
-
-- Classe `high` muito rara no dataset.
-- A classe `high` ainda apresenta F1 abaixo do desejado.
-- Variaveis como `depression_score` e `anxiety_score` exigem cuidado etico e de privacidade, pois podem ser sensiveis.
-- O campo `sleep_quality` precisa ser melhor padronizado entre dataset, backend e frontend.
-- O campo de humor predominante nao existe como feature do treinamento atual e nao deve influenciar a predicao.
-- O `risk_score` é uma escala visual derivada das probabilidades do modelo e de pequenos ajustes preventivos, não uma saída clínica independente.
-- O modelo nao substitui avaliacao profissional.
-
-## Recomendacoes
-
-- Para TCC1, manter este modelo como prototipo funcional e documentar as limitacoes.
-- Para TCC2, avaliar engenharia de features, calibracao de probabilidades, validacao cruzada, limiares por classe e dataset complementar.
-- Evitar usar `burnout_score`, `mental_health_index` e `dropout_risk` como entradas diretas do produto sem justificativa metodologica forte.
+A API carrega somente artefato local de origem conhecida, com confiança explicitamente configurada, SHA-256 e versões compatíveis de NumPy, pandas, scikit-learn e joblib. Hash verifica integridade, não torna pickle desconhecido seguro. Não recebe CSV, não treina via HTTP, não persiste requisições e não envia respostas a provedores externos.

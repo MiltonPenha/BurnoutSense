@@ -1,200 +1,25 @@
 # BurnoutSense
 
-## Plataforma inteligente para apoio preventivo ao burnout acadêmico
-
-O BurnoutSense é uma aplicação web acadêmica voltada à identificação preventiva de sinais associados ao burnout em estudantes universitários. O sistema coleta registros diários, envia os indicadores para um serviço de Machine Learning e apresenta histórico, dashboard, nível de risco, fatores relevantes, alertas preventivos e recomendações geradas por IA.
-
-O projeto não possui finalidade clínica ou diagnóstica. Ele funciona como uma ferramenta computacional de apoio, acompanhamento e estudo no contexto do TCC.
-
-## Objetivo
-
-Desenvolver uma solução full stack capaz de:
-
-- registrar indicadores acadêmicos, comportamentais e de bem-estar;
-- classificar preventivamente o risco de burnout acadêmico;
-- manter histórico de avaliações por estudante;
-- apoiar a interpretação dos resultados com alertas e recomendações;
-- documentar limitações técnicas e éticas do uso de IA nesse contexto.
-
-## Fluxo principal
-
-```text
-cadastro -> login -> registro diário -> backend -> ai-service -> banco -> histórico/dashboard
-```
-
-O frontend prioriza os resultados persistidos pelo backend, incluindo nível de risco, score visual, confiança, principais fatores, modelo utilizado e origem da predição. Cálculos locais existem apenas como fallback quando ainda não há resultado real salvo.
-
-## Funcionalidades atuais
-
-- Cadastro e login de usuários.
-- Registro diário de indicadores acadêmicos e de bem-estar.
-- Edição e exclusão de registros.
-- Edição de perfil com curso, período, foto local e preferências de notificação.
-- Exclusão de conta e dados vinculados.
-- Validação de data, impedindo registros futuros.
-- Validação de horas, impedindo que sono, estudo e tempo de tela ultrapassem 24 horas no mesmo dia.
-- Classificação de risco via AI Service.
-- Histórico de registros com risco, humor, estresse, sono e pressão acadêmica.
-- Dashboard com métricas consolidadas.
-- Alertas preventivos e recomendações geradas por IA generativa.
-- Alertas por e-mail para risco alto e lembrete diário opcional, quando SMTP estiver configurado.
-- Tela `/status` para verificar backend, banco, AI Service e carregamento do modelo.
-
-## Inteligência Artificial
-
-O projeto utiliza dois tipos de IA:
-
-- **Modelo preditivo local:** classifica o risco de burnout acadêmico por meio do AI Service em Python/FastAPI.
-- **IA generativa opcional:** gera alertas preventivos e recomendações no dashboard a partir do resultado real do último registro.
-
-### Modelo preditivo
-
-O AI Service utiliza Scikit-learn para servir um modelo treinado a partir do dataset de referência:
-
-[Student Lifestyle, Mental Health & Burnout Insight](https://www.kaggle.com/datasets/ayeshasiddiqa123/student-health)
-
-Modelo atual documentado no AI Service:
-
-- Random Forest.
-- Estratégia final sem `dropout_risk` e `internet_usage`.
-- Métricas e limitações registradas em `ai-service/MODEL_CARD.md`.
-
-### Features utilizadas pelo modelo
-
-- Horas de estudo.
-- Desempenho acadêmico.
-- Pressão acadêmica.
-- Nível de estresse.
-- Ansiedade.
-- Depressão.
-- Horas de sono, mantidas no artefato como `sleep_quality` por compatibilidade com o dataset.
-- Atividade física.
-- Tempo de tela.
-- Suporte social.
-- Expectativa familiar.
-- Estresse financeiro.
-
-O campo de humor predominante é mantido como contexto visual do registro, mas não é convertido em feature enviada ao modelo, pois não há feature equivalente no treinamento atual.
-
-### Resultado exibido
-
-O resultado preventivo separa quatro conceitos:
-
-- `riskLevel`: classe prevista pelo modelo (`LOW`, `MEDIUM` ou `HIGH`).
-- `riskScore`: escala visual contínua de 1 a 10 usada na interface.
-- `confidence`: confiança/probabilidade do modelo na classe prevista.
-- `predictionSource`: origem auditável da predição (`MODEL`, `MODEL_WITH_PREVENTIVE_CALIBRATION`, `BACKEND_FALLBACK` ou `FRONTEND_LOCAL`).
-
-O `riskScore` não é uma probabilidade direta de burnout e não é diagnóstico clínico. Ele é derivado das probabilidades do modelo (`P_MEDIUM` e `P_HIGH`) com pequenos ajustes preventivos controlados. A `confidence` não deve ser confundida com o `riskScore`.
-
-### IA generativa
-
-Os alertas e recomendações do dashboard podem ser gerados com Gemini, usando:
-
-```env
-GEMINI_API_KEY=""
-GEMINI_INSIGHTS_MODEL="gemini-2.5-flash-lite"
-```
-
-Também existe suporte opcional para OpenAI como alternativa:
-
-```env
-OPENAI_API_KEY=""
-OPENAI_INSIGHTS_MODEL="gpt-5.4-mini"
-```
-
-Gemini e OpenAI geram apenas textos de apoio no dashboard. Eles não definem `riskLevel` nem `riskScore`; a classificação principal vem do modelo Scikit-learn servido pelo `ai-service`.
-
-Sem chave de IA generativa, o sistema mantém a classificação de risco do modelo local, mas não inventa recomendações mockadas.
-
-## Regras do registro diário
-
-- A data pode ser hoje ou uma data passada.
-- Datas futuras são bloqueadas no frontend e no backend.
-- Horas de sono, estudo e tempo de tela começam em `0` no formulário.
-- Para salvar, horas de sono precisam ser maiores que `0`.
-- Sliders começam no ponto médio da escala.
-- A soma de sono, estudo e tempo de tela não pode ultrapassar 24 horas.
-- Humor é salvo apenas como informação contextual.
-- A calibração preventiva do backend fica desligada por padrão. Se ativada por `ENABLE_PREVENTIVE_CALIBRATION=true`, ela apenas ajusta levemente o score e marca a origem como `MODEL_WITH_PREVENTIVE_CALIBRATION`.
+Projeto de TCC que estima o escore contínuo geral da ESB-eu, de 0 a 4, a partir de 22 variáveis contextuais autorizadas de pesquisa por formulário. Os 14 itens da escala definem o alvo e nunca entram como preditores. Não há classes diagnósticas, risco baixo/médio/alto, confiança percentual ou escala visual 1–10.
 
 ## Arquitetura
 
-```text
-BurnoutSense/
-  frontend/    Next.js + React
-  backend/     NestJS + Prisma
-  ai-service/  FastAPI + Scikit-learn
-```
+- `frontend/`: Next.js; autenticação, perfil e status. As telas do formulário diário anterior foram desativadas enquanto a interface ESB-eu é integrada.
+- `backend/`: NestJS, autenticação e PostgreSQL/Prisma. Cliente HTTP do microsserviço; não treina nem executa modelos Python.
+- `ai-service/`: FastAPI independente; valida contexto, calcula escore observado, estima escore contextual e publica métricas agregadas. Treinamento é uma execução local separada da API.
 
-### Frontend
+Fluxo: navegador → NestJS autenticado → HTTP com chave de serviço → FastAPI → pipeline privado. O CSV não participa da inferência.
 
-- Next.js.
-- React.
-- CSS modular/global do projeto.
+## Dados e treinamento
 
-### Backend
+A base final versionada é real, coletada por Forms: 39 respostas, 36 elegíveis e válidas, 2 inelegíveis e 1 rejeitada. O exportador tem 41 colunas, das quais 39 analíticas e 2 administrativas descartadas. Consentimento e independência das respostas foram declarados pelo responsável; isso não substitui documentação institucional.
 
-- Node.js.
-- NestJS.
-- Prisma.
-- JWT.
-- PostgreSQL.
+Os cinco modelos são Dummy, LinearRegression, Ridge, RandomForestRegressor e SVR. A validação usa CV aninhada: 5 folds externos × 3 repetições, 3 folds internos, seed 42 e 24 configurações. Pré-processamento é ajustado dentro de cada fold. Ridge alpha=10 foi selecionado pelo protocolo interno e reajustado nos 36 registros; Random Forest apresentou o menor MAE externo médio. Consulte [cartão do modelo](ai-service/MODEL_CARD.md).
 
-### AI Service
+## Execução e revisão
 
-- Python.
-- FastAPI.
-- Scikit-learn.
-- Pandas.
-- NumPy.
+Veja [guia local](DEVELOPMENT_GUIDE.md), [API e treinamento](ai-service/README.md), [contrato de integração](BACKEND_INSTRUCTIONS.md) e [métricas](docs/ESBEU_METRICS.md).
 
-### Infraestrutura
+CSV, identificadores, respostas, modelos serializados e credenciais ficam fora do repositório. `.gitignore` protege extensões de dados e artefatos, mas não substitui a revisão de arquivos já rastreados. Não publique relatórios privados.
 
-- Docker.
-- Docker Compose.
-- PostgreSQL.
-
-## Execução local
-
-Para instruções de execução do ambiente local, consulte [DEVELOPMENT_GUIDE.md](./DEVELOPMENT_GUIDE.md).
-
-Resumo do fluxo recomendado:
-
-1. Subir o PostgreSQL com Docker.
-2. Configurar os arquivos `.env`.
-3. Rodar migrations do Prisma.
-4. Subir o AI Service.
-5. Subir o backend.
-6. Subir o frontend.
-7. Validar o fluxo em `/status`.
-
-## Privacidade e LGPD
-
-Os dados coletados têm finalidade acadêmica e preventiva, limitada ao acompanhamento dos indicadores informados pelo estudante. O projeto deve manter minimização de dados, uso restrito ao contexto do TCC, transparência sobre limitações do modelo e aviso claro de que a análise não substitui avaliação clínica.
-
-A exclusão completa de conta e dados vinculados já está disponível pela tela de perfil e pelo endpoint `DELETE /users/me`.
-
-Como evolução futura, recomenda-se reforçar revisão de consentimento, políticas formais para eventual uso fora do ambiente acadêmico e documentação operacional de retenção, exportação e auditoria de dados.
-
-## Integrantes
-
-- João Rafael Jordão Pereira
-- Mateus Nauhan Vieira Matos
-- Milton Rogério Dotto Penha Junior
-
-## Orientador
-
-Prof. Marco Antônio Montebello Junior
-
-## Instituição
-
-Centro Universitário Facens
-
-## Status do Projeto
-
-Em desenvolvimento.
-
-## Licença
-
-Projeto acadêmico desenvolvido para fins educacionais.
+O classificador anterior, seu treinamento, relatórios e fallbacks foram retirados da árvore de trabalho. Nenhum CSV ou binário desse classificador estava presente/rastreado no estado examinado. O histórico Git não foi reescrito. Esquema e migrações históricos do banco permanecem para preservar registros existentes; novas gravações no contrato anterior retornam HTTP 410. Não há migração destrutiva automática.

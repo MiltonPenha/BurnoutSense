@@ -15,7 +15,7 @@ from app.schemas import (
     ModelInfoResponse, ObservedScoreRequest, ObservedScoreResponse, PredictionRequest, PredictionResponse,
 )
 from app.settings import Settings
-from training.form_schema import ESBEU_FIELDS, FIELDS_BY_ID, SpecialValue
+from training.form_schema import CONTEXT_FIELDS, ESBEU_FIELDS, FIELDS_BY_ID, SpecialValue
 from training.regression_preprocessing import ALLOWED_PREDICTORS
 
 
@@ -132,6 +132,12 @@ def create_app(settings=None, service=None):
     @api.get("/v1/schema", dependencies=private)
     def schema():
         return {"contract_version": "esbeu-context-regression/1", "context": context_schema(),
+                "form_version": "forms/1.0",
+                "fields": [{"identifier": f.identifier, "name": f.name, "question": f.question,
+                            "group": f.group, "data_type": f.data_type, "choices": list(f.choices),
+                            "labels": list(f.labels), "minimum": f.minimum, "maximum": f.maximum,
+                            "unit": f.unit, "allows_not_applicable": f.allows_not_applicable,
+                            "instructions": f.instructions} for f in (*CONTEXT_FIELDS, *ESBEU_FIELDS)],
                 "items": {"type": "object", "additionalProperties": False,
                           "required": [f.identifier for f in ESBEU_FIELDS],
                           "properties": {f.identifier: {"type": "integer", "minimum": 0, "maximum": 4} for f in ESBEU_FIELDS}}}

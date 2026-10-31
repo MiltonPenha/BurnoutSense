@@ -138,7 +138,8 @@ class RegressionService:
         except Exception:
             raise EstimateRejected("Estimativa indisponível no domínio 0–4.") from None
         return {"esbeu_overall": value, "model_name": artifact["contract"]["model_name"],
-                "dataset_version": self.settings.dataset_version}
+                "dataset_version": self.settings.dataset_version,
+                "model_version": "sha256:" + self._manifest["model_sha256"]}
 
     def evaluate(self, cases):
         observed, predicted = [], []
@@ -154,6 +155,7 @@ class RegressionService:
         artifact = self._load()
         return {"contract_version": artifact["contract"]["version"],
                 "dataset_version": self.settings.dataset_version, "model_name": artifact["contract"]["model_name"],
+                "model_version": "sha256:" + self._manifest["model_sha256"],
                 "predictors": list(artifact["contract"]["predictors"]),
                 "training_records": self._manifest["eligible_records"], "runtime_versions": runtime_versions()}
 

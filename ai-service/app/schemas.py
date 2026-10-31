@@ -33,6 +33,7 @@ class PredictionResponse(ApiModel):
     esbeu_overall: float = Field(ge=0, le=4)
     model_name: ModelName
     dataset_version: str
+    model_version: str
     contract_version: str = "esbeu-context-regression/1"
 
 
@@ -94,6 +95,7 @@ class ModelInfoResponse(ApiModel):
     contract_version: str
     dataset_version: str
     model_name: ModelName
+    model_version: str
     target: Literal["esbeu_overall"] = "esbeu_overall"
     predictors: list[str]
     training_records: int

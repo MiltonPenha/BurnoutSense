@@ -107,6 +107,19 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
             self.assertNotIn("model_sha256", response.text)
         self.assertEqual((await self.client.get("/v1/validation/metrics")).json()["metric_contract"]["mae"]["mathematical_ideal"], 0)
 
+    async def test_form_metadata_comes_from_public_schema_only(self):
+        schema = (await self.client.get("/v1/schema")).json()
+        self.assertEqual(schema["form_version"], "forms/1.0")
+        self.assertEqual(len(schema["fields"]), 36)
+        self.assertEqual({row["identifier"] for row in schema["fields"]}, set(ALLOWED_PREDICTORS) | set(synthetic_case()["items"]))
+        self.assertTrue(all(row["question"] and row["name"] for row in schema["fields"]))
+
+    async def test_prediction_and_metadata_bind_the_same_model_artifact(self):
+        info = (await self.client.get("/v1/model")).json()
+        prediction = (await self.client.post("/v1/predict", json={"context": synthetic_context()})).json()
+        self.assertRegex(info["model_version"], r"^sha256:[a-f0-9]{64}$")
+        self.assertEqual(prediction["model_version"], info["model_version"])
+
     async def test_rejects_scale_items_as_predictors_and_admin_fields(self):
         for key in ("esbeu_01", "email", "id"):
             context = synthetic_context()

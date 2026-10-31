@@ -1,4 +1,4 @@
-import { defaultProfile, defaultRecords, STORAGE_KEYS } from "@/lib/burnout-data";
+import { defaultProfile, STORAGE_KEYS } from "@/lib/burnout-data";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -125,7 +125,7 @@ function authHeaders() {
 
 export function isAuthenticated() {
   if (!hasBackend()) {
-    return true;
+    return false;
   }
 
   return Boolean(readToken(AUTH_KEYS.accessToken));
@@ -155,7 +155,12 @@ async function refreshAuthToken() {
   return true;
 }
 
+function requireBackend() {
+  if (!hasBackend()) throw new Error("Configure a conexão com o backend para utilizar sua conta.");
+}
+
 async function request(path, options = {}) {
+  requireBackend();
   const shouldAttachAuth = options.auth !== false;
   const shouldNotifySessionExpired = options.sessionExpiredOnUnauthorized !== false;
   const shouldRetryAuth = options.retryAuthOnUnauthorized !== false;
@@ -164,6 +169,7 @@ async function request(path, options = {}) {
   const performRequest = () =>
     fetch(endpoint(path), {
       ...fetchOptions,
+      cache: "no-store",
       headers: {
         "Content-Type": "application/json",
         ...(shouldAttachAuth ? authHeaders() : {}),
@@ -192,7 +198,9 @@ async function request(path, options = {}) {
 
     try {
       const errorBody = await response.json();
-      errorMessage = errorBody.message ?? errorBody.detail ?? errorMessage;
+      const message = errorBody.message ?? errorBody.detail;
+      if (typeof message === "string") errorMessage = message;
+      else if (Array.isArray(message)) errorMessage = "Confira os campos obrigatórios, o consentimento e a elegibilidade.";
     } catch {
       // Keep the generic status message when the backend does not return JSON.
     }
@@ -238,111 +246,57 @@ function normalizeSemester(semester) {
   return semester ?? "";
 }
 
-// The previous assessment representation is retired. New ESB-eu UI/persistence
-// integration is explicit; there is no local prediction or fabricated fallback.
-export async function getRecords() { return [...defaultRecords]; }
-export async function getRecordById() { return null; }
-export async function createRecord() { throw new Error("Integração do formulário ESB-eu pendente."); }
-export async function updateRecord() { throw new Error("Integração do formulário ESB-eu pendente."); }
-export async function deleteRecord() { throw new Error("Integração do histórico ESB-eu pendente."); }
+// Authenticated application records; no research CSV or browser data storage.
+export async function getEsbeuForm() { return request("/esbeu-assessments/form"); }
+export async function getEsbeuMetrics() { return request("/ai/metrics"); }
+export async function getEsbeuPage(cursor, options = {}) {
+  return request(`/esbeu-assessments${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`, {
+    sessionExpiredOnUnauthorized: !options.silentUnauthorized
+  });
+}
+export async function getRecords(options = {}) { return (await getEsbeuPage(null, options)).items; }
+export async function getRecordById(id) { return request(`/esbeu-assessments/${encodeURIComponent(id)}`); }
+export async function createRecord(record) {
+  return request("/esbeu-assessments", { method: "POST", body: JSON.stringify(record) });
+}
+export async function deleteRecord(id) {
+  return request(`/esbeu-assessments/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
 
 export async function getProfile(options = {}) {
-  if (hasBackend()) {
-    const user = await request("/users/me", {
-      sessionExpiredOnUnauthorized: !options.silentUnauthorized
-    });
-    return normalizeProfile(user);
-  }
-
-  return readJson(STORAGE_KEYS.profile, defaultProfile);
+  const user = await request("/users/me", { sessionExpiredOnUnauthorized: !options.silentUnauthorized });
+  return normalizeProfile(user);
 }
 
 export async function updateProfile(profile) {
-  if (hasBackend()) {
-    const user = await request("/users/me", {
-      method: "PATCH",
-      body: JSON.stringify({
-        name: profile.name,
-        emailAlerts: profile.emailAlerts,
-        dailyReminder: profile.dailyReminder,
-        course: profile.course,
-        semester: profile.semester,
-        avatarUrl: profile.avatarUrl ?? ""
-      })
-    });
-    const normalizedProfile = {
-      ...normalizeProfile(user),
-      theme: profile.theme ?? "light"
-    };
-
-    writeJson(STORAGE_KEYS.profile, normalizedProfile);
-    return normalizedProfile;
-  }
-
-  writeJson(STORAGE_KEYS.profile, profile);
-  return profile;
+  const user = await request("/users/me", {
+    method: "PATCH",
+    body: JSON.stringify({ name: profile.name, emailAlerts: profile.emailAlerts, dailyReminder: profile.dailyReminder,
+      course: profile.course, semester: profile.semester, avatarUrl: profile.avatarUrl ?? "" })
+  });
+  const normalized = { ...normalizeProfile(user), theme: profile.theme ?? "light" };
+  writeJson(STORAGE_KEYS.profile, normalized);
+  return normalized;
 }
 
 export async function sendTestNotification(preferences) {
-  if (hasBackend()) {
-    return request("/notifications/test", {
-      method: "POST",
-      body: JSON.stringify(preferences)
-    });
-  }
-
-  const emailEnabled = preferences.emailAlerts !== false;
-  const reminderEnabled = preferences.dailyReminder !== false;
-
-  return {
-    deliveryMode: "local-simulation",
-    emailAlert: { status: emailEnabled ? "simulated" : "skipped" },
-    dailyReminder: { status: reminderEnabled ? "simulated" : "skipped" },
-    message: emailEnabled || reminderEnabled ? "Notificação simulada localmente." : "Nenhuma notificação ativa para testar."
-  };
+  return request("/notifications/test", { method: "POST", body: JSON.stringify(preferences) });
 }
 
 export async function loginUser(credentials) {
-  if (hasBackend()) {
-    const authResponse = await request("/auth/login", {
-      method: "POST",
-      auth: false,
-      sessionExpiredOnUnauthorized: false,
-      body: JSON.stringify({
-        email: credentials.email,
-        password: credentials.password
-      })
-    });
-
-    return persistAuthResponse(authResponse);
-  }
-
-  return { user: readJson(STORAGE_KEYS.profile, defaultProfile), accessToken: "local-demo-token" };
+  const response = await request("/auth/login", {
+    method: "POST", auth: false, sessionExpiredOnUnauthorized: false,
+    body: JSON.stringify({ email: credentials.email, password: credentials.password })
+  });
+  return persistAuthResponse(response);
 }
 
 export async function registerUser(payload) {
-  if (hasBackend()) {
-    const authResponse = await request("/auth/register", {
-      method: "POST",
-      auth: false,
-      sessionExpiredOnUnauthorized: false,
-      body: JSON.stringify({
-        name: payload.name,
-        email: payload.email,
-        password: payload.password
-      })
-    });
-
-    return persistAuthResponse(authResponse);
-  }
-
-  const profile = {
-    ...defaultProfile,
-    name: payload.name || "estudante",
-    email: payload.email
-  };
-  writeJson(STORAGE_KEYS.profile, profile);
-  return { user: profile, accessToken: "local-demo-token" };
+  const response = await request("/auth/register", {
+    method: "POST", auth: false, sessionExpiredOnUnauthorized: false,
+    body: JSON.stringify({ name: payload.name, email: payload.email, password: payload.password })
+  });
+  return persistAuthResponse(response);
 }
 
 export async function logoutUser() {

@@ -7,8 +7,7 @@ import {
   getProfile,
   getRecordById,
   getRecords,
-  updateProfile as saveProfile,
-  updateRecord as saveRecord
+  updateProfile as saveProfile
 } from "@/lib/burnout-api";
 import { defaultProfile, defaultRecords, sortRecords } from "@/lib/burnout-data";
 
@@ -124,24 +123,6 @@ export function useBurnoutStore() {
     }
   }, [records]);
 
-  const updateRecord = useCallback(async (id, record) => {
-    const previousRecords = records;
-
-    try {
-      const savedRecord = await saveRecord(id, record);
-      const nextRecords = sortRecords(records.map((item) => (item.id === id ? savedRecord : item)));
-      setRecords(nextRecords);
-      emitStoreChange({ records: nextRecords });
-      setError(null);
-      return savedRecord;
-    } catch (error) {
-      setRecords(previousRecords);
-      emitStoreChange({ records: previousRecords });
-      setError("Não foi possível atualizar o registro.");
-      throw error;
-    }
-  }, [records]);
-
   const updateProfile = useCallback(async (nextProfile) => {
     const previousProfile = profile;
     setProfile(nextProfile);
@@ -172,7 +153,6 @@ export function useBurnoutStore() {
     profile,
     ready,
     records: orderedRecords,
-    updateRecord,
     updateProfile
   };
 }

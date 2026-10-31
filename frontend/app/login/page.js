@@ -48,7 +48,7 @@ export default function LoginPage() {
       <form className="card auth-card auth-form" onSubmit={handleSubmit}>
         <div>
           <h2 className="section-title">Entrar na conta</h2>
-          <p className="page-kicker">Acesse seu painel e continue seus registros diários.</p>
+          <p className="page-kicker">Acesse seu painel e acompanhe suas avaliações ESB-eu.</p>
         </div>
 
         <div className="field">

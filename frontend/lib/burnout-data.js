@@ -27,7 +27,7 @@ export const moods = [
 ];
 
 export function sortRecords(records) {
-  return [...records].sort((a, b) => b.date.localeCompare(a.date));
+  return [...records].sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
 }
 
 export function formatDateShort(date) {

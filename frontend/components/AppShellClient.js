@@ -215,7 +215,7 @@ function Sidebar({ className = "", onLogout, onNavigate, pathname }) {
         <section className="risk-orb tone-neutral" aria-label="Metodologia ESB-eu">
           <strong>ESB-eu</strong>
           <span>Escore contínuo de 0 a 4</span>
-          <span>Nova interface em integração</span>
+          <span>Estimativa contextual e medição observada</span>
         </section>
 
         <nav className="sidebar-nav" aria-label="Navegação principal">

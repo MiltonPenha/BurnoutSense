@@ -1,8 +1,6 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { RiskLevel } from '@prisma/client';
 import * as nodemailer from 'nodemailer';
-import { StoredAssessmentIndicators } from '../ai/burnout-feature.mapper';
 import { AuthenticatedUser } from '../auth/types/authenticated-user';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
@@ -21,7 +19,7 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   onModuleInit() {
-    if (this.configService.get<string>('DAILY_REMINDER_ENABLED') === 'false') {
+    if (this.configService.get<string>('DAILY_REMINDER_ENABLED') !== 'true') {
       this.logger.log('Daily reminder scheduler disabled.');
       return;
     }
@@ -46,13 +44,12 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
     const profile = await this.usersService.findSafeById(user.id);
     const emailAlerts = preferences.emailAlerts ?? profile.emailAlerts;
     const dailyReminder = preferences.dailyReminder ?? profile.dailyReminder;
-    const sampleFactors = ['Estresse acima do ideal', 'Cansaço acumulado', 'Pressão acadêmica elevada'];
     const emailAlert = await this.deliverEmail(
       emailAlerts,
       profile.email,
-      'Prévia de alerta preventivo BurnoutSense',
-      this.buildRiskAlertText(profile.name, sampleFactors, true),
-      this.buildRiskAlertHtml(profile.name, sampleFactors, true),
+      'Mensagem de teste BurnoutSense',
+      this.buildDailyReminderText(profile.name),
+      this.buildDailyReminderHtml(profile.name),
     );
     const reminder = await this.deliverEmail(
       dailyReminder,
@@ -78,30 +75,6 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
       dailyReminder: reminder,
       message: this.buildResultMessage(emailAlerts, dailyReminder, emailAlert.status, reminder.status),
     };
-  }
-
-  async sendHighRiskAlert(
-    userId: string,
-    assessment: StoredAssessmentIndicators,
-    mainFactors: string[],
-    riskLevel: RiskLevel,
-  ) {
-    if (riskLevel !== RiskLevel.HIGH) {
-      return {
-        status: 'skipped',
-        reason: 'Risk level does not require alert',
-      };
-    }
-
-    const profile = await this.usersService.findSafeById(userId);
-
-    return this.deliverEmail(
-      profile.emailAlerts,
-      profile.email,
-      'Atenção preventiva: seu registro indicou risco alto',
-      this.buildHighRiskText(profile.name, assessment, mainFactors),
-      this.buildHighRiskHtml(profile.name, assessment, mainFactors),
-    );
   }
 
   private async processDailyReminderTick() {
@@ -324,97 +297,6 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  private buildRiskAlertText(name: string, factors: string[], isPreview = false) {
-    return [
-      `Olá, ${firstName(name)}.`,
-      '',
-      isPreview
-        ? 'Esta é uma prévia do alerta preventivo do BurnoutSense.'
-        : 'Seu último registro indicou risco alto de sobrecarga acadêmica.',
-      'Isso não é um diagnóstico clínico, mas é um sinal importante para pausar, observar a rotina e reduzir a intensidade quando possível.',
-      '',
-      'Pontos que merecem atenção:',
-      ...factors.slice(0, 4).map((factor) => `- ${factor}`),
-      '',
-      'Próximos passos sugeridos:',
-      '- Divida tarefas grandes em blocos menores.',
-      '- Priorize sono, pausas e hidratação nas próximas horas.',
-      '- Se o desconforto persistir, converse com alguém de confiança ou procure apoio profissional.',
-      '',
-      'BurnoutSense é uma ferramenta de apoio preventivo e não substitui acompanhamento médico ou psicológico.',
-    ].join('\n');
-  }
-
-  private buildRiskAlertHtml(name: string, factors: string[], isPreview = false) {
-    return baseEmailTemplate({
-      badge: isPreview ? 'Prévia de alerta' : 'Alerta preventivo',
-      title: isPreview ? 'Seu alerta preventivo está pronto para apoiar você.' : 'Seu registro indicou risco alto.',
-      intro:
-        'O BurnoutSense identificou sinais que merecem atenção. Isso não é um diagnóstico clínico, mas pode ser um bom momento para reduzir a intensidade e reorganizar as próximas horas.',
-      tone: 'peach',
-      sections: [
-        {
-          title: 'Pontos observados',
-          items: factors.slice(0, 4),
-        },
-        {
-          title: 'Cuidados imediatos sugeridos',
-          items: [
-            'Divida tarefas grandes em blocos menores e mais possíveis.',
-            'Faça uma pausa real antes de retomar atividades intensas.',
-            'Priorize sono, alimentação e uma conversa de apoio se o peso persistir.',
-          ],
-        },
-      ],
-      note: `Olá, ${escapeHtml(firstName(name))}. O objetivo deste alerta é apoiar sua percepção da rotina, sem julgamento.`,
-    });
-  }
-
-  private buildHighRiskText(name: string, assessment: StoredAssessmentIndicators, mainFactors: string[]) {
-    const factors = mainFactors.length ? mainFactors : ['Indicadores de sobrecarga acima do ideal'];
-    return [
-      this.buildRiskAlertText(name, factors),
-      '',
-      'Resumo do registro:',
-      `- Sono: ${formatHours(assessment.sleepHours)}`,
-      `- Estresse: ${assessment.stressLevel}/10`,
-      `- Cansaço: ${assessment.tirednessLevel}/10`,
-      `- Pressão acadêmica: ${assessment.examPressure}/10`,
-    ].join('\n');
-  }
-
-  private buildHighRiskHtml(name: string, assessment: StoredAssessmentIndicators, mainFactors: string[]) {
-    const factors = mainFactors.length ? mainFactors : ['Indicadores de sobrecarga acima do ideal'];
-    return baseEmailTemplate({
-      badge: 'Alerta preventivo',
-      title: 'Seu registro indicou risco alto.',
-      intro:
-        'O BurnoutSense percebeu sinais de sobrecarga no seu acompanhamento mais recente. Use este aviso como um convite para pausar, priorizar o essencial e buscar apoio se necessário.',
-      tone: 'peach',
-      metrics: [
-        { label: 'Sono', value: formatHours(assessment.sleepHours) },
-        { label: 'Estresse', value: `${assessment.stressLevel}/10` },
-        { label: 'Cansaço', value: `${assessment.tirednessLevel}/10` },
-        { label: 'Pressão acadêmica', value: `${assessment.examPressure}/10` },
-      ],
-      sections: [
-        {
-          title: 'O que chamou atenção',
-          items: factors.slice(0, 4),
-        },
-        {
-          title: 'Ações para agora',
-          items: [
-            'Escolha apenas uma prioridade para o próximo bloco de estudo.',
-            'Reduza estímulos por alguns minutos antes de continuar.',
-            'Se esse padrão se repetir, converse com alguém de confiança ou procure apoio profissional.',
-          ],
-        },
-      ],
-      note: `Olá, ${escapeHtml(firstName(name))}. Este alerta é preventivo e não substitui acompanhamento médico ou psicológico.`,
-    });
-  }
-
   private getDailyReminderHour() {
     return clampScheduleNumber(this.configService.get<string>('DAILY_REMINDER_HOUR'), 12, 0, 23);
   }
@@ -558,10 +440,6 @@ function escapeHtml(value: string) {
 
 function firstName(name: string) {
   return name.trim().split(/\s+/)[0] || 'estudante';
-}
-
-function formatHours(hours: number) {
-  return `${Number(hours.toFixed(1)).toLocaleString('pt-BR')} ${hours === 1 ? 'hora' : 'horas'}`;
 }
 
 function clampScheduleNumber(value: string | undefined, fallback: number, min: number, max: number) {

@@ -58,7 +58,10 @@ export class StatusService {
     }
 
     try {
-      const response = await fetch(`${aiServiceUrl}/model-info`, {
+      const apiKey = this.configService.get<string>('AI_SERVICE_API_KEY');
+      if (!apiKey) return { loaded: false, status: 'not_configured' };
+      const response = await fetch(`${aiServiceUrl}/v1/model`, {
+        headers: { 'X-API-Key': apiKey },
         signal: AbortSignal.timeout(5_000),
       });
 
@@ -72,7 +75,8 @@ export class StatusService {
         loaded: true,
         status: 'loaded',
         modelName: modelInfo.model_name,
-        trainingStrategy: modelInfo.training_strategy,
+        datasetVersion: modelInfo.dataset_version,
+        methodology: 'esbeu_context_regression',
       };
     } catch {
       return { loaded: false, status: 'unavailable' };
@@ -82,5 +86,5 @@ export class StatusService {
 
 interface AiModelInfoResponse {
   model_name?: string;
-  training_strategy?: string;
+  dataset_version?: string;
 }

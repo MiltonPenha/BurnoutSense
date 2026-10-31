@@ -26,8 +26,18 @@ Erros: 401 chave inválida na IA; 422 contrato inválido ou estimativa fora de d
 
 Scripts, relatórios de treino, classificador, normalizadores, fatores heurísticos, calibração, alertas por classe, cálculo local e geração externa de insights foram retirados. As rotas POST/PATCH `/assessments` e GET `/results/...` respondem 410; GET/DELETE de avaliações antigas preservam o controle de propriedade. Não se convertem resultados históricos para ESB-eu.
 
-Prisma mantém esquema e migrações históricos para não destruir registros. Essa retenção é armazenamento histórico, sem classificador ativo. A futura persistência ESB-eu precisa de migração aditiva e tabelas/contratos próprios; não reutilize `riskLevel`, `riskScore` ou `confidence`. O novo formulário/dashboard completo não foi implementado nesta entrega: as telas antigas mostram aviso explícito, mantendo autenticação, perfil e status.
+Prisma mantém esquema e migrações históricos para não destruir registros. Essa retenção é armazenamento histórico, sem classificador ativo. A persistência ESB-eu usa a nova tabela `esbeu_assessments`, com migração aditiva. Não reutiliza `riskLevel`, `riskScore` ou `confidence`. As telas ESB-eu estão implementadas, com formulários e resultados distintos do armazenamento histórico.
 
 ## Métricas e validação
 
 Confira [métricas oficiais e critérios](docs/ESBEU_METRICS.md). Testar um exemplo em `/v1/validation/compare` não comprova generalização. `/v1/validation/evaluate` calcula métricas somente dos exemplos enviados, sem treino; use apenas dados autorizados. Os resultados científicos reportáveis estão em `/v1/validation/metrics` com escopo de CV interna aninhada.
+
+## Avaliações ESB-eu da aplicação
+
+Rotas JWT em `/esbeu-assessments`: GET `/form`, POST `/`, GET `/` (25 resultados e cursor), GET `/:id` e DELETE `/:id`. O servidor usa o usuário do JWT; o corpo não aceita userId. Contexto e itens são devolvidos apenas no detalhe autenticado do dono, enquanto listas usam resumos.
+
+POST recebe `context`, `consent=true`, `adult=true`, `enrolled=true`, `consentVersion="esbeu-app/1"` e, opcionalmente, `items` com os 14 itens completos. O consentimento de uso da aplicação é distinto do TCLE da pesquisa. Null em items não equivale a omissão. Falhas de validação ou de IA impedem a gravação; não há resultado alternativo. Contexto e itens seguem separados para FastAPI, sem identificador da conta ou consentimento.
+
+O resultado persiste `modelVersion` como identificador SHA-256 do artefato, além de modelo, base, formulário, contrato e consentimento. O hash identifica o artefato; não contém o pipeline serializado nem representa confiança individual. Avaliações são imutáveis: mudanças geram novo registro. A exclusão da conta remove suas avaliações por cascade.
+
+Execute a migração revisada antes de habilitar as novas telas. `ESBEU_ASSESSMENTS_ENABLED=false` bloqueia criação e formulário, preservando leitura/exclusão. Consulte [guia de integração](docs/ETAPA_10_INTEGRATION.md).

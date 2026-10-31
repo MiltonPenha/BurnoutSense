@@ -27,7 +27,7 @@ O procedimento completo de seleção apresentou MAE 0,4016, RMSE 0,4926 e R² -0
 
 ## Backend e frontend
 
-Persistir futuramente: tipo observado/estimado, escore original, contrato, nome e versão do modelo/base, data de inferência e versão do formulário. Manter itens observados separados do contexto e sem uso como preditores. Exibir escore contínuo 0–4 com duas casas somente na apresentação. Usar modelos/tabelas próprios para ESB-eu; não converter dados antigos de classificação.
+A aplicação persiste: tipo observado/estimado, escore original, contrato, nome e versão do modelo/base, data de inferência e versão do formulário. Manter itens observados separados do contexto e sem uso como preditores. Exibir escore contínuo 0–4 com duas casas somente na apresentação. A tabela própria `esbeu_assessments` preserva esses dados sem converter classificações históricas.
 
 Mostrar métricas científicas no contexto de validação do modelo, nunca como confiança do usuário. Distinguir `/v1/validation/metrics` (CV final agregada) de `/v1/validation/evaluate` (métricas dos exemplos enviados pelo chamador, sem CV). Entrada de treino enviada ao último endpoint não é teste independente.
 

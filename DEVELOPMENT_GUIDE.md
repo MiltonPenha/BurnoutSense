@@ -23,10 +23,14 @@ Em `backend/`: instale pelo `pnpm-lock.yaml` congelado, configure `.env` a parti
 
 Em `frontend/`: `npm ci`, `npm run lint`, `npm run build`, `npm run dev`. Configure somente `NEXT_PUBLIC_API_URL` conforme `.env.example`. Não exponha a chave da IA no navegador.
 
-As gravações antigas de avaliações estão retiradas (410). Dashboard, registro e histórico mostram aviso de transição. A futura integração deve usar o esquema contextual e persistir resultados ESB-eu em contrato próprio, com versão de base/modelo e distinção observado/estimado. Nenhum cálculo local deve produzir um resultado alternativo.
+As gravações antigas de avaliações estão retiradas (410). Dashboard, registro e histórico usam avaliações ESB-eu em tabela própria, com versões de base/modelo e distinção observado/estimado. Aplique a migração aditiva revisada antes de usar esse fluxo. Nenhum cálculo local produz resultado alternativo.
 
 O agendador de lembretes permanece desativado por padrão durante a transição. Autenticação, perfil e notificações genéricas não enviam respostas da pesquisa para serviços de IA externos.
 
 ## Revisão de privacidade
 
 Antes de qualquer commit, confira `git status --short` e a lista de arquivos rastreados. Nenhum CSV, planilha de respostas, pickle/joblib, env privado ou relatório individual pode ser incluído. Não execute `git add -f` para esses arquivos. Relatórios públicos devem conter apenas agregados revisados. O treinamento local é iniciado por `python -m training.run_research_training --config CAMINHO_CONFIG_PRIVADA`, com consentimento e configuração privados documentados; não rode automaticamente sobre respostas novas.
+
+## Etapa 10
+
+As instruções de implantação, migração, teste isolado e rollback estão em [ETAPA_10_INTEGRATION.md](docs/ETAPA_10_INTEGRATION.md). Testes unitários de conversão de formulário: `node --test tests/esbeu-form.test.mjs` em frontend. A homologação completa cria seu próprio PostgreSQL em pasta nova externa e utiliza somente dados artificiais. Não configure esse teste com o DATABASE_URL da aplicação.

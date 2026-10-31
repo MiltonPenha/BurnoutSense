@@ -4,7 +4,7 @@ Projeto de TCC que estima o escore contínuo geral da ESB-eu, de 0 a 4, a partir
 
 ## Arquitetura
 
-- `frontend/`: Next.js; autenticação, perfil e status. As telas do formulário diário anterior foram desativadas enquanto a interface ESB-eu é integrada.
+- `frontend/`: Next.js; formulário ESB-eu, dashboard contínuo, histórico paginado, autenticação, perfil e status.
 - `backend/`: NestJS, autenticação e PostgreSQL/Prisma. Cliente HTTP do microsserviço; não treina nem executa modelos Python.
 - `ai-service/`: FastAPI independente; valida contexto, calcula escore observado, estima escore contextual e publica métricas agregadas. Treinamento é uma execução local separada da API.
 
@@ -23,3 +23,5 @@ Veja [guia local](DEVELOPMENT_GUIDE.md), [API e treinamento](ai-service/README.m
 CSV, identificadores, respostas, modelos serializados e credenciais ficam fora do repositório. `.gitignore` protege extensões de dados e artefatos, mas não substitui a revisão de arquivos já rastreados. Não publique relatórios privados.
 
 O classificador anterior, seu treinamento, relatórios e fallbacks foram retirados da árvore de trabalho. Nenhum CSV ou binário desse classificador estava presente/rastreado no estado examinado. O histórico Git não foi reescrito. Esquema e migrações históricos do banco permanecem para preservar registros existentes; novas gravações no contrato anterior retornam HTTP 410. Não há migração destrutiva automática.
+
+A Etapa 10 implementa consentimento de uso versionado, elegibilidade, itens ESB-eu opcionais e avaliações privadas por conta. A migração adiciona `esbeu_assessments`, sem importar o CSV de pesquisa ou alterar tabelas antigas. Veja [implantação, homologação e rollback](docs/ETAPA_10_INTEGRATION.md). Novas avaliações não são incorporadas automaticamente ao treinamento.

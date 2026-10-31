@@ -41,3 +41,9 @@ Em Swagger, autorize a chave, execute `/ready`, copie o exemplo artificial de `/
 `form_schema.py` define 39 campos analíticos; `import_forms.py` valida o CSV oficial de 41 colunas e descarta os dois campos administrativos. `esbeu_scoring.py` calcula o alvo; `regression_preprocessing.py` mantém os 22 preditores autorizados. `regression_models.py` constrói os cinco pipelines. `regression_evaluation.py` avalia configurações fixas (Etapa 6). `research_audit.py`, `regression_experiments.py` e `run_research_training.py` auditam e executam a CV aninhada privada (Etapas 7–8). `research_finalization.py` verifica fechamento; `regression_inference.py` persiste e verifica o pipeline.
 
 Execute testes com `python -m unittest discover -s tests -v`. São dados artificiais exclusivos para software. A base real nunca é fixture. Consulte [cartão do modelo](MODEL_CARD.md) e [métricas](../docs/ESBEU_METRICS.md).
+
+## Metadados para a Etapa 10
+
+`GET /v1/schema` também devolve `form_version=forms/1.0` e 36 definições públicas (22 contextuais e 14 itens), com perguntas, tipos, alternativas, rótulos, limites e instruções derivados de `form_schema.py`. O frontend não mantém cópia de categorias ou perguntas.
+
+Previsão e `/v1/model` incluem `model_version=sha256:<identificador do artefato>` para rastreabilidade exata. É um identificador de integridade, não o modelo serializado, parâmetro aprendido, assinatura de participante ou índice de confiança. A configuração de confiança de origem continua obrigatória. O backend persiste esse identificador com cada avaliação; não envia userId, consentimento ou e-mail ao microsserviço.

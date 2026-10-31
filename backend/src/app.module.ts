@@ -11,6 +11,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { ResultsModule } from './results/results.module';
 import { StatusModule } from './status/status.module';
 import { UsersModule } from './users/users.module';
+import { EsbeuAssessmentsModule } from './esbeu-assessments/esbeu-assessments.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { UsersModule } from './users/users.module';
     NotificationsModule,
     AiModule,
     AssessmentsModule,
+    EsbeuAssessmentsModule,
     ResultsModule,
     StatusModule,
   ],

@@ -13,7 +13,7 @@ describe('Independent ESB-eu HTTP client', () => {
   afterEach(() => jest.restoreAllMocks());
 
   it('sends context by HTTP and preserves continuous output', async () => {
-    const result = { kind: 'estimated_score', esbeu_overall: 1.75, model_name: 'ridge', dataset_version: 'artificial-test' };
+    const result = { kind: 'estimated_score', esbeu_overall: 1.75, model_name: 'ridge', dataset_version: 'artificial-test', model_version: 'sha256:' + 'a'.repeat(64), contract_version: 'esbeu-context-regression/1' };
     fetchMock.mockResolvedValue(new Response(JSON.stringify(result), { status: 200 }));
     await expect(service.predict({ context: { artificial: 1 } })).resolves.toEqual(result);
     expect(fetchMock).toHaveBeenCalledWith('http://independent-ai:8000/v1/predict', expect.objectContaining({

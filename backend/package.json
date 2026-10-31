@@ -1,7 +1,7 @@
 {
   "name": "burnoutsense-backend",
   "version": "0.1.0",
-  "description": "Backend API for BurnoutSense academic burnout prevention prototype.",
+  "description": "Backend API for authenticated contextual ESB-eu assessments.",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
@@ -28,6 +28,7 @@
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
+    "express": "4.22.1",
     "helmet": "^8.2.0",
     "nodemailer": "^8.0.9",
     "reflect-metadata": "^0.2.2",

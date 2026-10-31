@@ -1,168 +1,165 @@
-from pathlib import Path
-from typing import Any
+"""Serve a known private contextual regressor; never read the research CSV."""
 
-import joblib
+from dataclasses import asdict
+import json
+from pathlib import Path
+import re
+from threading import Lock
+
 import pandas as pd
 
-from app.schemas import PredictionRequest
+from app.schemas import FamilyMetrics
+from app.settings import Settings
+from training.esbeu_scoring import calculate_esbeu_scores
+from training.form_schema import ESBEU_FIELDS, FIELDS_BY_ID
+from training.regression_evaluation import calculate_regression_metrics
+from training.regression_inference import load_private_pipeline, predict_context_scores, runtime_versions
+from training.regression_models import MODEL_NAMES
+from training.regression_preprocessing import ALLOWED_PREDICTORS, ContextFrameValidator, validate_predictors
 
 
-MODEL_PATH = Path(__file__).resolve().parents[1] / "saved_models" / "burnout_model.pkl"
+class ModelUnavailable(RuntimeError):
+    pass
 
 
-class BurnoutPredictor:
-    def __init__(self, model_path: Path = MODEL_PATH) -> None:
-        self.model_path = model_path
-        self._artifact: dict[str, Any] | None = None
+class InputRejected(ValueError):
+    pass
 
-    def _load_artifact(self) -> dict[str, Any]:
-        if self._artifact is None:
-            if not self.model_path.exists():
-                raise FileNotFoundError(self.model_path)
-            self._artifact = joblib.load(self.model_path)
-        return self._artifact
 
-    def predict(self, payload: PredictionRequest) -> dict[str, Any]:
-        artifact = self._load_artifact()
-        model = artifact["model"]
-        feature_names = artifact["feature_names"]
-        model_name = artifact.get("model_name", "Random Forest")
-        fill_values = artifact.get("fill_values", {})
+class EstimateRejected(ValueError):
+    pass
 
-        input_data = pd.DataFrame([payload.model_dump()])
-        input_data = input_data.reindex(columns=feature_names)
-        input_data = input_data.apply(pd.to_numeric, errors="coerce")
-        input_data = input_data.fillna(fill_values).fillna(0)
 
-        if not feature_names:
-            raise ValueError("Modelo sem lista de features esperadas.")
+METRIC_CONTRACT = {
+    "mae": {"direction": "minimize", "mathematical_ideal": 0.0, "unit": "ESB-eu points (0-4)"},
+    "rmse": {"direction": "minimize", "mathematical_ideal": 0.0, "unit": "ESB-eu points (0-4)"},
+    "r2": {"direction": "maximize", "mathematical_ideal": 1.0, "unit": "dimensionless; negative permitted"},
+}
 
-        risk_level = str(model.predict(input_data)[0])
-        probabilities = self._prediction_probabilities(model, input_data)
-        confidence = self._prediction_confidence(probabilities, risk_level)
 
-        return {
-            "risk_level": risk_level,
-            "confidence": confidence,
-            "risk_score": self._risk_score(probabilities, input_data.iloc[0].to_dict()),
-            "model_used": model_name,
-            "main_factors": self._main_factors(input_data.iloc[0].to_dict()),
-        }
+class RegressionService:
+    def __init__(self, settings: Settings):
+        self.settings = settings
+        self._artifact = None
+        self._manifest = None
+        self._comparison = None
+        self._protocol = None
+        self._lock = Lock()
 
-    def model_info(self) -> dict[str, Any]:
-        artifact = self._load_artifact()
-        feature_names = artifact.get("feature_names", [])
-        return {
-            "model_name": artifact.get("model_name", "Random Forest"),
-            "training_strategy": artifact.get("training_strategy", "baseline"),
-            "target_column": artifact.get("target_column", "risk_level"),
-            "risk_classes": artifact.get("risk_classes", []),
-            "feature_count": len(feature_names),
-            "feature_names": feature_names,
-            "dataset_source": artifact.get("dataset_source", ""),
-            "training_records": artifact.get("training_records"),
-            "trained_at": artifact.get("trained_at"),
-            "metrics_summary": self._metrics_summary(artifact.get("metrics", {})),
-            "quality_targets": artifact.get("quality_targets", {}),
-            "quality_targets_met": artifact.get("quality_targets_met", {}),
-            "feature_importance": artifact.get("feature_importance", []),
-            "purpose": "Academic prototype for early burnout risk screening.",
-            "clinical_disclaimer": "This service is not a clinical or diagnostic tool.",
-        }
+    def _load(self):
+        if self._artifact is not None:
+            return self._artifact
+        with self._lock:
+            if self._artifact is not None:
+                return self._artifact
+            try:
+                directory = self.settings.model_dir
+                if (directory is None or not self.settings.trust_local_model
+                        or not re.fullmatch(r"[A-Za-z0-9._-]{1,100}", self.settings.dataset_version)):
+                    raise ValueError()
+                directory = directory.resolve()
+                if directory.is_relative_to(Path(__file__).resolve().parents[2]):
+                    raise ValueError()
+                manifest = json.loads((directory / "run-manifest.private.json").read_text(encoding="utf-8"))
+                if (manifest["status"] != "completed" or manifest["data_origin"] != "real_questionnaire"
+                        or manifest["model_name"] not in MODEL_NAMES
+                        or type(manifest["eligible_records"]) is not int or manifest["eligible_records"] < 2
+                        or not re.fullmatch(r"[0-9a-f]{64}", manifest["model_sha256"])):
+                    raise ValueError()
+                artifact = load_private_pipeline(directory / "context_regressor.private.joblib",
+                                                 trusted=True, expected_sha256=manifest["model_sha256"])
+                contract = artifact["contract"]
+                if (contract["model_name"] != manifest["model_name"]
+                        or contract["output_name"] != "esbeu_overall"
+                        or contract["output_minimum"] != 0 or contract["output_maximum"] != 4):
+                    raise ValueError()
+                selected = validate_predictors(contract["predictors"])
+                if selected != tuple(ALLOWED_PREDICTORS):
+                    raise ValueError()
+                if tuple(artifact["pipeline"].named_steps["preprocess"].named_steps["validate"].predictors) != selected:
+                    raise ValueError()
+                raw = json.loads((directory / "comparison.aggregate.json").read_text(encoding="utf-8"))
+                protocol = json.loads((directory / "protocol.private.json").read_text(encoding="utf-8"))["protocol"]
+                if raw["failure"] is not None or raw["final_candidate"]["name"] != manifest["model_name"]:
+                    raise ValueError()
+                # Select only typed numeric summaries; never expose arbitrary JSON.
+                comparisons = [FamilyMetrics.model_validate(row).model_dump() for row in raw["family_comparisons"]]
+                procedure = FamilyMetrics.model_validate(raw["selection_procedure"]).model_dump()
+                if ({row["name"] for row in comparisons} != set(MODEL_NAMES)
+                        or len(comparisons) != 5 or procedure["name"] != "inner_selection_procedure"):
+                    raise ValueError()
+                keys = ("outer_splits", "inner_splits", "outer_repeats", "random_state")
+                if any(type(protocol[key]) is not int for key in keys):
+                    raise ValueError()
+                self._protocol = {key: protocol[key] for key in keys}
+                self._comparison = {"family_comparisons": comparisons, "selection_procedure": procedure}
+                self._manifest = manifest
+                self._artifact = artifact
+                return artifact
+            except Exception:
+                pass
+        raise ModelUnavailable("Modelo privado indisponível ou incompatível.")
 
-    def model_metrics(self) -> dict[str, Any]:
-        artifact = self._load_artifact()
-        metrics = artifact.get("metrics", {})
-        return {
-            "model_name": artifact.get("model_name", "Random Forest"),
-            "training_strategy": artifact.get("training_strategy", "baseline"),
-            "metrics_summary": self._metrics_summary(metrics),
-            "per_class_metrics": metrics.get("per_class_metrics", {}),
-            "confusion_matrix": metrics.get("confusion_matrix", []),
-            "confusion_matrix_labels": metrics.get(
-                "confusion_matrix_labels",
-                artifact.get("risk_classes", []),
-            ),
-            "quality_targets": artifact.get("quality_targets", {}),
-            "quality_targets_met": artifact.get("quality_targets_met", {}),
-        }
-
-    @staticmethod
-    def _metrics_summary(metrics: dict[str, Any]) -> dict[str, float | None]:
-        return {
-            "accuracy": _round_metric(metrics.get("accuracy")),
-            "balanced_accuracy": _round_metric(metrics.get("balanced_accuracy")),
-            "precision": _round_metric(metrics.get("precision")),
-            "recall": _round_metric(metrics.get("recall")),
-            "f1_score": _round_metric(metrics.get("f1_score")),
-            "precision_macro": _round_metric(metrics.get("precision_macro")),
-            "recall_macro": _round_metric(metrics.get("recall_macro")),
-            "f1_macro": _round_metric(metrics.get("f1_macro")),
-            "high_precision": _round_metric(metrics.get("high_precision")),
-            "high_recall": _round_metric(metrics.get("high_recall")),
-            "high_f1_score": _round_metric(metrics.get("high_f1_score")),
-        }
+    def predictors(self):
+        return tuple(self._load()["contract"]["predictors"])
 
     @staticmethod
-    def _prediction_probabilities(model: Any, input_data: pd.DataFrame) -> dict[str, float]:
-        if not hasattr(model, "predict_proba"):
-            return {}
-
-        probabilities = model.predict_proba(input_data)[0]
-        classes = [str(label) for label in model.classes_]
-
-        return {risk_class: float(probabilities[index]) for index, risk_class in enumerate(classes)}
-
-    @staticmethod
-    def _prediction_confidence(probabilities: dict[str, float], risk_level: str) -> float:
-        return round(float(probabilities.get(risk_level, 0.0)), 4)
-
-    @staticmethod
-    def _risk_score(probabilities: dict[str, float], features: dict[str, float]) -> float:
-        if not probabilities:
-            return 5.0
-
-        risk_index = probabilities.get("medium", 0.0) * 0.5 + probabilities.get("high", 0.0)
-        score = 1 + (9 * risk_index)
-
-        if features.get("stress_level", 0) >= 8:
-            score += 0.3
-        if features.get("sleep_quality", 24) <= 4:
-            score += 0.3
-        if features.get("social_support", 10) <= 3:
-            score += 0.2
-        if features.get("study_hours", 0) >= 12 and features.get("exam_pressure", 0) >= 8:
-            score += 0.2
-        if features.get("physical_activity", 0) >= 5:
-            score -= 0.2
-        if features.get("social_support", 0) >= 8:
-            score -= 0.2
-
-        return round(min(10, max(1, score)), 1)
+    def context_frame(context: dict, predictors=ALLOWED_PREDICTORS):
+        selected = validate_predictors(predictors)
+        try:
+            if type(context) is not dict or set(context) != set(selected):
+                raise ValueError()
+            frame = pd.DataFrame([{key: context[key] for key in selected}], columns=selected, dtype=object)
+            ContextFrameValidator(selected).transform(frame)
+            if ("employment" in selected and "work_hours_week" in selected
+                    and context["employment"] == FIELDS_BY_ID["employment"].choices[0]
+                    and context["work_hours_week"] != 0):
+                raise ValueError()
+            return frame
+        except (TypeError, ValueError, KeyError):
+            pass
+        raise InputRejected("Contexto inválido; confira o esquema e os campos obrigatórios.")
 
     @staticmethod
-    def _main_factors(features: dict[str, float]) -> list[str]:
-        factors = []
+    def observed(items: dict):
+        try:
+            if type(items) is not dict or set(items) != {f.identifier for f in ESBEU_FIELDS}:
+                raise ValueError()
+            return calculate_esbeu_scores(items)
+        except (TypeError, ValueError, KeyError):
+            pass
+        raise InputRejected("Itens inválidos; exigidos os 14 itens inteiros de 0 a 4.")
 
-        if features.get("stress_level", 0) >= 8:
-            factors.append("Nivel de estresse elevado")
-        if features.get("sleep_quality", 24) < 6:
-            factors.append("Poucas horas de sono ou baixa qualidade do sono")
-        if features.get("exam_pressure", 0) >= 7 or features.get("study_hours", 0) >= 8:
-            factors.append("Alta carga academica")
-        if features.get("screen_time", 0) >= 8:
-            factors.append("Tempo de tela elevado")
-        if features.get("social_support", 10) <= 4:
-            factors.append("Baixo suporte social")
-        if features.get("financial_stress", 0) >= 7:
-            factors.append("Estresse financeiro elevado")
-        if features.get("physical_activity", 7) <= 1:
-            factors.append("Baixa atividade fisica")
+    def predict(self, context: dict):
+        artifact = self._load()
+        frame = self.context_frame(context, artifact["contract"]["predictors"])
+        try:
+            value = float(predict_context_scores(artifact, frame)[0])
+        except Exception:
+            raise EstimateRejected("Estimativa indisponível no domínio 0–4.") from None
+        return {"esbeu_overall": value, "model_name": artifact["contract"]["model_name"],
+                "dataset_version": self.settings.dataset_version}
 
-        return factors or ["Indicadores dentro de uma faixa menos critica"]
+    def evaluate(self, cases):
+        observed, predicted = [], []
+        for case in cases:
+            observed.append(self.observed(case.items).overall)
+            predicted.append(self.predict(case.context)["esbeu_overall"])
+        metrics = calculate_regression_metrics(observed, predicted)
+        return {"samples": len(cases), "metrics": asdict(metrics),
+                "model_name": self._load()["contract"]["model_name"],
+                "dataset_version": self.settings.dataset_version}
 
+    def info(self):
+        artifact = self._load()
+        return {"contract_version": artifact["contract"]["version"],
+                "dataset_version": self.settings.dataset_version, "model_name": artifact["contract"]["model_name"],
+                "predictors": list(artifact["contract"]["predictors"]),
+                "training_records": self._manifest["eligible_records"], "runtime_versions": runtime_versions()}
 
-def _round_metric(value: Any) -> float | None:
-    if value is None:
-        return None
-    return round(float(value), 4)
+    def metrics(self):
+        self._load()
+        return {"dataset_version": self.settings.dataset_version,
+                "training_records": self._manifest["eligible_records"], "protocol": self._protocol,
+                "selected_model": self._manifest["model_name"], **self._comparison,
+                "metric_contract": METRIC_CONTRACT}

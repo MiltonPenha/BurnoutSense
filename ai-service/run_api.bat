@@ -1,4 +1,10 @@
 @echo off
-cd /d "%~dp0"
-".venv\Scripts\python.exe" -m uvicorn app.main:app --host 127.0.0.1 --port 8000
-pause
+if "%~1"=="" (
+  echo Uso: run_api.bat CAMINHO_ENV_PRIVADO [CAMINHO_PYTHON]
+  exit /b 1
+)
+if "%~2"=="" (
+  powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0run_api.ps1" -EnvFile "%~1"
+) else (
+  powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0run_api.ps1" -EnvFile "%~1" -Python "%~2"
+)

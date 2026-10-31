@@ -107,8 +107,10 @@ def build_regression_preprocessor(
 ) -> Pipeline:
     """Return an UNFITTED transformer; fit only on X_train or inside CV folds.
 
-    Nominal and NA-bearing columns use learned one-hot categories, rejecting
-    unseen categories. Ordered textual categories use the schema's rank, not
+    Nominal and NA-bearing columns use the complete schema-defined vocabulary,
+    including alternatives absent from training. Invalid values still fail in
+    ContextFrameValidator and the encoder keeps handle_unknown="error".
+    Ordered textual categories use the schema's rank, not
     data-derived order. Other numeric/ordinal values keep their canonical units
     before optional StandardScaler. No imputation or outcome-driven selection.
     """
@@ -118,10 +120,19 @@ def build_regression_preprocessor(
         or FIELDS_BY_ID[key].nature == "nominal"
     )]
     numeric = [key for key in selected if key not in categorical]
+    categories = []
+    for key in categorical:
+        field = FIELDS_BY_ID[key]
+        # Match ContextFrameValidator's string conversion for NA-bearing fields.
+        choices = ([str(value) for value in field.choices]
+                   + [SpecialValue.NOT_APPLICABLE.value]
+                   if field.allows_not_applicable else list(field.choices))
+        categories.append(choices)
     columns = ColumnTransformer(
         [
             ("numeric", StandardScaler() if scale_numeric else "passthrough", numeric),
-            ("categorical", OneHotEncoder(handle_unknown="error", sparse_output=False),
+            ("categorical", OneHotEncoder(categories=categories, handle_unknown="error",
+                                          sparse_output=False),
              categorical),
         ],
         remainder="drop",

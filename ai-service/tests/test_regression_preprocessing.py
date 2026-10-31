@@ -11,7 +11,7 @@ from sklearn.exceptions import NotFittedError
 
 from training.esbeu_scoring import calculate_esbeu_scores
 from training.form_schema import (
-    ANALYTICAL_FIELDS, CONTEXT_FIELDS, IneligibleRecordError,
+    ANALYTICAL_FIELDS, CONTEXT_FIELDS, FIELDS_BY_ID, IneligibleRecordError,
     ResponseValidationError, SpecialValue,
 )
 from training.import_forms import import_forms_csv
@@ -128,7 +128,7 @@ class RegressionPreprocessingTests(unittest.TestCase):
         self.assertEqual(scaler.n_samples_seen_, 2)
         self.assertFalse(hasattr(clone(processor).named_steps["columns"], "transformers_"))
 
-    def test_unseen_nominal_category_rejected_without_learning_it(self):
+    def test_unseen_official_nominal_category_accepted_without_learning_it(self):
         train = prepare_regression_data([synthetic_record()], ("course_area",))
         record = synthetic_record()
         record["course_area"] = "Ciências Exatas"
@@ -137,9 +137,76 @@ class RegressionPreprocessingTests(unittest.TestCase):
         processor.fit(train.X)
         encoder = processor.named_steps["columns"].named_transformers_["categorical"]
         before = encoder.categories_[0].copy()
-        with self.assertRaises(ValueError):
-            processor.transform(test.X)
+        encoded = processor.transform(test.X)
+        names = list(processor.get_feature_names_out())
+        self.assertEqual(encoded[0, names.index("categorical__course_area_Ciências Exatas")], 1)
+        self.assertEqual(encoded.sum(), 1)
         np.testing.assert_array_equal(encoder.categories_[0], before)
+
+    def test_all_official_categories_encode_in_schema_order_across_fits(self):
+        for field in CONTEXT_FIELDS:
+            if field.nature != "nominal" and not field.allows_not_applicable:
+                continue
+            with self.subTest(field=field.identifier):
+                selected = (field.identifier,)
+                alternatives = list(field.choices)
+                if field.allows_not_applicable:
+                    alternatives.append(SpecialValue.NOT_APPLICABLE)
+                records = []
+                for alternative in alternatives:
+                    record = synthetic_record()
+                    record[field.identifier] = alternative
+                    records.append(record)
+                data = prepare_regression_data(records, selected)
+                first = build_regression_preprocessor(selected).fit(data.X.iloc[:1])
+                last = clone(first).fit(data.X.iloc[-1:])
+                np.testing.assert_array_equal(first.transform(data.X), np.eye(len(records)))
+                np.testing.assert_array_equal(last.transform(data.X), np.eye(len(records)))
+                np.testing.assert_array_equal(first.get_feature_names_out(),
+                                              last.get_feature_names_out())
+                encoder = first.named_steps["columns"].named_transformers_["categorical"]
+                self.assertEqual(encoder.handle_unknown, "error")
+                self.assertEqual(len(encoder.categories_[0]), len(alternatives))
+
+    def test_na_only_in_holdout_is_distinct_from_zero_and_invalid_text(self):
+        data = prepare_regression_data([synthetic_record()], ("study_work_difficulty",))
+        processor = build_regression_preprocessor(data.predictors).fit(data.X)
+        holdout = data.X.copy()
+        holdout.iloc[0, 0] = SpecialValue.NOT_APPLICABLE
+        np.testing.assert_array_equal(processor.transform(data.X), [[1, 0, 0, 0, 0, 0]])
+        np.testing.assert_array_equal(processor.transform(holdout), [[0, 0, 0, 0, 0, 1]])
+        holdout.iloc[0, 0] = SpecialValue.NOT_APPLICABLE.value
+        np.testing.assert_array_equal(processor.transform(holdout), [[0, 0, 0, 0, 0, 1]])
+        for invalid in ("0", "synthetic-private-invalid", None, True):
+            holdout.iloc[0, 0] = invalid
+            with self.assertRaises(ResponseValidationError) as caught:
+                processor.transform(holdout)
+            self.assertNotIn("synthetic-private-invalid", str(caught.exception))
+
+    def test_schema_vocabulary_does_not_admit_invalid_nominal_values(self):
+        data = prepare_regression_data([synthetic_record()], ("course_area",))
+        processor = build_regression_preprocessor(data.predictors).fit(data.X)
+        invalid = data.X.copy()
+        invalid.iloc[0, 0] = "synthetic-private-invalid"
+        with self.assertRaises(ResponseValidationError) as caught:
+            processor.transform(invalid)
+        self.assertNotIn("synthetic-private-invalid", str(caught.exception))
+        self.assertIsNone(caught.exception.__context__)
+
+    def test_full_schema_width_and_order_are_independent_of_observed_categories(self):
+        record = synthetic_record()
+        data = prepare_regression_data([record])
+        other = record.copy()
+        for key in ("course_area", "course_shift", "employment"):
+            other[key] = FIELDS_BY_ID[key].choices[-1]
+        other["study_work_difficulty"] = SpecialValue.NOT_APPLICABLE
+        alternate = prepare_regression_data([other])
+        first = build_regression_preprocessor().fit(data.X)
+        second = build_regression_preprocessor().fit(alternate.X)
+        # 18 numeric + (7 area + 5 shift + 4 employment + 6 study/work).
+        self.assertEqual(first.transform(alternate.X).shape, (1, 40))
+        np.testing.assert_array_equal(first.get_feature_names_out(),
+                                      second.get_feature_names_out())
 
     def test_x_defenses_against_leakage_and_bad_context(self):
         data = prepare_regression_data([synthetic_record()])

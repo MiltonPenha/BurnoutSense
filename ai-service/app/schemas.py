@@ -46,6 +46,14 @@ class ObservedScoreResponse(ApiModel):
     training_inefficacy: float = Field(ge=0, le=4)
 
 
+class ShadowComparisonResponse(ApiModel):
+    scope: Literal["local_shadow_not_official"] = "local_shadow_not_official"
+    official: PredictionResponse
+    candidate: PredictionResponse | None = None
+    shadow_status: Literal["available", "unavailable", "rejected"]
+    shadow_code: Literal["SHADOW_UNAVAILABLE", "SHADOW_OUTSIDE_DOMAIN"] | None = None
+
+
 class MetricStats(ApiModel):
     mean: float | None
     std: float | None = Field(ge=0)

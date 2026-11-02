@@ -6,17 +6,21 @@ Não carregar joblib de fonte desconhecida. Hash comprova integridade, não orig
 
 ## Código e ambiente
 
-Após a publicação revisada da branch:
+Para a versão publicada em main, após preservar alterações locais:
 
 ```powershell
 git fetch origin
-git switch feature/ml-optimization-v2
-git pull --ff-only origin feature/ml-optimization-v2
+git switch main
+git pull --ff-only origin main
 ```
 
-Preservar alterações locais antes de trocar branch. Na primeira instalação,
-clonar o repositório da equipe e selecionar essa branch. Estes comandos só
-obterão a entrega depois que os commits forem publicados pelo responsável.
+Não descarte alterações ou force atualizações se houver divergência. Na primeira
+instalação, clone o repositório da equipe. Para testar uma entrega ainda em PR,
+selecione a branch indicada no PR em vez de main; não misture trabalhos locais.
+
+O RF/A continua sendo o modelo oficial do fluxo atual, ainda experimental no
+sentido científico. A comparação [Ridge shadow](RIDGE_SHADOW.md) é opcional,
+desativada por padrão e não exige substituir este pacote ou configurar o frontend.
 
 Referência: Windows AMD64, CPython 3.12.14. Criar venv externo ao repositório
 usando essa versão instalada, sem alterar Python global:

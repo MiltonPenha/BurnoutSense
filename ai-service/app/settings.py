@@ -11,6 +11,7 @@ class Settings:
     dataset_version: str = "unconfigured"
     trust_local_model: bool = False
     api_key: str = field(default="", repr=False)
+    experimental_model: bool = False
 
     @classmethod
     def from_environment(cls):
@@ -18,4 +19,5 @@ class Settings:
         return cls(Path(path) if path else None,
                    os.environ.get("BURNOUTSENSE_DATASET_VERSION", "unconfigured"),
                    os.environ.get("BURNOUTSENSE_TRUST_LOCAL_MODEL", "").lower() == "true",
-                   os.environ.get("BURNOUTSENSE_API_KEY", ""))
+                   os.environ.get("BURNOUTSENSE_API_KEY", ""),
+                   os.environ.get("BURNOUTSENSE_EXPERIMENTAL_MODEL", "").lower() == "true")

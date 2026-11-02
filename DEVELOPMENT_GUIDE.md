@@ -1,36 +1,95 @@
 # Desenvolvimento local
 
-Mantenha os três processos separados: frontend Next.js (3000), backend NestJS (3001) e IA FastAPI (8000). O backend usa HTTP e não importa o treinamento Python.
+Mantenha PostgreSQL de desenvolvimento e três processos separados: frontend
+Next.js (3000), backend NestJS (3001) e FastAPI (8000). O backend usa HTTP e não
+importa treinamento Python. Consulte o [README](README.md) para instalação.
 
-## IA
+## RF/A privado
 
-Use Python 3.12 e ambiente virtual. Em `ai-service/`, instale `python -m pip install -r requirements.txt`. Para testes, instale também `-r requirements-dev.txt` e execute `python -m unittest discover -s tests -v`. Em ambientes Windows restritos, `BURNOUTSENSE_TEST_TMPDIR` deve apontar para uma pasta temporária gravável fora do repositório.
+O fluxo atual usa `rf-a-candidate-v1`, preservando seu caráter experimental.
+Siga [RF_A_TEAM_SETUP.md](docs/RF_A_TEAM_SETUP.md) para receber e verificar o
+pacote, criar ambiente compatível e configurar o processo. O CSV não é necessário
+para inferência. O `.env.example` da IA não é carregado automaticamente.
 
-Gere a configuração privada, somente para o artefato produzido localmente:
+Configure `BURNOUTSENSE_MODEL_DIR`,
+`BURNOUTSENSE_DATASET_VERSION=rf-a-candidate-v1`,
+`BURNOUTSENSE_TRUST_LOCAL_MODEL=true`, `BURNOUTSENSE_EXPERIMENTAL_MODEL=true`
+e `BURNOUTSENSE_API_KEY` própria, com pelo menos 24 caracteres. A mesma chave
+deve estar em `AI_SERVICE_API_KEY` do NestJS, nunca no frontend.
+
+Em `ai-service`, com `$Python` definido para o venv compatível:
 
 ```powershell
-python -m app.configure_local --model-dir 'CAMINHO_PRIVADO/treinamento' --output 'CAMINHO_PRIVADO/service.private.env' --dataset-version BurnoutSense-final-v1-20261030 --trust-generated-model
-.\run_api.ps1 -EnvFile 'CAMINHO_PRIVADO/service.private.env'
+& $Python -B -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --no-access-log
 ```
 
-O gerador não sobrescreve arquivos e não exibe a chave. Consulte o arquivo privado localmente para configurar a mesma chave em `AI_SERVICE_API_KEY` do backend. Nunca use `NEXT_PUBLIC_` para essa chave. O script aceita `-Python CAMINHO_PYTHON` e `-Port 8000`. Abra `http://127.0.0.1:8000/docs`; use Authorize com `X-API-Key`.
+Alternativa com configuração privada externa já preparada:
 
-O modelo e seus quatro arquivos de suporte necessários são descritos no README do serviço. A API não precisa do CSV para funcionar. `/health` verifica processo; `/ready` verifica carregamento real do modelo e autenticação.
+```powershell
+.\run_api.ps1 -EnvFile $ConfigPrivada -Python $Python -Port 8000
+```
 
-## Backend e frontend
+`/health` verifica processo; `/ready` autenticado confirma o modelo. Ausência
+do pacote não gera escore alternativo. Use `/v1/examples` para entradas fictícias.
 
-Em `backend/`: instale pelo `pnpm-lock.yaml` congelado, configure `.env` a partir de `.env.example`, execute `pnpm prisma:generate`, `pnpm build` e `pnpm test --runInBand`. Gere o cliente sem aplicar migrações durante esta revisão. Banco e autenticação continuam próprios do NestJS.
+O utilitário `app.configure_local` atende o pacote histórico v1 baseado em
+`run-manifest.private.json`. Ele não configura os pacotes RF/A ou Ridge atuais.
+A documentação científica v1 permanece em [MODEL_CARD.md](ai-service/MODEL_CARD.md).
 
-Em `frontend/`: `npm ci`, `npm run lint`, `npm run build`, `npm run dev`. Configure somente `NEXT_PUBLIC_API_URL` conforme `.env.example`. Não exponha a chave da IA no navegador.
+## Ambiente Python
 
-As gravações antigas de avaliações estão retiradas (410). Dashboard, registro e histórico usam avaliações ESB-eu em tabela própria, com versões de base/modelo e distinção observado/estimado. Aplique a migração aditiva revisada antes de usar esse fluxo. Nenhum cálculo local produz resultado alternativo.
+Use Python 3.12 em venv separado. Para reproduzir artefatos Windows AMD64, siga
+[ambiente v2](docs/ML_OPTIMIZATION_V2_ENVIRONMENT.md). `requirements.txt` fixa
+dependências diretas; `requirements-dev.txt` inclui testes. Esses arquivos não
+substituem a conferência das versões exigidas pelo pacote.
 
-O agendador de lembretes permanece desativado por padrão durante a transição. Autenticação, perfil e notificações genéricas não enviam respostas da pesquisa para serviços de IA externos.
+```powershell
+& $Python -B -m unittest discover -s tests
+& $Python -m pip check
+```
 
-## Revisão de privacidade
+Em Windows restrito, `BURNOUTSENSE_TEST_TMPDIR` pode apontar para uma pasta
+temporária externa gravável. Não use a pasta de respostas.
 
-Antes de qualquer commit, confira `git status --short` e a lista de arquivos rastreados. Nenhum CSV, planilha de respostas, pickle/joblib, env privado ou relatório individual pode ser incluído. Não execute `git add -f` para esses arquivos. Relatórios públicos devem conter apenas agregados revisados. O treinamento local é iniciado por `python -m training.run_research_training --config CAMINHO_CONFIG_PRIVADA`, com consentimento e configuração privados documentados; não rode automaticamente sobre respostas novas.
+## Backend, frontend e banco
 
-## Etapa 10
+Em `backend`, use `pnpm install --frozen-lockfile`, configure `.env` sem
+sobrescrever configuração existente e confira `DATABASE_URL`. Em banco de
+desenvolvimento autorizado:
 
-As instruções de implantação, migração, teste isolado e rollback estão em [ETAPA_10_INTEGRATION.md](docs/ETAPA_10_INTEGRATION.md). Testes unitários de conversão de formulário: `node --test tests/esbeu-form.test.mjs` em frontend. A homologação completa cria seu próprio PostgreSQL em pasta nova externa e utiliza somente dados artificiais. Não configure esse teste com o DATABASE_URL da aplicação.
+```powershell
+pnpm exec prisma generate
+pnpm exec prisma migrate deploy
+pnpm start:dev
+```
+
+Se uma DLL do Prisma estiver em uso, identifique e encerre apenas o backend de
+desenvolvimento correspondente antes de gerar o cliente. Não apague dependências
+nem resete o banco para resolver o bloqueio.
+
+Em `frontend`, use `npm ci`, configure `NEXT_PUBLIC_API_URL` e execute
+`npm run dev`. Nunca exponha chaves da IA com `NEXT_PUBLIC_`.
+
+Gravações do contrato antigo estão retiradas (410). Dashboard, registro e
+histórico usam `esbeu_assessments`, com distinção observado/estimado. Não converta
+registros antigos. Lembretes ficam desativados por padrão; SMTP não é pré-requisito
+da inferência local.
+
+## Ridge opcional
+
+A comparação sob demanda está em [RIDGE_SHADOW.md](docs/RIDGE_SHADOW.md).
+É desativada por padrão, exige autenticação, ambiente local/teste, loopback,
+origem confiável e hash próprio. Não é chamada pelo NestJS e não altera a resposta
+oficial. Não é necessário retreinar para usar um pacote privado aprovado.
+
+## Testes e privacidade
+
+Em `backend`: `pnpm test --runInBand` e `pnpm build`. Em `frontend`:
+`node --test tests/esbeu-form.test.mjs` e `npm run build`.
+
+A homologação com navegador e banco usa ambiente próprio e fixtures fictícias;
+veja [Etapa 10](docs/ETAPA_10_INTEGRATION.md). Não use o banco da aplicação.
+
+Antes de publicar, confira Git e índice. Não inclua CSVs, modelos, segredos ou
+relatórios individuais. Treinamentos são privados e explícitos; novas avaliações
+não alimentam modelos automaticamente.

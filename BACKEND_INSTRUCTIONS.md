@@ -8,7 +8,7 @@ Rotas NestJS autenticadas:
 
 - `POST /ai/predict`: encaminha `{ "context": { ...22 campos... } }` a `/v1/predict`.
 - `GET /ai/model`: metadados do artefato.
-- `GET /ai/metrics`: comparação agregada da validação interna final.
+- `GET /ai/metrics`: comparação agregada com o escopo informado pelo serviço de IA.
 
 A chave de serviço só fica no servidor. O JWT do usuário não substitui a chave no FastAPI. Use rede interna/TLS quando os serviços estiverem em hosts distintos; o script local vincula a IA a 127.0.0.1.
 
@@ -30,7 +30,16 @@ Prisma mantém esquema e migrações históricos para não destruir registros. E
 
 ## Métricas e validação
 
-Confira [métricas oficiais e critérios](docs/ESBEU_METRICS.md). Testar um exemplo em `/v1/validation/compare` não comprova generalização. `/v1/validation/evaluate` calcula métricas somente dos exemplos enviados, sem treino; use apenas dados autorizados. Os resultados científicos reportáveis estão em `/v1/validation/metrics` com escopo de CV interna aninhada.
+Confira [métricas históricas e critérios](docs/ESBEU_METRICS.md). Testar um exemplo em `/v1/validation/compare` não comprova generalização. `/v1/validation/evaluate` calcula métricas somente dos exemplos enviados, sem treino; use apenas dados autorizados. `/v1/validation/metrics` informa seu escopo: no RF/A atual, as tabelas são referências exploratórias v2, não validação independente do refit candidato. Não misture esses resultados com o documento científico v1.
+
+## Comparação Ridge separada
+
+O RF/A permanece como única fonte da previsão oficial consumida e persistida
+pelo NestJS. O endpoint FastAPI `POST /v1/experimental/shadow/predict` é local,
+opcional, autenticado e desativado por padrão; não possui encaminhamento NestJS
+ou opção pública na interface. Usa as mesmas 22 entradas e retorna duas versões
+identificadas, sem gravação no banco. Falhas do Ridge não substituem o resultado
+RF/A. Consulte [Ridge shadow](docs/RIDGE_SHADOW.md) para configuração e limites.
 
 ## Avaliações ESB-eu da aplicação
 

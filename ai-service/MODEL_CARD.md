@@ -1,5 +1,11 @@
 # Modelo contextual ESB-eu — base final v1
 
+> Documento histórico da versão científica v1. Os resultados abaixo permanecem
+> inalterados e não descrevem automaticamente o candidato atualmente carregado.
+> O fluxo da aplicação utiliza o [RF/A experimental](../docs/RF_A_EXPERIMENTAL_CANDIDATE.md);
+> o [Ridge shadow](../docs/RIDGE_SHADOW.md) é um candidato posterior, separado e
+> desativado por padrão. Nenhuma dessas integrações reescreve a avaliação v1.
+
 ## Uso e procedência
 
 Regressão acadêmica do escore geral observado da ESB-eu (média dos 14 itens, 0–4), usando somente 22 campos contextuais. Dados reais de formulário; não são dados artificiais. Testes de software e exemplos HTTP são gerados do esquema e não reproduzem participantes.

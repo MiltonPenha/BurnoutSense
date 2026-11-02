@@ -1,5 +1,10 @@
 # Candidato experimental Random Forest/A
 
+No fluxo atual da aplicação, RF/A é a fonte oficial da resposta ao estudante;
+essa designação operacional não altera seu caráter científico experimental.
+O [Ridge shadow](RIDGE_SHADOW.md) é carregado separadamente, desativado por padrão,
+e não modifica este pacote, o endpoint oficial ou os resultados históricos.
+
 Este fluxo separado não altera o protocolo v2 nem promove um modelo para
 produção. A família RF/A foi escolhida após análises exploratórias dos mesmos
 36 participantes. Não há validação independente do candidato final. O MAE

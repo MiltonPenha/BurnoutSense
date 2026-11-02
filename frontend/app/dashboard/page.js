@@ -15,6 +15,7 @@ export default function DashboardPage() {
   const [metrics, setMetrics] = useState(null);
   const [error, setError] = useState("");
   const [metricsError, setMetricsError] = useState("");
+  const historicalV2 = metrics?.scope === "exploratory_v2_reference_not_candidate_validation";
   useEffect(() => {
     let active = true;
     getRecords().then((value) => { if (active) setRecords(value); }).catch(() => { if (active) setError("Não foi possível consultar suas avaliações. Tente novamente mais tarde."); });
@@ -30,11 +31,12 @@ export default function DashboardPage() {
     {records?.length === 0 && <section className="card empty-state"><h2>Seu acompanhamento começa aqui</h2><p>Você ainda não possui avaliações ESB-eu. Responda ao contexto para obter sua primeira estimativa.</p><Link href="/registro" className="button">Responder ao formulário</Link></section>}
     {records?.length > 0 && <><h2>Última avaliação</h2><EsbeuResult record={records[0]} /><EsbeuTrend records={records} />
       <section className="card"><h2>Avaliações recentes</h2><EsbeuHistoryTable records={records.slice(0, 5)} /><Link href="/historico" className="esbeu-link">Ver histórico completo</Link></section></>}
-    <section className="card"><h2>Validação interna do modelo</h2>
+    <section className="card"><h2>{historicalV2 ? "Referência exploratória da v2" : "Validação interna do modelo"}</h2>
       <p>As métricas abaixo descrevem a avaliação científica do modelo, não a confiança de uma previsão individual. Não são validação clínica nem teste em uma população externa independente.</p>
+      {historicalV2 && <p>As famílias foram avaliadas com o conjunto A. O procedimento de seleção da tabela é o procedimento completo da v2. O candidato atual foi reajustado nos mesmos 36 participantes e ainda não foi avaliado em uma amostra independente.</p>}
       {metricsError && <p role="status">{metricsError}</p>}
       {!metrics && !metricsError && <p role="status">Consultando métricas…</p>}
-      {metrics && <><p>Base: {metrics.dataset_version} · {metrics.training_records} respostas válidas · Modelo selecionado: {modelNames[metrics.selected_model] ?? metrics.selected_model}.</p>
+      {metrics && <><p>Base: {metrics.dataset_version} · {metrics.training_records} respostas válidas · {historicalV2 ? "Candidato experimental" : "Modelo selecionado"}: {modelNames[metrics.selected_model] ?? metrics.selected_model}.</p>
         <div className="esbeu-table-scroll" tabIndex={0} role="region" aria-label="Tabela de métricas; role horizontalmente para ver todas as colunas"><table className="esbeu-table"><caption>Média ± desvio padrão dos folds externos; não é intervalo de confiança.</caption>
           <thead><tr><th>Família</th><th>MAE ↓</th><th>RMSE ↓</th><th>R² ↑</th></tr></thead>
           <tbody>{metrics.family_comparisons.map((row) => <tr key={row.name}><th>{modelNames[row.name] ?? row.name}</th><td>{metric(row.mae)}</td><td>{metric(row.rmse)}</td><td>{metric(row.r2)}</td></tr>)}</tbody>

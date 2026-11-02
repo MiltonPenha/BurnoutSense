@@ -27,6 +27,16 @@ describe('Independent ESB-eu HTTP client', () => {
     await expect(service.predict({ context: {} })).rejects.toBeInstanceOf(ServiceUnavailableException);
   });
 
+  it('preserves experimental RF metadata and rejects a malformed experimental flag', async () => {
+    const result = { kind: 'estimated_score', esbeu_overall: 1.75, model_name: 'random_forest',
+      dataset_version: 'rf-a-candidate-v1', model_version: 'sha256:' + 'a'.repeat(64),
+      contract_version: 'esbeu-context-regression/1', experimental: true };
+    fetchMock.mockResolvedValue(new Response(JSON.stringify(result), { status: 200 }));
+    await expect(service.predict({ context: { artificial: 1 } })).resolves.toEqual(result);
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ ...result, experimental: 'true' }), { status: 200 }));
+    await expect(service.predict({ context: { artificial: 1 } })).rejects.toBeInstanceOf(BadGatewayException);
+  });
+
   it('propagates validation rejection without exposing upstream payload', async () => {
     fetchMock.mockResolvedValue(new Response('artificial-private-marker', { status: 422 }));
     await expect(service.predict({ context: {} })).rejects.toBeInstanceOf(UnprocessableEntityException);

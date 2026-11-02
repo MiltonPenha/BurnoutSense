@@ -4,10 +4,11 @@ export function EsbeuResult({ record }) {
   return (
     <section className="esbeu-results" aria-label="Resultado ESB-eu">
       <article className="card esbeu-score">
-        <p className="overline">Estimativa pelo contexto</p>
+        <p className="overline">Estimativa experimental pelo contexto</p>
         <h2>ESB-eu estimada</h2>
         <p className="esbeu-score-value">{formatEsbeu(record.estimatedOverall)} <small>/ 4</small></p>
         <p>Estimativa baseada somente nas respostas contextuais. Não representa diagnóstico ou previsão futura.</p>
+        <p>Desempenho ainda sem validação independente com novos participantes.</p>
       </article>
       <article className="card esbeu-score">
         <p className="overline">Medição direta</p>

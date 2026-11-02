@@ -77,7 +77,9 @@ def context_schema(predictors=ALLOWED_PREDICTORS):
 
 def create_app(settings=None, service=None):
     config = settings if settings is not None else Settings.from_environment()
-    model = service if service is not None else RegressionService(config)
+    from app.experimental import ExperimentalRegressionService
+    model = service if service is not None else (ExperimentalRegressionService(config)
+        if config.experimental_model else RegressionService(config))
     api = FastAPI(title="BurnoutSense ESB-eu Regression", version="1.0.0",
                   description="Microsserviço independente. Contexto estima ESB-eu 0–4; itens calculam escore observado. Sem diagnóstico.")
     api.add_middleware(BodyLimitMiddleware)

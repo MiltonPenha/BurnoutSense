@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PredictEsbeuDto } from './dto/predict-esbeu.dto';
 
 export interface ContextPrediction {
+  experimental?: boolean;
   kind: 'estimated_score';
   esbeu_overall: number;
   model_name: string;
@@ -30,7 +31,8 @@ export class AiService {
   async predict(payload: PredictEsbeuDto) {
     const response = await this.request('/v1/predict', payload);
     const value = response.esbeu_overall;
-    if (!validScore(value) || response.kind !== 'estimated_score'
+    if ((response.experimental !== undefined && typeof response.experimental !== 'boolean')
+      || !validScore(value) || response.kind !== 'estimated_score'
       || response.contract_version !== 'esbeu-context-regression/1'
       || !['dummy', 'linear', 'ridge', 'random_forest', 'svr'].includes(String(response.model_name))
       || typeof response.dataset_version !== 'string' || !/^[A-Za-z0-9._-]{1,100}$/.test(response.dataset_version)
@@ -40,7 +42,8 @@ export class AiService {
     // Whitelist outputs; never relay an unexpected upstream payload to clients.
     return { kind: 'estimated_score', esbeu_overall: value, model_name: response.model_name,
       model_version: response.model_version, dataset_version: response.dataset_version,
-      contract_version: response.contract_version } as ContextPrediction;
+      contract_version: response.contract_version,
+      ...(response.experimental === undefined ? {} : { experimental: response.experimental }) } as ContextPrediction;
   }
 
   async score(items: Record<string, unknown>): Promise<ObservedEsbeu> {

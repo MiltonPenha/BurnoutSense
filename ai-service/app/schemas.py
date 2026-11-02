@@ -29,6 +29,7 @@ class EvaluationRequest(ApiModel):
 
 
 class PredictionResponse(ApiModel):
+    experimental: bool = False
     kind: Literal["estimated_score"] = "estimated_score"
     esbeu_overall: float = Field(ge=0, le=4)
     model_name: ModelName
@@ -81,7 +82,7 @@ class CompareResponse(PredictionResponse):
 
 
 class MetricsResponse(ApiModel):
-    scope: Literal["final_internal_nested_cross_validation"] = "final_internal_nested_cross_validation"
+    scope: Literal["final_internal_nested_cross_validation", "exploratory_v2_reference_not_candidate_validation"] = "final_internal_nested_cross_validation"
     dataset_version: str
     training_records: int
     protocol: dict[str, int]
@@ -102,5 +103,6 @@ class ModelInfoResponse(ApiModel):
     output_minimum: float = 0.0
     output_maximum: float = 4.0
     out_of_range_policy: Literal["reject"] = "reject"
-    validation_scope: Literal["internal_nested_cross_validation"] = "internal_nested_cross_validation"
+    validation_scope: Literal["internal_nested_cross_validation", "exploratory_post_selection"] = "internal_nested_cross_validation"
+    experimental: bool = False
     runtime_versions: dict[str, str]

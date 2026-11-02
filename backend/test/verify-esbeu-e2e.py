@@ -151,6 +151,12 @@ def main():
                 check("synthetic_account_registered", response.status_code == 201)
                 return {"Authorization": "Bearer " + response.json()["accessToken"]}
             owner = register("owner@example.invalid")
+            if private.get("BURNOUTSENSE_EXPERIMENTAL_MODEL") == "true":
+                candidate = client.post("/ai/predict", headers=owner, json={"context": synthetic_context()})
+                check("experimental_candidate_through_authenticated_nestjs",
+                      candidate.status_code == 201 and candidate.json().get("experimental") is True
+                      and candidate.json().get("model_name") == "random_forest"
+                      and 0 <= candidate.json()["esbeu_overall"] <= 4)
             other = register("other@example.invalid")
             browser_owner = register("browser@example.invalid")
             check("anonymous_access_rejected", client.get("/esbeu-assessments").status_code == 401)

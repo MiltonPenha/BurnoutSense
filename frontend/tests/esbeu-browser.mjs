@@ -52,6 +52,7 @@ try {
   await page.getByRole("button", { name: "Calcular e salvar avaliação", exact: true }).click();
   await page.getByText("Avaliação salva na sua conta.", { exact: true }).waitFor();
   await check("context_only_result_distinguishes_missing_observed", await page.getByText("Não respondida", { exact: true }).count() === 1);
+  await check("experimental_estimate_label", await page.getByText("Estimativa experimental pelo contexto", { exact: true }).count() === 1);
   await page.getByRole("link", { name: "Ver avaliação salva", exact: true }).click();
   await page.getByRole("heading", { name: "Respostas contextuais enviadas", exact: true }).waitFor();
   await page.getByRole("button", { name: "Excluir avaliação", exact: true }).click();
@@ -73,6 +74,10 @@ try {
   await check("observed_dimensions_rendered", await page.getByText("Desgaste emocional e físico", { exact: true }).count() === 1);
   await page.getByRole("link", { name: "Ir ao dashboard", exact: true }).click();
   await page.getByRole("heading", { name: "Última avaliação", exact: true }).waitFor();
+  if (await page.getByText(/rf-a-candidate-/).count()) {
+    await page.getByRole("heading", { name: "Referência exploratória da v2", exact: true }).waitFor();
+    await check("historical_v2_metrics_separate_from_final_candidate", true);
+  }
   await page.getByRole("table").first().waitFor();
   await check("mobile_dashboard_no_horizontal_overflow", await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
   await page.screenshot({ path: path.join(output, "dashboard-mobile.png"), fullPage: true });

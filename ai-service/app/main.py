@@ -13,6 +13,7 @@ from app.predictor import EstimateRejected, InputRejected, ModelUnavailable, Reg
 from app.schemas import (
     CompareResponse, EvaluationCase, EvaluationRequest, EvaluationResponse, MetricsResponse,
     ModelInfoResponse, ObservedScoreRequest, ObservedScoreResponse, PredictionRequest, PredictionResponse,
+    ShadowComparisonResponse,
 )
 from app.settings import Settings
 from training.form_schema import CONTEXT_FIELDS, ESBEU_FIELDS, FIELDS_BY_ID, SpecialValue
@@ -75,7 +76,7 @@ def context_schema(predictors=ALLOWED_PREDICTORS):
     return result
 
 
-def create_app(settings=None, service=None):
+def create_app(settings=None, service=None, shadow_service=None):
     config = settings if settings is not None else Settings.from_environment()
     from app.experimental import ExperimentalRegressionService
     model = service if service is not None else (ExperimentalRegressionService(config)
@@ -165,6 +166,34 @@ def create_app(settings=None, service=None):
     @api.post("/v1/predict", response_model=PredictionResponse, dependencies=private)
     def predict(payload: PredictionRequest):
         return model.predict(payload.context)
+
+    # Deliberately absent by default and in production. Never called by NestJS.
+    if config.shadow_ridge_enabled and config.environment in ("local", "test"):
+        from app.shadow_ridge import ShadowRidgeService
+        shadow = shadow_service if shadow_service is not None else ShadowRidgeService(config)
+
+        @api.post("/v1/experimental/shadow/predict", response_model=ShadowComparisonResponse, dependencies=private)
+        def shadow_predict(payload: PredictionRequest, request: Request):
+            from copy import deepcopy
+            from ipaddress import ip_address
+            try:
+                local = request.client is not None and ip_address(request.client.host).is_loopback
+            except ValueError:
+                local = False
+            if not local:
+                raise HTTPException(403, detail={"code": "LOCAL_SHADOW_ONLY"})
+            official = PredictionResponse.model_validate(model.predict(deepcopy(payload.context)))
+            if official.model_name != 'random_forest':
+                raise HTTPException(503, detail={"code": "OFFICIAL_RF_REQUIRED"})
+            try:
+                candidate = PredictionResponse.model_validate(shadow.predict(deepcopy(payload.context)))
+                if candidate.model_name != 'ridge' or not candidate.experimental:
+                    raise ValueError()
+                return dict(official=official, candidate=candidate, shadow_status='available')
+            except EstimateRejected:
+                return dict(official=official, shadow_status='rejected', shadow_code='SHADOW_OUTSIDE_DOMAIN')
+            except Exception:
+                return dict(official=official, shadow_status='unavailable', shadow_code='SHADOW_UNAVAILABLE')
 
     @api.post("/v1/esbeu/score", response_model=ObservedScoreResponse, dependencies=private)
     def observed(payload: ObservedScoreRequest):

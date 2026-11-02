@@ -12,6 +12,11 @@ class Settings:
     trust_local_model: bool = False
     api_key: str = field(default="", repr=False)
     experimental_model: bool = False
+    shadow_ridge_enabled: bool = False
+    shadow_ridge_dir: Path | None = None
+    shadow_ridge_sha256: str = ""
+    trust_shadow_ridge: bool = False
+    environment: str = "production"
 
     @classmethod
     def from_environment(cls):
@@ -20,4 +25,9 @@ class Settings:
                    os.environ.get("BURNOUTSENSE_DATASET_VERSION", "unconfigured"),
                    os.environ.get("BURNOUTSENSE_TRUST_LOCAL_MODEL", "").lower() == "true",
                    os.environ.get("BURNOUTSENSE_API_KEY", ""),
-                   os.environ.get("BURNOUTSENSE_EXPERIMENTAL_MODEL", "").lower() == "true")
+                   os.environ.get("BURNOUTSENSE_EXPERIMENTAL_MODEL", "").lower() == "true",
+                   os.environ.get("BURNOUTSENSE_SHADOW_RIDGE_ENABLED", "").lower() == "true",
+                   Path(os.environ["BURNOUTSENSE_SHADOW_RIDGE_DIR"]) if os.environ.get("BURNOUTSENSE_SHADOW_RIDGE_DIR") else None,
+                   os.environ.get("BURNOUTSENSE_SHADOW_RIDGE_SHA256", ""),
+                   os.environ.get("BURNOUTSENSE_TRUST_SHADOW_RIDGE", "").lower() == "true",
+                   os.environ.get("BURNOUTSENSE_ENVIRONMENT", "production"))

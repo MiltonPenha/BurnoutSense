@@ -12,9 +12,10 @@ clinical utility, causal interpretation, calibration, or compatibility with the 
 population and questionnaire timeframe. The team must review the training protocol and
 evaluate this transformation before treating it as an established measurement.
 
-Keep `DAILY_CONTEXT_EVOLUTION_ENABLED=false` by default. It is explicitly enabled in
-the ignored local development environment for the requested prototype tests. No external
-generative AI receives account information, daily entries, notes, or predictions.
+Keep `DAILY_CONTEXT_EVOLUTION_ENABLED=false` in the committed environment template.
+The expected TCC development and demo flow enables it explicitly in the ignored
+`backend/.env`; see the [local setup guide](DAILY_TRACKING_LOCAL_SETUP.md).
+No external generative AI receives account information, daily entries, notes, or predictions.
 
 ## Product flow
 

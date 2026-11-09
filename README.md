@@ -96,6 +96,9 @@ indisponíveis. Não há pontuação alternativa ou treinamento automático.
 
 ## Instalação local
 
+Para rodar o fluxo completo do TCC, incluindo o recálculo pelos check-ins,
+comece pelo [guia de execução local do acompanhamento diário](docs/DAILY_TRACKING_LOCAL_SETUP.md).
+
 ```powershell
 git clone https://github.com/MiltonPenha/BurnoutSense.git
 cd BurnoutSense
@@ -154,6 +157,7 @@ npm run dev
 | Frontend | `NEXT_PUBLIC_API_URL=http://localhost:3001` |
 | Backend | `DATABASE_URL`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `PORT=3001`, `FRONTEND_URL=http://localhost:3000` |
 | Backend → IA | `AI_SERVICE_URL=http://127.0.0.1:8000`, `AI_SERVICE_API_KEY` |
+| Recálculo diário no TCC | `DAILY_CONTEXT_EVOLUTION_ENABLED=true` e `ESBEU_ASSESSMENTS_ENABLED=true` no `backend/.env` local |
 | FastAPI RF/A | `BURNOUTSENSE_MODEL_DIR`, `BURNOUTSENSE_DATASET_VERSION=rf-a-candidate-v1`, `BURNOUTSENSE_TRUST_LOCAL_MODEL=true`, `BURNOUTSENSE_EXPERIMENTAL_MODEL=true`, `BURNOUTSENSE_API_KEY` |
 | Ridge opcional | `BURNOUTSENSE_SHADOW_RIDGE_ENABLED=false` por padrão; demais condições no [guia](docs/RIDGE_SHADOW.md) |
 

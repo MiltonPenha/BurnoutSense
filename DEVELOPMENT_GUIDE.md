@@ -3,6 +3,8 @@
 Mantenha PostgreSQL de desenvolvimento e três processos separados: frontend
 Next.js (3000), backend NestJS (3001) e FastAPI (8000). O backend usa HTTP e não
 importa treinamento Python. Consulte o [README](README.md) para instalação.
+Para validar o fluxo diário completo no ambiente do TCC, siga o
+[guia de execução local dos check-ins](docs/DAILY_TRACKING_LOCAL_SETUP.md).
 
 ## RF/A privado
 

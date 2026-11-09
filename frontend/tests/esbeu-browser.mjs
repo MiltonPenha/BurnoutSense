@@ -1,92 +1,231 @@
-// Optional browser QA against the isolated stack started by verify-esbeu-e2e.py.
-// Playwright is loaded from an explicit local installation, not a production dependency.
+// Optional real-stack browser QA with a temporary account and explicit Playwright installation.
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-
 const { chromium } = await import(pathToFileURL(process.env.BURNOUTSENSE_PLAYWRIGHT_MODULE).href);
 const base = process.env.BURNOUTSENSE_E2E_BASE_URL;
+const apiBase = process.env.BURNOUTSENSE_E2E_API_URL || "http://127.0.0.1:3001";
 const output = process.env.BURNOUTSENSE_E2E_OUTPUT;
-const browser = await chromium.launch({ channel: "msedge", headless: true, args: ["--disable-background-networking"] });
+const example = JSON.parse(process.env.BURNOUTSENSE_E2E_CONTEXT);
+const browser = await chromium.launch({ channel: "msedge", headless: true });
 const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
-await context.route("**/*", (route) => {
-  const hostname = new URL(route.request().url()).hostname;
-  return ["127.0.0.1", "localhost"].includes(hostname) ? route.continue() : route.abort();
-});
+await context.route("**/*", route => ["localhost", "127.0.0.1"].includes(new URL(route.request().url()).hostname) ? route.continue() : route.abort());
 const page = await context.newPage();
 const exceptions = [];
-page.on("pageerror", (error) => exceptions.push(error.message));
+page.on("pageerror", error => exceptions.push(error.message));
 const checks = [];
-
-async function check(name, condition) { assert.ok(condition, name); checks.push(name); }
-
-async function fillContext() {
-  const fields = page.locator('[name^="ctx-"]');
-  assert.equal(await fields.count(), 22);
-  for (const element of await fields.all()) {
-    const tag = await element.evaluate((node) => node.tagName);
-    const name = await element.getAttribute("name");
-    if (tag === "SELECT") await element.selectOption(name === "ctx-study_work_difficulty" ? "na" : "0");
-    else await element.fill(name === "ctx-sleep_hours" ? "7.5" : name === "ctx-semester" ? "4" : name === "ctx-subject_count" ? "5" : "0");
+function check(name, condition) { assert.ok(condition, name); checks.push(name); }
+async function api(route) {
+  return page.evaluate(async ({ route, apiBase }) => {
+    const result = await fetch(apiBase + route, { headers: { Authorization: "Bearer " + localStorage.getItem("burnoutsense.auth.accessToken") } });
+    if (!result.ok) throw new Error("QA API status " + result.status);
+    return result.json();
+  }, { route, apiBase });
+}
+async function fit(name) { check(name, await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)); }
+async function fillVisible(fields, values, prefix = "ctx") {
+  for (const field of fields) {
+    const elements = page.locator('[name="' + prefix + '-' + field.identifier + '"]');
+    if (!await elements.count()) continue;
+    const value = values[field.identifier];
+    const tag = await elements.first().evaluate(node => node.tagName);
+    const selected = value === "Não se aplica" ? "na" : String(field.choices.indexOf(value));
+    if (tag === "SELECT") await elements.selectOption(selected);
+    else if (await elements.first().getAttribute("type") === "radio") await page.locator('[name="' + prefix + '-' + field.identifier + '"][value="' + selected + '"]').check();
+    else await elements.fill(String(value));
   }
 }
-
-async function consent() {
-  for (const name of ["adult", "enrolled", "consent"]) await page.locator(`[name="${name}"]`).check();
-}
-
 try {
   await page.goto(base + "/login");
   await page.locator("#email").fill(process.env.BURNOUTSENSE_E2E_EMAIL);
   await page.locator("#password").fill(process.env.BURNOUTSENSE_E2E_PASSWORD);
+  await page.getByRole("button", { name: "Mostrar senha", exact: true }).click();
+  check("login_password_can_be_revealed", await page.locator("#password").getAttribute("type") === "text");
+  await page.getByRole("button", { name: "Ocultar senha", exact: true }).click();
+  check("login_password_can_be_hidden_again", await page.locator("#password").getAttribute("type") === "password");
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
-  await page.getByRole("heading", { name: "Dashboard ESB-eu", exact: true }).waitFor();
   await page.getByRole("heading", { name: "Seu acompanhamento começa aqui" }).waitFor();
-  await check("authenticated_empty_dashboard", true);
+  check("empty_dashboard_without_fabricated_index", true);
+  const schema = await api("/esbeu-assessments/form");
   await page.goto(base + "/registro");
-  await page.locator("#ctx-semester").waitFor();
-  await fillContext();
-  await check("consent_required_in_browser", !(await page.locator("form").evaluate((form) => form.checkValidity())));
-  await consent();
-  await page.getByRole("button", { name: "Calcular e salvar avaliação", exact: true }).click();
-  await page.getByText("Avaliação salva na sua conta.", { exact: true }).waitFor();
-  await check("context_only_result_distinguishes_missing_observed", await page.getByText("Não respondida", { exact: true }).count() === 1);
-  await check("experimental_estimate_label", await page.getByText("Estimativa experimental pelo contexto", { exact: true }).count() === 1);
-  await page.getByRole("link", { name: "Ver avaliação salva", exact: true }).click();
-  await page.getByRole("heading", { name: "Respostas contextuais enviadas", exact: true }).waitFor();
-  await page.getByRole("button", { name: "Excluir avaliação", exact: true }).click();
-  await page.getByRole("button", { name: "Confirmar exclusão", exact: true }).click();
-  await page.getByRole("heading", { name: "Nenhuma avaliação ESB-eu", exact: true }).waitFor();
-  await check("owner_can_delete_from_ui", true);
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto(base + "/registro");
-  await page.locator("#ctx-semester").waitFor();
-  await fillContext();
-  await consent();
-  await page.getByRole("checkbox", { name: "Quero responder aos 14 itens da ESB-eu.", exact: true }).check();
-  for (const element of await page.locator('[name^="item-"]').all()) await element.selectOption("2");
-  await check("all_fourteen_items_rendered", await page.locator('[name^="item-"]').count() === 14);
-  await check("mobile_no_horizontal_overflow", await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
-  await page.screenshot({ path: path.join(output, "form-mobile.png") });
-  await page.getByRole("button", { name: "Calcular e salvar avaliação", exact: true }).click();
-  await page.getByText("Avaliação salva na sua conta.", { exact: true }).waitFor();
-  await check("observed_dimensions_rendered", await page.getByText("Desgaste emocional e físico", { exact: true }).count() === 1);
-  await page.getByRole("link", { name: "Ir ao dashboard", exact: true }).click();
-  await page.getByRole("heading", { name: "Última avaliação", exact: true }).waitFor();
-  if (await page.getByText(/rf-a-candidate-/).count()) {
-    await page.getByRole("heading", { name: "Referência exploratória da v2", exact: true }).waitFor();
-    await check("historical_v2_metrics_separate_from_final_candidate", true);
+  await page.waitForURL("**/contexto");
+  await page.locator('[name="ctx-semester"]').waitFor();
+  for (let step = 0; step < 5; step++) {
+    await fillVisible(schema.fields, example);
+    await page.getByRole("button", { name: "Continuar", exact: true }).click();
   }
-  await page.getByRole("table").first().waitFor();
-  await check("mobile_dashboard_no_horizontal_overflow", await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
+  await page.getByRole("heading", { name: "Tudo pronto para calcular?" }).waitFor();
+  check("guided_initial_context_reaches_review", true);
+  await page.getByRole("button", { name: "Ver meu primeiro índice", exact: true }).click();
+  await page.getByRole("alert").filter({ hasText: "Confirme que revisou" }).waitFor();
+  for (const name of ["Confirmo que tenho 18 anos ou mais.", "Confirmo que estou matriculado(a) em um curso de graduação.", "Li e concordo com o uso das minhas respostas para meu acompanhamento.", "Revisei minhas respostas e confirmo que representam minha rotina recente."]) await page.getByRole("checkbox", { name, exact: true }).check();
+  await page.getByRole("button", { name: "Ver meu primeiro índice", exact: true }).click();
+  await page.getByText("Seu primeiro índice está pronto.", { exact: true }).waitFor();
+  const initial = await api("/esbeu-assessments/current");
+  check("first_index_immediate_with_complete_canonical_context", Object.keys(initial.assessment.context).length === 22 && initial.canReuseConsent);
+  await page.getByRole("link", { name: "Fazer check-in de hoje", exact: true }).click();
+  await page.getByRole("heading", { name: "Como foi seu dia?", exact: true }).waitFor();
+  check("new_day_has_no_mocked_answers", await page.locator('input[type="radio"]:checked').count() === 0 && await page.locator("#daily-sleep").inputValue() === "");
+  await page.getByRole("radio", { name: "Triste", exact: true }).check();
+  await page.locator("#daily-sleep").fill("7.5");
+  await page.locator('[name="sleep_quality"][value="3"]').check();
+  await page.getByRole("button", { name: "Ontem", exact: true }).click();
+  await page.getByRole("dialog", { name: "Trocar o dia do check-in?" }).waitFor();
+  await page.getByRole("button", { name: "Continuar preenchendo", exact: true }).click();
+  check("date_switch_keeps_unsaved_answers_when_cancelled", await page.locator("#daily-sleep").inputValue() === "7.5" && await page.getByRole("radio", { name: "Triste", exact: true }).isChecked());
+  await page.getByRole("button", { name: "Continuar", exact: true }).click();
+  for (const [key, value] of Object.entries({ assessment_pressure: 3, study_rest_difficulty: 3, personal_support: 1 })) await page.locator(`[name="${key}"][value="${value}"]`).check();
+  await page.locator("#daily-note").fill("Registro fictício para verificação.");
+  await fit("daily_desktop_no_overflow");
+  await page.screenshot({ path: path.join(output, "daily-desktop.png"), fullPage: true });
+  const saveEndpoint = /\/daily-check-ins$/;
+  await page.route(saveEndpoint, route => route.request().method() === "PUT"
+    ? route.fulfill({ status: 503, headers: { "access-control-allow-origin": new URL(base).origin }, json: { message: "Falha simulada" } })
+    : route.continue());
+  await page.getByRole("button", { name: "Salvar meu dia", exact: true }).click();
+  await page.getByText("Não foi possível confirmar o check-in.", { exact: false }).waitFor();
+  check("failed_check_in_save_preserves_route_and_draft", new URL(page.url()).pathname === "/registro" && (await page.locator("#daily-note").inputValue()).startsWith("Registro fictício"));
+  await page.unroute(saveEndpoint);
+  await page.getByRole("button", { name: "Salvar meu dia", exact: true }).click();
+  await page.waitForURL("**/dashboard");
+  await page.getByText("Check-in salvo.", { exact: true }).waitFor();
+  check("saved_check_in_returns_to_dashboard_with_feedback", true);
+  const firstDay = await api("/daily-check-ins/overview");
+  await page.locator("main").getByRole("link", { name: "Novo registro", exact: true }).click();
+  await page.getByRole("button", { name: "Continuar", exact: true }).click();
+  await page.locator('[name="assessment_pressure"][value="4"]').check();
+  const update = page.waitForResponse(response => response.url().endsWith("/daily-check-ins") && response.request().method() === "PUT");
+  await page.getByRole("button", { name: "Atualizar esse dia", exact: true }).click();
+  assert.ok((await update).ok());
+  await page.waitForURL("**/dashboard");
+  const updatedDay = await api("/daily-check-ins/overview");
+  const afterDaily = await api("/esbeu-assessments/current");
+  check("same_day_updates_one_record_and_recalculates_real_context", updatedDay.completedDays === 1 && firstDay.todayCheckIn.id === updatedDay.todayCheckIn.id && afterDaily.assessment.id !== initial.assessment.id && afterDaily.assessment.context.assessment_pressure === 4 && afterDaily.assessment.source === "daily_experimental");
+  await page.locator("main").getByRole("link", { name: "Novo registro", exact: true }).click();
+  await page.locator("#check-in-date").waitFor();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(() => scrollTo(0, 0));
+  await page.getByRole("button", { name: "Abrir menu", exact: true }).click();
+  await page.keyboard.press("Escape");
+  check("mobile_navigation_opens_and_closes", true);
+  await fit("daily_mobile_no_overflow");
+  await page.screenshot({ path: path.join(output, "daily-mobile.png"), fullPage: true });
+  const yesterday = new Date(updatedDay.today + "T00:00:00Z"); yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+  await page.setViewportSize({ width: 320, height: 720 });
+  await page.evaluate(() => document.documentElement.dataset.theme = "dark");
+  await page.locator("#check-in-date").click();
+  const calendar = page.getByRole("dialog", { name: "Selecionar data" });
+  await calendar.getByRole("grid").waitFor();
+  check("calendar_fits_small_mobile", await calendar.evaluate(element => element.scrollWidth <= element.clientWidth));
+  const month = calendar.getByRole("combobox", { name: "Mês", exact: true });
+  const initialMonth = await month.inputValue();
+  await calendar.getByRole("button", { name: "Mês anterior" }).click();
+  check("calendar_can_navigate_to_previous_month", await month.inputValue() !== initialMonth);
+  await calendar.getByRole("button", { name: "Próximo mês" }).click();
+  await page.screenshot({ path: path.join(output, "check-in-calendar-dark.png") });
+  const selectedDay = calendar.locator(`[data-day="${updatedDay.today}"] button`);
+  await selectedDay.focus();
+  await page.keyboard.press("ArrowLeft");
+  await page.keyboard.press("Enter");
+  await calendar.waitFor({ state: "hidden" });
+  check("calendar_selects_retroactive_day_with_keyboard", await page.locator("#check-in-date").getAttribute("data-date") === yesterday.toISOString().slice(0, 10));
+  await page.evaluate(() => document.documentElement.dataset.theme = "");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: "Hoje", exact: true }).click();
+  await page.getByRole("button", { name: "Ontem", exact: true }).click();
+  check("yesterday_shortcut_selects_local_calendar_day", await page.locator("#check-in-date").getAttribute("data-date") === yesterday.toISOString().slice(0, 10));
+  await page.getByRole("radio", { name: "Calmo", exact: true }).check();
+  await page.locator("#daily-sleep").fill("8");
+  await page.locator('[name="sleep_quality"][value="4"]').check();
+  await page.getByRole("button", { name: "Continuar", exact: true }).click();
+  for (const [key, value] of Object.entries({ assessment_pressure: 0, study_rest_difficulty: 0, personal_support: 4 })) await page.locator(`[name="${key}"][value="${value}"]`).check();
+  await page.getByRole("button", { name: "Salvar meu dia", exact: true }).click();
+  await page.waitForURL("**/dashboard");
+  const retro = await api("/daily-check-ins/overview");
+  check("forgotten_day_saved_without_overwriting_today", retro.today === updatedDay.today && retro.completedDays === 2 && retro.todayCheckIn.id === firstDay.todayCheckIn.id);
+  const beforeReview = await api("/esbeu-assessments/current");
+  await page.getByText("2 dias usados no cálculo", { exact: true }).waitFor();
+  check("daily_index_is_marked_experimental", await page.getByText("Atualização em teste", { exact: true }).isVisible());
+  await page.screenshot({ path: path.join(output, "dashboard-experimental-mobile.png"), fullPage: true });
+  await page.getByRole("link", { name: "Revisar minha rotina", exact: true }).click();
+  await page.getByRole("heading", { name: "Tudo pronto para calcular?" }).waitFor();
+  check("valid_consent_not_repeated_on_review", await page.getByRole("checkbox", { name: "Confirmo que tenho 18 anos ou mais.", exact: true }).count() === 0 && await page.getByRole("checkbox", { name: "Revisei minhas respostas e confirmo que representam minha rotina recente.", exact: true }).count() === 1);
+  await page.getByRole("button", { name: "Revisar respostas", exact: true }).nth(1).click();
+  const sleep = page.locator('[name="ctx-sleep_hours"]');
+  check("review_prefills_actual_saved_context", await sleep.inputValue() === String(beforeReview.assessment.context.sleep_hours));
+  await sleep.fill("6.5");
+  await page.getByRole("button", { name: "Voltar ao resumo", exact: true }).click();
+  await page.getByRole("checkbox", { name: "Revisei minhas respostas e confirmo que representam minha rotina recente.", exact: true }).check();
+  await page.getByText("Questionário complementar opcional", { exact: true }).click();
+  await page.getByRole("checkbox", { name: "Quero responder às perguntas complementares.", exact: true }).check();
+  const optional = Object.fromEntries(schema.fields.filter(field => field.group === "esbeu").map(field => [field.identifier, 2]));
+  await fillVisible(schema.fields.filter(field => field.group === "esbeu"), optional, "item");
+  await fit("context_mobile_no_overflow");
+  await page.screenshot({ path: path.join(output, "context-mobile.png"), fullPage: true });
+  await page.getByRole("button", { name: "Atualizar meu índice", exact: true }).click();
+  await page.getByText("Sua rotina foi atualizada e seu índice foi recalculado.", { exact: true }).waitFor();
+  const revised = await api("/esbeu-assessments/current");
+  check("review_new_index_preserves_original_consent", revised.assessment.id !== initial.assessment.id && revised.assessment.consentAcceptedAt === initial.assessment.consentAcceptedAt && revised.assessment.context.sleep_hours === 6.5 && revised.assessment.observedOverall === 2);
+  await page.getByRole("link", { name: "Ver meu acompanhamento", exact: true }).click();
+  await page.getByRole("heading", { name: "Seu índice atual", exact: true }).waitFor();
+  await page.getByText("2 dias acompanhados", { exact: true }).waitFor();
+  check("dashboard_calendar_marks_only_real_check_ins", await page.locator(".tracking-days li").count() === 28 && await page.locator('.tracking-days li[data-recorded="true"]').count() === 2);
+  check("dashboard_days_have_visible_dates", await page.locator(".tracking-days time").count() === 28 && /^\d{2}\/\d{2}$/.test(await page.locator(".tracking-days time").first().innerText()));
+  check("dashboard_has_one_header_action_and_no_help_link", await page.locator("main .dashboard-heading").getByRole("link", { name: "Novo registro" }).count() === 1 && await page.locator('main a[href="/como-funciona"]').count() === 0);
+  check("feedback_boxes_are_separate_and_unfabricated", await page.locator(".dashboard-feedback > section").count() === 2);
+  check("research_details_absent_from_student_dashboard", !/ESB-eu|MAE|RMSE|metodologia/i.test(await page.locator("main").innerText()));
+  await fit("dashboard_mobile_no_overflow");
   await page.screenshot({ path: path.join(output, "dashboard-mobile.png"), fullPage: true });
   await page.setViewportSize({ width: 1440, height: 1000 });
+  await fit("dashboard_desktop_no_overflow");
+  const meter = page.locator(".sidebar:not(.mobile-sidebar) .sidebar-index-meter");
+  await meter.locator("strong").waitFor();
+  check("sidebar_index_uses_yellow_in_the_middle_band", await meter.getAttribute("data-band") === "yellow");
+  const ringTransform = await meter.evaluate(element => getComputedStyle(element, "::before").transform);
+  await page.waitForFunction(previous => getComputedStyle(document.querySelector(".sidebar:not(.mobile-sidebar) .sidebar-index-meter"), "::before").transform !== previous, ringTransform);
+  check("only_sidebar_ring_rotates", await meter.locator("strong").evaluate(element => getComputedStyle(element).transform === "none"));
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  check("sidebar_ring_respects_reduced_motion", await meter.evaluate(element => getComputedStyle(element, "::before").animationName === "none"));
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await meter.screenshot({ path: path.join(output, "sidebar-index-meter.png") });
   await page.screenshot({ path: path.join(output, "dashboard-desktop.png"), fullPage: true });
+  await page.evaluate(() => document.documentElement.dataset.theme = "dark");
+  await page.screenshot({ path: path.join(output, "dashboard-dark.png"), fullPage: true });
   await page.goto(base + "/historico");
+  await page.getByRole("heading", { name: "Calmo", exact: true }).waitFor();
+  const indexCount = (await api("/esbeu-assessments")).items.length;
+  for (let i = 0; i < 2; i++) {
+    await page.getByRole("button", { name: /^Excluir check-in de/ }).first().click();
+    const removed = page.waitForResponse(response => response.url().includes("/daily-check-ins/") && response.request().method() === "DELETE");
+    await page.getByRole("button", { name: "Confirmar exclusão", exact: true }).click();
+    assert.ok((await removed).ok());
+    await page.getByRole("dialog").waitFor({ state: "hidden" });
+  }
+  await page.getByRole("heading", { name: "Seu primeiro check-in está esperando por você", exact: true }).waitFor();
+  check("daily_delete_confirmation_preserves_index_history", (await api("/esbeu-assessments")).items.length === indexCount);
+  await page.getByRole("tab", { name: "Check-ins diários", exact: true }).focus();
+  await page.keyboard.press("ArrowRight");
+  check("history_tabs_work_from_the_keyboard", await page.getByRole("tab", { name: "Índices e rotina", exact: true }).getAttribute("aria-selected") === "true");
   await page.getByRole("link", { name: "Ver avaliação", exact: true }).first().waitFor();
-  await check("history_shows_persisted_record", true);
-  await check("no_browser_exceptions", exceptions.length === 0);
+  check("separate_index_history", await page.getByRole("link", { name: "Ver avaliação", exact: true }).count() === indexCount);
+  await page.goto(base + "/perfil");
+  await page.locator("#course").fill("Curso fictício de verificação");
+  await page.locator("#semester").selectOption("4");
+  await page.getByRole("button", { name: "Salvar alterações", exact: true }).click();
+  await page.getByText("Perfil atualizado com sucesso.", { exact: true }).waitFor();
+  const profile = await api("/users/me");
+  check("typed_profile_contract_still_saves", profile.course === "Curso fictício de verificação" && profile.semester === "4º Semestre");
+  await page.getByRole("tab", { name: "Preferências", exact: true }).click();
+  await page.getByRole("button", { name: /Escuro/ }).click();
+  check("theme_draft_does_not_apply_before_save", await page.evaluate(() => document.documentElement.dataset.theme !== "dark"));
+  await page.getByRole("button", { name: "Salvar alterações", exact: true }).click();
+  await page.waitForFunction(() => document.documentElement.dataset.theme === "dark");
+  check("typed_theme_applies_after_save", true);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await fit("profile_dark_mobile_no_overflow");
+  await page.screenshot({ path: path.join(output, "profile-typescript-mobile.png"), fullPage: true });
+  check("no_browser_exceptions", exceptions.length === 0);
   await fs.writeFile(path.join(output, "browser.aggregate.json"), JSON.stringify({ passed: true, checks, synthetic_inputs_only: true }, null, 2));
   console.log(JSON.stringify({ passed: true, checks: checks.length }));
 } catch (error) {

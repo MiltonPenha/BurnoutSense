@@ -1,6 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { formatEsbeu, readSchemaFields } from "../lib/esbeu-form.mjs";
+import { contextToInputs, formatEsbeu, formatIndex, indexColorBand, indexPercentage, readSchemaFields } from "../lib/esbeu-form.ts";
+
+test("sidebar indicator changes color at the displayed 31% and 66% boundaries", () => {
+  for (const [percentage, band] of [[0, "green"], [30, "green"], [30.9, "green"], [31, "yellow"], [38, "yellow"], [65, "yellow"], [65.9, "yellow"], [66, "red"], [100, "red"]]) {
+    assert.equal(indexColorBand(percentage / 25), band);
+  }
+  assert.equal(indexColorBand(null), "neutral");
+});
 
 const field = (extra = {}) => ({ identifier: "fictional", name: "Campo fictício", choices: [], data_type: "number", minimum: 0, maximum: null, ...extra });
 const data = (value) => new Map([["ctx-fictional", value]]);
@@ -29,4 +36,23 @@ test("formatting never fabricates a zero or a percentage", () => {
   assert.equal(formatEsbeu(0), "0,00");
   assert.equal(formatEsbeu(1.234), "1,23");
   for (const value of [null, undefined, NaN, Infinity, -1, 5, "2"]) assert.equal(formatEsbeu(value), "Indisponível");
+});
+
+test("index normalization keeps endpoints and never invents invalid results", () => {
+  for (const [score, percent] of [[0, 0], [1, 25], [2, 50], [4, 100]]) assert.equal(indexPercentage(score), percent);
+  assert.equal(formatIndex(1.234), "30,9%");
+  assert.equal(formatIndex(0), "0%");
+  for (const value of [null, undefined, NaN, Infinity, -1, 5, "2"]) {
+    assert.equal(indexPercentage(value), null);
+    assert.equal(formatIndex(value), "Indisponível");
+  }
+});
+
+test("guided context preserves canonical categories, zero and NA without choosing defaults", () => {
+  const fields = [field({ identifier: "hours" }), field({ identifier: "rating", choices: [0, 1, 2, 3, 4], allows_not_applicable: true }), field({ identifier: "category", choices: ["A", "B"] })];
+  assert.deepEqual(contextToInputs(fields), { hours: "", rating: "", category: "" });
+  const inputs = contextToInputs(fields, { hours: 0, rating: "Não se aplica", category: "B" });
+  assert.deepEqual(inputs, { hours: "0", rating: "na", category: "1" });
+  assert.deepEqual(readSchemaFields(fields, new Map(Object.entries(inputs).map(([key, value]) => [`ctx-${key}`, value])), "ctx"), { hours: 0, rating: "Não se aplica", category: "B" });
+  assert.equal(contextToInputs(fields, { category: "unknown" }).category, "");
 });

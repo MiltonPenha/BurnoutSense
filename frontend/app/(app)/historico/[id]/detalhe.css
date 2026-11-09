@@ -1,0 +1,68 @@
+@layer pages {
+.detail-risk {
+  margin-bottom: 24px;
+}
+
+.detail-card {
+  padding: 28px;
+  margin-bottom: 24px;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.detail-grid > div {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 18px;
+  display: grid;
+  gap: 6px;
+  background: var(--surface-soft);
+}
+
+.detail-label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.detail-grid strong {
+  font-size: 22px;
+}
+
+.detail-grid small,
+.detail-notes {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.detail-notes {
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.esbeu-context-list { margin: 0; }
+
+.esbeu-context-list div { display: flex; gap: 16px; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--line); }
+
+.esbeu-context-list dt { font-weight: 600; }
+
+.esbeu-context-list dd { margin: 0; text-align: right; }
+
+.esbeu-artifact { overflow-wrap: anywhere; max-width: 65%; font-size: 12px; }
+
+@media (max-width: 720px) {
+  .esbeu-context-list div { display: block; }
+  .esbeu-context-list dd { text-align: left; margin-top: 6px; }
+  .esbeu-artifact { max-width: 100%; }
+}
+}

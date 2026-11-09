@@ -2,22 +2,30 @@
   "name": "burnoutsense",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "lucide-react": "^0.577.0",
     "next": "^16.2.6",
     "react": "^19.2.6",
+    "react-day-picker": "^9.14.0",
     "react-dom": "^19.2.6"
   },
   "overrides": {
     "postcss": "^8.5.10"
   },
   "devDependencies": {
+    "@types/node": "^22.20.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "eslint": "9.26.0",
-    "eslint-config-next": "^16.2.6"
+    "eslint-config-next": "^16.2.6",
+    "typescript": "^5.9.3"
   }
 }

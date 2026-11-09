@@ -1,0 +1,17 @@
+@layer components {
+  .daily-history { display: grid; gap: 16px; }
+  .daily-history-item header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .daily-history-item header > div { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+  .daily-history-item h2 { margin: 0; font-size: 18px; }
+  .daily-history-item time { color: var(--muted); font-size: 13px; }
+  .daily-history-mood { font-size: 24px; line-height: 1; }
+  .daily-history-item dl { display: flex; flex-wrap: wrap; gap: 24px; margin: 22px 0 0; }
+  .daily-history-item dt { color: var(--muted); font-size: 12px; margin-bottom: 5px; }
+  .daily-history-item dd { margin: 0; font-weight: 600; font-size: 14px; }
+  .daily-history-note { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--muted); border-top: 1px solid var(--line); padding-top: 16px; }
+  .daily-delete-dialog { max-width: min(460px, calc(100vw - 32px)); padding: 26px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); }
+  .daily-delete-dialog::backdrop { background: rgba(0, 0, 0, .45); }
+  .daily-delete-dialog p { line-height: 1.7; }
+  .daily-delete-dialog .form-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 22px; }
+  @media (max-width: 560px) { .daily-history-item header { align-items: flex-start; flex-direction: column; } }
+}

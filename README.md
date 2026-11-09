@@ -9,6 +9,14 @@ experimental contínua de **0 a 4**. Os 14 itens ESB-eu definem o desfecho nos
 estudos e podem ser respondidos opcionalmente na aplicação para calcular uma
 medição observada separada. Eles nunca são preditores do modelo.
 
+A interface apresenta esse escore também como **posição percentual na escala**:
+`escore / 4 * 100`. Por exemplo, 2 de 4 corresponde a 50% da escala, não a 50%
+de probabilidade de burnout. API, banco, treinamento e métricas mantêm 0–4.
+O acompanhamento começa com um contexto completo sobre as últimas quatro
+semanas. Os check-ins descrevem dias específicos e podem ser retroativos. Na
+[integração experimental](docs/DAILY_TRACKING.md), os dias registrados dentro da
+janela de 28 dias atualizam parte do contexto sem alterar o treinamento do RF/A.
+
 O BurnoutSense não fornece diagnóstico, classificação clínica, porcentagem de
 risco ou confiança individual. Os modelos ainda não possuem validação
 independente em novos participantes.
@@ -17,6 +25,7 @@ independente em novos participantes.
 
 - Cadastro, login e acesso autenticado às informações da própria conta.
 - Formulário contextual com tipos e alternativas fornecidos pelo serviço de IA.
+- Check-in diário em duas etapas, com seleção de data e histórico separado dos índices.
 - Estimativa pelo Random Forest/A e identificação da versão usada.
 - Medição direta ESB-eu opcional, com média global e três dimensões.
 - Persistência de avaliações, dashboard, histórico paginado e gráfico de evolução.
@@ -40,7 +49,7 @@ flowchart LR
 
 | Componente | Responsabilidade |
 |---|---|
-| Next.js e React | Interface, formulários, dashboard e histórico |
+| Next.js, React e TypeScript | App Router, interface, formulários, dashboard e histórico |
 | NestJS | API autenticada, autorização por usuário e integração HTTP com a IA |
 | Prisma e PostgreSQL | Persistência de contas e avaliações |
 | Python, FastAPI e scikit-learn | Contratos, cálculo observado e inferência do pipeline |
@@ -65,7 +74,7 @@ estão nos documentos técnicos; não representam precisão individual ou valida
 ## Estrutura
 
 ```text
-frontend/             Interface Next.js/React
+frontend/             Interface Next.js/React em TypeScript estrito
 backend/              API NestJS, Prisma e migrações
 ai-service/app/       FastAPI e carregadores de modelos
 ai-service/training/ Esquemas, pipelines e procedimentos de pesquisa

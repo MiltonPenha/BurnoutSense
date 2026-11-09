@@ -1,0 +1,54 @@
+@layer pages {
+  .daily-page { max-width: 900px; }
+  .daily-page .page-header { margin-bottom: 28px; }
+  .daily-form { display: grid; gap: 20px; }
+  .daily-date-row { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 12px 20px; padding-block: 16px; border-block: 1px solid var(--line); margin-bottom: 24px; }
+  .daily-date-field { display: grid; gap: 7px; }
+  .daily-date-shortcuts { display: flex; gap: 4px; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-soft); }
+  .daily-date-shortcuts button { min-width: 60px; min-height: 36px; padding: 4px 8px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--ink); cursor: pointer; font: inherit; font-weight: 600; }
+  .daily-date-shortcuts button[aria-pressed="true"] { background: var(--surface); border-color: var(--line-strong); }
+  .daily-date-shortcuts button:hover:not(:disabled) { border-color: var(--primary); }
+  .daily-date-context { color: var(--muted); font-size: 13px; line-height: 1.7; }
+  .daily-steps { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .daily-steps li { display: flex; align-items: center; gap: 9px; min-height: 56px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; color: var(--muted); font-size: 13px; line-height: 1.4; }
+  .daily-steps li > span { display: grid; place-items: center; flex: 0 0 26px; height: 26px; border-radius: 6px; background: var(--surface-soft); color: var(--ink); font-weight: 700; }
+  .daily-steps li[aria-current="step"] { border-color: var(--primary); background: var(--primary-soft); color: var(--ink); font-weight: 700; }
+  .daily-steps li[data-complete="true"] > span { background: var(--mint-soft); }
+  .daily-section-title { margin: 0; font-size: 19px; scroll-margin-top: 88px; }
+  .daily-section-title:focus { outline: none; }
+  .daily-date-dialog { max-width: min(440px, calc(100% - 32px)); padding: 24px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); color: var(--ink); }
+  .daily-date-dialog::backdrop { background: rgba(15, 23, 42, .48); }
+  .daily-date-dialog h2 { margin: 0; font-size: 19px; }
+  .daily-date-dialog p, .daily-load-error p { line-height: 1.65; }
+  .daily-date-dialog .form-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+  .daily-load-error { padding: 12px 16px; border-left: 3px solid var(--warning-line); background: var(--warning-bg); margin-bottom: 18px; }
+  .daily-update-notice { padding: 16px 0; border-top: 1px solid var(--line); line-height: 1.7; }
+  .daily-pending { border-left: 3px solid var(--primary); padding: 12px 20px; line-height: 1.7; }
+  .daily-fields { border: 1px solid var(--line); border-radius: 8px; padding: 28px; display: grid; gap: 28px; min-width: 0; margin: 0; }
+  .daily-fields > fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+  .daily-fields legend, .daily-sleep > label { font-weight: 700; font-size: 15px; line-height: 1.6; margin-bottom: 12px; }
+  .daily-moods > div { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; }
+  .daily-moods label { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 80px; border-radius: 8px; border: 1px solid var(--line-strong); cursor: pointer; font-size: 12px; padding: 10px 6px; }
+  .daily-moods label.selected { border-color: var(--primary); background: var(--primary-soft); }
+  .daily-moods input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+  .daily-moods label > span { pointer-events: none; }
+  .daily-moods label:focus-within { outline: 2px solid var(--primary); outline-offset: 2px; }
+  .daily-mood-emoji { font-size: 26px; line-height: 1; display: grid; place-items: center; width: 32px; height: 32px; }
+  .daily-sleep > label { display: block; }
+  .daily-sleep > div { display: flex; align-items: center; gap: 12px; }
+  .daily-sleep input { width: 140px; }
+  .daily-sleep small, .daily-character-count, .daily-optional { color: var(--muted); font-size: 12px; }
+  .daily-sleep small { display: block; margin-top: 8px; }
+  .daily-rating-options { display: flex; flex-wrap: wrap; gap: 8px; }
+  .daily-rating-options label { border: 1px solid var(--line-strong); padding: 8px 12px; min-height: 44px; border-radius: 8px; display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; }
+  .daily-rating-options label.selected { border-color: var(--primary); background: var(--primary-soft); }
+  .daily-rating-options input { accent-color: var(--primary-dark); }
+  .daily-form textarea { resize: none; }
+  .daily-character-count { display: block; text-align: right; }
+  .daily-context { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 20px; margin-top: 24px; border: 1px solid var(--primary-line); border-radius: 8px; background: var(--primary-soft); }
+  .daily-context p { line-height: 1.7; color: var(--muted); max-width: 62ch; }
+  .daily-context .button { flex-shrink: 0; }
+  .daily-form .form-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-end; }
+  .daily-page .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); }
+  @media (max-width: 560px) { .daily-fields { padding: 18px; gap: 22px; } .daily-context { flex-direction: column; align-items: flex-start; } .daily-rating-options label { padding: 8px 10px; } }
+}

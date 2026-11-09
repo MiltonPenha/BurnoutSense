@@ -1,0 +1,6 @@
+@layer pages {
+  .context-page { max-width: 900px; }
+  .context-page .card { padding: 28px; border-radius: 8px; }
+  .context-page p { line-height: 1.7; }
+  @media (max-width: 560px) { .context-page .card { padding: 18px; } }
+}

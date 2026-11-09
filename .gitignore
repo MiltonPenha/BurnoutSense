@@ -111,6 +111,7 @@ ai-service/saved_models/
 # Next.js build output
 .next
 out
+/frontend/next-env.d.ts
 
 # Nuxt.js build / generate output
 .nuxt

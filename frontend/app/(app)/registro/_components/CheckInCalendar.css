@@ -1,0 +1,32 @@
+@import "react-day-picker/style.css" layer(components);
+
+@layer pages {
+  .check-in-calendar-label { font-size: 13px; font-weight: 700; }
+  .check-in-calendar-trigger { display: inline-flex; align-items: center; justify-content: space-between; gap: 9px; min-height: 44px; padding: 0 11px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; font-variant-numeric: tabular-nums; cursor: pointer; }
+  .check-in-calendar-trigger:hover:not(:disabled) { border-color: var(--primary); }
+  .check-in-calendar-trigger > svg { color: var(--muted); flex-shrink: 0; }
+  .check-in-calendar { width: min(352px, calc(100% - 28px)); max-height: calc(100% - 28px); padding: 16px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+  .check-in-calendar::backdrop { background: rgba(15, 23, 42, .48); }
+  .check-in-calendar header, .check-in-calendar footer { display: flex; align-items: center; justify-content: space-between; }
+  .check-in-calendar header { margin-bottom: 10px; gap: 8px; }
+  .check-in-calendar h2 { margin: 0; font-size: 17px; }
+  .check-in-calendar-icon { display: grid; place-items: center; flex: 0 0 34px; height: 34px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-soft); color: var(--ink); cursor: pointer; }
+  .check-in-calendar .rdp-root { --rdp-accent-color: var(--primary); --rdp-today-color: var(--ink); --rdp-day-width: 40px; --rdp-day-height: 37px; --rdp-day_button-width: 38px; --rdp-day_button-height: 35px; --rdp-day_button-border-radius: 6px; --rdp-selected-border: 1px solid var(--primary); --rdp-disabled-opacity: .37; --rdp-nav_button-width: 30px; }
+  .check-in-calendar .rdp-months, .check-in-calendar .rdp-month { width: 100%; max-width: none; }
+  .check-in-calendar .rdp-month_grid { margin-inline: auto; }
+  .check-in-calendar .rdp-day_button { margin-inline: auto; }
+  .check-in-calendar .rdp-weekday { color: var(--muted); font-size: 11px; }
+  .check-in-calendar .rdp-dropdown_root { background: var(--surface-soft); border: 1px solid var(--line); border-radius: 6px; }
+  .check-in-calendar .rdp-caption_label { gap: 3px; padding: 5px 6px; font-size: 12px; text-transform: capitalize; }
+  .check-in-calendar .rdp-dropdown option { background: var(--surface); color: var(--ink); }
+  .check-in-calendar .rdp-chevron { fill: none; }
+  .check-in-calendar .rdp-day_button:hover:not(:disabled), .check-in-calendar .rdp-button_previous:hover:not([aria-disabled="true"]), .check-in-calendar .rdp-button_next:hover:not([aria-disabled="true"]) { background: var(--primary-soft); border-radius: 6px; }
+  .check-in-calendar .rdp-today .rdp-day_button { border-color: var(--primary-line); }
+  .check-in-calendar .rdp-selected .rdp-day_button, .check-in-calendar .rdp-selected .rdp-day_button:hover:not(:disabled) { background: var(--primary); color: #0f172a; font-weight: 700; }
+  .check-in-calendar :focus-visible, .check-in-calendar-trigger:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  .check-in-calendar footer { justify-content: flex-end; border-top: 1px solid var(--line); margin-top: 10px; padding-top: 10px; }
+  @media (max-width: 359px) {
+    .check-in-calendar { padding: 12px; }
+    .check-in-calendar .rdp-root { --rdp-day-width: 34px; --rdp-day_button-width: 32px; --rdp-dropdown-gap: 4px; --rdp-nav_button-width: 26px; }
+  }
+}

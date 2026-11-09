@@ -53,7 +53,7 @@ def main():
                    "NODE_ENV": "test", "PORT": str(api_port), "FRONTEND_URL": web_url,
                    "JWT_ACCESS_SECRET": secrets.token_urlsafe(40), "JWT_REFRESH_SECRET": secrets.token_urlsafe(40),
                    "AI_SERVICE_URL": f"http://127.0.0.1:{ai_port}", "AI_SERVICE_API_KEY": private["BURNOUTSENSE_API_KEY"],
-                   "ESBEU_ASSESSMENTS_ENABLED": "true", "DAILY_REMINDER_ENABLED": "false",
+                   "ESBEU_ASSESSMENTS_ENABLED": "true", "DAILY_CONTEXT_EVOLUTION_ENABLED": "true", "DAILY_REMINDER_ENABLED": "false",
                    "SMTP_HOST": "", "SMTP_USER": "", "SMTP_PASS": "", "NEXT_TELEMETRY_DISABLED": "1",
                    "NEXT_PUBLIC_API_URL": url}
     logs = []
@@ -125,7 +125,8 @@ def main():
         # First apply historical migrations to the new artificial-only cluster.
         baseline = output / "baseline-prisma"
         shutil.copytree(ROOT / "backend/prisma", baseline)
-        newest = sorted((baseline / "migrations").glob("*_add_esbeu_assessments"))
+        newest = sorted(directory for directory in (baseline / "migrations").iterdir()
+                        if directory.name.endswith(("_add_esbeu_assessments", "_add_daily_check_ins", "_add_daily_context_evolution")))
         for directory in newest:
             # Explicit verified child of the newly created test directory.
             assert directory.resolve().is_relative_to(output)
@@ -217,6 +218,7 @@ def main():
                 run([args.node, ROOT / "frontend/tests/esbeu-browser.mjs"], env={**environment,
                     "BURNOUTSENSE_E2E_BASE_URL": web_url, "BURNOUTSENSE_E2E_EMAIL": "browser@example.invalid",
                     "BURNOUTSENSE_E2E_PASSWORD": password, "BURNOUTSENSE_E2E_OUTPUT": str(output),
+                    "BURNOUTSENSE_E2E_API_URL": url, "BURNOUTSENSE_E2E_CONTEXT": json.dumps(synthetic_context()),
                     "BURNOUTSENSE_PLAYWRIGHT_MODULE": str(args.playwright_module)})
                 check("browser_flow", json.loads((output / "browser.aggregate.json").read_text())["passed"])
             stop(backend)

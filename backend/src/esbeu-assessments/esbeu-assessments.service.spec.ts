@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AiService } from '../ai/ai.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -104,6 +104,25 @@ describe('Private ESB-eu application assessments', () => {
     await expect(service.form()).rejects.toBeInstanceOf(ServiceUnavailableException);
     await expect(service.create('fictional-user', payload())).rejects.toBeInstanceOf(ServiceUnavailableException);
     await expect(service.list('fictional-user')).resolves.toEqual({ items: [], nextCursor: null });
+    expect(ai.predict).not.toHaveBeenCalled();
+  });
+
+  it('reuses verified consent from the latest owned context and preserves the original acceptance date', async () => {
+    const date = new Date('2026-10-30T15:00:00Z');
+    repository.findFirst.mockResolvedValue({ id: 'latest', adultConfirmed: true, enrolledConfirmed: true, consentVersion: ESBEU_CONSENT_VERSION, consentAcceptedAt: date });
+    await service.review('owner', { sourceAssessmentId: 'latest', confirmed: true, context: { updated: 1 } });
+    expect(repository.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: 'owner' } }));
+    expect(ai.predict).toHaveBeenCalledWith({ context: { updated: 1 } });
+    expect(repository.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ consentAcceptedAt: date, userId: 'owner' }) }));
+  });
+  it('rejects a stale or foreign context revision', async () => {
+    repository.findFirst.mockResolvedValue({ id: 'latest' });
+    await expect(service.review('owner', { sourceAssessmentId: 'other', confirmed: true, context: { updated: 1 } })).rejects.toBeInstanceOf(ConflictException);
+    expect(ai.predict).not.toHaveBeenCalled();
+  });
+  it('requires renewed consent if the persisted consent version is outdated', async () => {
+    repository.findFirst.mockResolvedValue({ id: 'latest', adultConfirmed: true, enrolledConfirmed: true, consentVersion: 'old' });
+    await expect(service.review('owner', { sourceAssessmentId: 'latest', confirmed: true, context: { updated: 1 } })).rejects.toBeInstanceOf(BadRequestException);
     expect(ai.predict).not.toHaveBeenCalled();
   });
 });

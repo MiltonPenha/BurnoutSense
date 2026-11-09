@@ -5,12 +5,14 @@ import { AuthenticatedUser } from '../auth/types/authenticated-user';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
 import { TestNotificationDto } from './dto/test-notification.dto';
+import { utcDay } from '../daily-check-ins/calendar-day';
 
 @Injectable()
 export class NotificationsService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(NotificationsService.name);
   private readonly sentDailyReminderKeys = new Set<string>();
   private dailyReminderInterval?: NodeJS.Timeout;
+  private processingReminders = false;
 
   constructor(
     private readonly configService: ConfigService,
@@ -40,17 +42,11 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async sendTestNotification(user: AuthenticatedUser, preferences: TestNotificationDto) {
+  async sendTestNotification(user: AuthenticatedUser, _preferences: TestNotificationDto) {
     const profile = await this.usersService.findSafeById(user.id);
-    const emailAlerts = preferences.emailAlerts ?? profile.emailAlerts;
-    const dailyReminder = preferences.dailyReminder ?? profile.dailyReminder;
-    const emailAlert = await this.deliverEmail(
-      emailAlerts,
-      profile.email,
-      'Mensagem de teste BurnoutSense',
-      this.buildDailyReminderText(profile.name),
-      this.buildDailyReminderHtml(profile.name),
-    );
+    const emailAlerts = false;
+    const dailyReminder = profile.dailyReminder;
+    const emailAlert = { status: 'skipped', reason: 'Alertas por escore não estão disponíveis na metodologia atual.' };
     const reminder = await this.deliverEmail(
       dailyReminder,
       profile.email,
@@ -78,6 +74,7 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async processDailyReminderTick() {
+    if (this.processingReminders) return;
     const now = new Date();
     const localParts = getDateTimeParts(now, this.getDailyReminderTimezone());
 
@@ -86,6 +83,7 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
     }
 
     const reminderKey = localParts.dateKey;
+    this.processingReminders = true;
 
     try {
       const users = await this.prisma.user.findMany({
@@ -121,7 +119,7 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
           this.buildDailyReminderHtml(user.name),
         );
 
-        this.sentDailyReminderKeys.add(userReminderKey);
+        if (result.status === 'sent') this.sentDailyReminderKeys.add(userReminderKey);
         this.logger.log(
           JSON.stringify({
             type: 'daily-reminder',
@@ -141,26 +139,30 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
           reason: error instanceof Error ? error.message : 'Unknown reminder scheduler error',
         }),
       );
+    } finally {
+      this.processingReminders = false;
     }
   }
 
   private async hasAssessmentOnDate(userId: string, dateKey: string) {
-    const start = new Date(`${dateKey}T00:00:00.000Z`);
-    const end = new Date(`${dateKey}T23:59:59.999Z`);
-    const assessment = await this.prisma.assessment.findFirst({
+    const daily = await this.prisma.dailyCheckIn.findUnique({ where: { userId_date: { userId, date: utcDay(dateKey) } }, select: { id: true } });
+    if (daily) return true;
+    // Query a bounded UTC envelope, then compare the configured local calendar day.
+    const day = Date.parse(`${dateKey}T00:00:00.000Z`);
+    const assessments = await this.prisma.esbeuAssessment.findMany({
       where: {
         userId,
-        date: {
-          gte: start,
-          lte: end,
+        createdAt: {
+          gte: new Date(day - 24 * 60 * 60 * 1000),
+          lt: new Date(day + 48 * 60 * 60 * 1000),
         },
       },
       select: {
-        id: true,
+        createdAt: true,
       },
     });
 
-    return Boolean(assessment);
+    return assessments.some((assessment) => getDateTimeParts(assessment.createdAt, this.getDailyReminderTimezone()).dateKey === dateKey);
   }
 
   private async deliverEmail(enabled: boolean, recipient: string, subject: string, text: string, html?: string) {
@@ -257,16 +259,15 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
     return [
       `Olá, ${firstName(name)}.`,
       '',
-      'Este é o seu lembrete gentil para registrar como foi o dia no BurnoutSense.',
-      'Leva menos de um minuto e ajuda a transformar sinais soltos da rotina em um acompanhamento mais claro: sono, estresse, carga acadêmica, humor e contexto.',
+      'Que tal reservar um momento para acompanhar sua rotina no BurnoutSense?',
+      'Você pode fazer um registro hoje, considerando as últimas quatro semanas ao responder às perguntas. As janelas dos registros podem se sobrepor.',
       '',
-      'Não precisa escrever perfeito. Seja honesto com você mesmo hoje.',
+      'A porcentagem exibida é uma posição na escala ESB-eu, não uma probabilidade de burnout ou diagnóstico.',
       '',
       'Sugestão rápida:',
-      '- Como foi sua energia?',
-      '- O sono ajudou ou pesou?',
-      '- A rotina acadêmica ficou leve, média ou puxada?',
-      '- Existe algo que merece atenção amanhã?',
+      '- Como têm sido seu descanso e as demandas acadêmicas?',
+      '- Você tem conseguido contar com apoio?',
+      '- O que gostaria de conversar com alguém de confiança?',
       '',
       'BurnoutSense é uma ferramenta de apoio preventivo e não substitui acompanhamento médico ou psicológico.',
     ].join('\n');
@@ -275,9 +276,9 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
   private buildDailyReminderHtml(name: string) {
     return baseEmailTemplate({
       badge: 'Check-in diário',
-      title: `Olá, ${escapeHtml(firstName(name))}. Como você chegou até aqui hoje?`,
+      title: `Olá, ${firstName(name)}. Um momento para cuidar da sua rotina?`,
       intro:
-        'Reserve um minuto para registrar seu dia. Pequenos registros consistentes ajudam a perceber padrões de sono, estresse, carga acadêmica e humor antes que tudo fique pesado demais.',
+        'Se fizer sentido para você, reserve um momento para seu registro. Responda considerando as últimas quatro semanas, mesmo que acompanhe diariamente. As janelas podem se sobrepor.',
       tone: 'mint',
       sections: [
         {
@@ -285,7 +286,7 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
           items: [
             'Acompanhar sua energia e seu descanso com mais clareza.',
             'Perceber quando a pressão acadêmica começa a acumular.',
-            'Criar histórico para recomendações preventivas mais úteis.',
+            'Construir um histórico dos seus indicadores acadêmicos.',
           ],
         },
         {
@@ -293,7 +294,7 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
           items: ['Como foi sua energia?', 'O sono ajudou ou pesou?', 'O que merece atenção amanhã?'],
         },
       ],
-      note: 'Não precisa escrever perfeito. Um registro honesto já é um cuidado com sua rotina.',
+      note: 'O índice é uma posição na escala ESB-eu. Não indica probabilidade de burnout e não substitui avaliação profissional.',
     });
   }
 

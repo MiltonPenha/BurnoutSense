@@ -1,12 +1,14 @@
-import { BadRequestException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 import { AiService } from '../ai/ai.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEsbeuAssessmentDto } from './dto/create-esbeu-assessment.dto';
+import { ReviewContextDto } from './dto/review-context.dto';
 import { ESBEU_CONSENT_TEXT, ESBEU_CONSENT_VERSION, ESBEU_FORM_VERSION } from './esbeu-contract';
 
 const summarySelect = {
+  source: true, evolution: true,
   id: true, createdAt: true, estimatedOverall: true, observedOverall: true,
   observedExhaustion: true, observedDistancing: true, observedInefficacy: true,
   modelName: true, modelVersion: true, datasetVersion: true, contractVersion: true, formVersion: true,
@@ -27,7 +29,28 @@ export class EsbeuAssessmentsService {
     return { ...await this.ai.formSchema(), consent: { version: ESBEU_CONSENT_VERSION, text: ESBEU_CONSENT_TEXT } };
   }
 
-  async create(userId: string, payload: CreateEsbeuAssessmentDto) {
+  async current(userId: string) {
+    try {
+    const assessment = await this.prisma.esbeuAssessment.findFirst({
+      where: { userId }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: { ...summarySelect, context: true, consentVersion: true, consentAcceptedAt: true, adultConfirmed: true, enrolledConfirmed: true },
+    });
+    return { assessment, canReuseConsent: Boolean(assessment?.adultConfirmed && assessment.enrolledConfirmed && assessment.consentVersion === ESBEU_CONSENT_VERSION) };
+    } catch {
+      throw new ServiceUnavailableException('Não foi possível consultar sua rotina atual.');
+    }
+  }
+
+  async review(userId: string, payload: ReviewContextDto) {
+    this.ensureEnabled();
+    const { assessment, canReuseConsent } = await this.current(userId);
+    if (!assessment || assessment.id !== payload.sourceAssessmentId) throw new ConflictException('Sua rotina foi atualizada. Recarregue antes de revisar.');
+    if (!canReuseConsent || payload.confirmed !== true) throw new BadRequestException('Confirme suas respostas e a autorização de uso atual.');
+    return this.create(userId, { context: payload.context, ...(payload.items === undefined ? {} : { items: payload.items }),
+      consent: true, adult: true, enrolled: true, consentVersion: ESBEU_CONSENT_VERSION }, assessment.consentAcceptedAt);
+  }
+
+  async create(userId: string, payload: CreateEsbeuAssessmentDto, acceptedAt?: Date) {
     this.ensureEnabled();
     if (payload.consent !== true || payload.adult !== true || payload.enrolled !== true || payload.consentVersion !== ESBEU_CONSENT_VERSION) {
       throw new BadRequestException('Confirme consentimento e elegibilidade na versão atual do formulário.');
@@ -47,7 +70,7 @@ export class EsbeuAssessmentsService {
           observedDistancing: observed?.distancing ?? null, observedInefficacy: observed?.training_inefficacy ?? null,
           modelName: prediction.model_name, modelVersion: prediction.model_version,
           datasetVersion: prediction.dataset_version, contractVersion: prediction.contract_version,
-          formVersion: ESBEU_FORM_VERSION, consentVersion: ESBEU_CONSENT_VERSION, consentAcceptedAt: new Date(),
+          formVersion: ESBEU_FORM_VERSION, consentVersion: ESBEU_CONSENT_VERSION, consentAcceptedAt: acceptedAt ?? new Date(),
           adultConfirmed: true, enrolledConfirmed: true,
         }, select: summarySelect,
       });

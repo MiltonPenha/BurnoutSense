@@ -38,6 +38,7 @@ model User {
   avatarUrl     String?
   assessments   Assessment[]
   esbeuAssessments EsbeuAssessment[]
+  dailyCheckIns DailyCheckIn[]
   sessions      AuthSession[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
@@ -113,6 +114,8 @@ model EsbeuAssessment {
   userId             String
   user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   context            Json
+  source             String   @default("context")
+  evolution          Json?
   observedItems      Json?
   estimatedOverall   Float
   observedOverall    Float?
@@ -129,7 +132,29 @@ model EsbeuAssessment {
   adultConfirmed     Boolean
   enrolledConfirmed  Boolean
   createdAt          DateTime @default(now())
+  dailyCheckIns      DailyCheckIn[]
 
   @@index([userId, createdAt, id])
   @@map("esbeu_assessments")
+}
+
+model DailyCheckIn {
+  id                  String @id @default(uuid())
+  userId              String
+  user                User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date                DateTime @db.Date
+  mood                String
+  sleepHours          Float
+  energy              Int?
+  academicDemand      Int?
+  observations        Json?
+  note                String @default("")
+  contextAssessmentId String?
+  contextAssessment   EsbeuAssessment? @relation(fields: [contextAssessmentId], references: [id], onDelete: SetNull)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId, date, id])
+  @@map("daily_check_ins")
 }

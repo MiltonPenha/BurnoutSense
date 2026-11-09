@@ -10,7 +10,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bodyParser: false });
   const configService = app.get(ConfigService);
 
-  app.use('/esbeu-assessments', (_request: unknown, response: { setHeader: (key: string, value: string) => void }, next: () => void) => {
+  app.use(['/esbeu-assessments', '/daily-check-ins'], (_request: unknown, response: { setHeader: (key: string, value: string) => void }, next: () => void) => {
     response.setHeader('Cache-Control', 'no-store');
     next();
   }, json({ limit: '256kb' }));
@@ -27,8 +27,11 @@ async function bootstrap() {
   app.use(bodyErrors);
   app.use(helmet());
 
+  const frontendUrl = configService.get<string>('FRONTEND_URL') ?? 'http://localhost:3000';
+  const localOrigins = ['http://localhost:3000', 'http://127.0.0.1:3000'];
   app.enableCors({
-    origin: configService.get<string>('FRONTEND_URL') ?? 'http://localhost:3000',
+    origin: configService.get<string>('NODE_ENV') !== 'production' && localOrigins.includes(frontendUrl)
+      ? localOrigins : frontendUrl,
     credentials: true,
   });
 

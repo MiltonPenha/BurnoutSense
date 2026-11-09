@@ -12,6 +12,7 @@ import { ResultsModule } from './results/results.module';
 import { StatusModule } from './status/status.module';
 import { UsersModule } from './users/users.module';
 import { EsbeuAssessmentsModule } from './esbeu-assessments/esbeu-assessments.module';
+import { DailyCheckInsModule } from './daily-check-ins/daily-check-ins.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { EsbeuAssessmentsModule } from './esbeu-assessments/esbeu-assessments.mo
     AiModule,
     AssessmentsModule,
     EsbeuAssessmentsModule,
+    DailyCheckInsModule,
     ResultsModule,
     StatusModule,
   ],

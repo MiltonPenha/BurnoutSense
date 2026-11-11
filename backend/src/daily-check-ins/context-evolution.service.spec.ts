@@ -9,7 +9,7 @@ describe('Experimental predictions are real and independently traceable', () => 
   const anchor = { id: 'anchor', context: baseline, source: 'context', createdAt: new Date('2026-11-01T10:00:00Z'), consentAcceptedAt: new Date('2026-10-30T10:00:00Z'), consentVersion: ESBEU_CONSENT_VERSION, adultConfirmed: true, enrolledConfirmed: true };
   let rows: { id: string; date: Date; updatedAt: Date; sleepHours: number; observations: object }[];
   let table: { findFirst: jest.Mock; create: jest.Mock };
-  let daily: { findMany: jest.Mock };
+  let daily: { findMany: jest.Mock; findFirst: jest.Mock };
   let ai: { predict: jest.Mock };
   let service: ContextEvolutionService;
   beforeEach(() => {
@@ -17,7 +17,7 @@ describe('Experimental predictions are real and independently traceable', () => 
     rows = [{ id: 'daily', date: new Date('2026-11-04T00:00:00Z'), updatedAt: new Date('2026-11-04T12:00:00Z'), sleepHours: 5,
       observations: { sleep_quality: 1, assessment_pressure: 4, study_rest_difficulty: 3, personal_support: 0 } }];
     table = { findFirst: jest.fn().mockResolvedValue(anchor), create: jest.fn().mockResolvedValue({ id: 'derived', estimatedOverall: 2.5 }) };
-    daily = { findMany: jest.fn().mockImplementation(() => Promise.resolve(rows)) };
+    daily = { findMany: jest.fn().mockImplementation(() => Promise.resolve(rows)), findFirst: jest.fn() };
     const tx = { esbeuAssessment: table, dailyCheckIn: daily, $queryRaw: jest.fn() };
     const prisma = { ...tx, $transaction: jest.fn().mockImplementation(async (operation: (arg: unknown) => Promise<unknown>) => operation(tx)) };
     ai = { predict: jest.fn().mockResolvedValue({ esbeu_overall: 2.5, model_name: 'random_forest', model_version: 'sha256:example', dataset_version: 'test', contract_version: 'esbeu-context-regression/1' }) };
@@ -35,6 +35,29 @@ describe('Experimental predictions are real and independently traceable', () => 
   it('does not invent a score when AI fails', async () => {
     ai.predict.mockRejectedValue(new Error('private-upstream-marker'));
     expect((await service.recalculate('owner')).status).toBe('unavailable'); expect(table.create).not.toHaveBeenCalled();
+  });
+  it('links a derived index to its triggering day with separate registration and revision timestamps', async () => {
+    const trigger = { ...rows[0], createdAt: new Date('2026-11-04T11:00:00Z') };
+    daily.findFirst.mockResolvedValue(trigger);
+    expect((await service.recalculate('owner', trigger.id)).status).toBe('updated');
+    expect(table.create).toHaveBeenCalledWith({ data: expect.objectContaining({ triggerCheckInId: trigger.id,
+      evolution: expect.objectContaining({ trigger: { id: trigger.id, date: '2026-11-04', createdAt: '2026-11-04T11:00:00.000Z', updatedAt: '2026-11-04T12:00:00.000Z' } }) }) });
+  });
+  it('does not associate another owner or a deleted triggering day', async () => {
+    daily.findFirst.mockResolvedValue(null);
+    expect((await service.recalculate('owner', 'foreign')).status).toBe('superseded');
+    expect(ai.predict).not.toHaveBeenCalled();
+  });
+  it('keeps earlier daily evidence after a guided review and returns to the confirmed baseline when it expires', async () => {
+    const revised = { ...baseline, academic_support: 4 };
+    const guided = { ...anchor, id: 'guided', source: 'guided_review', createdAt: new Date('2026-11-04T14:00:00Z'),
+      dailyEvidenceSince: anchor.createdAt, dailyBaseline: revised, context: { ...revised, sleep_hours: 5, ...rows[0].observations } };
+    table.findFirst.mockResolvedValue(guided);
+    expect((await service.status('owner')).recordedDays).toBe(1);
+    expect(daily.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ updatedAt: { gte: anchor.createdAt } }) }));
+    rows = [];
+    expect((await service.recalculate('owner')).status).toBe('updated');
+    expect(ai.predict).toHaveBeenCalledWith({ context: revised });
   });
   it('does not create duplicate predictions if model inputs did not change', async () => {
     rows = []; expect((await service.recalculate('owner')).status).toBe('unchanged');

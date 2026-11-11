@@ -8,7 +8,7 @@
   .daily-date-shortcuts button { min-width: 60px; min-height: 36px; padding: 4px 8px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--ink); cursor: pointer; font: inherit; font-weight: 600; }
   .daily-date-shortcuts button[aria-pressed="true"] { background: var(--surface); border-color: var(--line-strong); }
   .daily-date-shortcuts button:hover:not(:disabled) { border-color: var(--primary); }
-  .daily-date-context { color: var(--muted); font-size: 13px; line-height: 1.7; }
+  .daily-date-context { color: var(--muted); font-size: 14px; line-height: 1.7; }
   .daily-steps { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .daily-steps li { display: flex; align-items: center; gap: 9px; min-height: 56px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; color: var(--muted); font-size: 13px; line-height: 1.4; }
   .daily-steps li > span { display: grid; place-items: center; flex: 0 0 26px; height: 26px; border-radius: 6px; background: var(--surface-soft); color: var(--ink); font-weight: 700; }
@@ -32,7 +32,7 @@
   .daily-moods label.selected { border-color: var(--primary); background: var(--primary-soft); }
   .daily-moods input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
   .daily-moods label > span { pointer-events: none; }
-  .daily-moods label:focus-within { outline: 2px solid var(--primary); outline-offset: 2px; }
+  .daily-moods label:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
   .daily-mood-emoji { font-size: 26px; line-height: 1; display: grid; place-items: center; width: 32px; height: 32px; }
   .daily-sleep > label { display: block; }
   .daily-sleep > div { display: flex; align-items: center; gap: 12px; }
@@ -40,7 +40,7 @@
   .daily-sleep small, .daily-character-count, .daily-optional { color: var(--muted); font-size: 12px; }
   .daily-sleep small { display: block; margin-top: 8px; }
   .daily-rating-options { display: flex; flex-wrap: wrap; gap: 8px; }
-  .daily-rating-options label { border: 1px solid var(--line-strong); padding: 8px 12px; min-height: 44px; border-radius: 8px; display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; }
+  .daily-rating-options label { border: 1px solid var(--line-strong); padding: 8px 12px; min-height: 44px; border-radius: 8px; display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 15px; }
   .daily-rating-options label.selected { border-color: var(--primary); background: var(--primary-soft); }
   .daily-rating-options input { accent-color: var(--primary-dark); }
   .daily-form textarea { resize: none; }

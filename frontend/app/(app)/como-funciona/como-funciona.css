@@ -3,7 +3,7 @@
   .help-page p { line-height: 1.7; color: var(--muted); }
   .help-steps { list-style: none; padding: 0; margin: 32px 0; }
   .help-steps li { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 20px; padding: 24px 0; border-bottom: 1px solid var(--line); }
-  .help-steps li > span { color: var(--primary-dark); font-size: 20px; font-weight: 700; padding-top: 2px; }
+  .help-steps li > span { color: var(--link); font-size: 20px; font-weight: 700; padding-top: 2px; }
   .help-steps h2, .help-questions h2 { font-size: 20px; margin: 0 0 12px; }
   .help-steps p { margin: 0; }
   .help-questions { margin: 36px 0; }

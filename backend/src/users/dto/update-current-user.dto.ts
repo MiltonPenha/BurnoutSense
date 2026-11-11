@@ -9,10 +9,6 @@ export class UpdateCurrentUserDto {
 
   @IsOptional()
   @IsBoolean()
-  emailAlerts?: boolean;
-
-  @IsOptional()
-  @IsBoolean()
   dailyReminder?: boolean;
 
   @IsOptional()

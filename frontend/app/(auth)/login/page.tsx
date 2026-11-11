@@ -9,6 +9,7 @@ import { loginUser } from "@/lib/burnout-api";
 import { getError } from "@/lib/errors";
 import type { FormEvent } from "react";
 import { PasswordInput } from "../_components/PasswordInput";
+import { focusFormField } from "@/lib/form-focus";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -17,14 +18,22 @@ export default function LoginPage() {
     password: ""
   });
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
   function updateField(field: keyof typeof form, value: string) {
+    setError(""); setFieldErrors(previous => { const next = { ...previous }; delete next[field]; return next; });
     setForm((current) => ({ ...current, [field]: value }));
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submitting) return;
+    const fields: Record<string, string> = {};
+    if (!form.email.trim() || event.currentTarget.querySelector<HTMLInputElement>('#email')?.validity.typeMismatch) fields.email = "Informe um e-mail válido.";
+    if (!form.password) fields.password = "Informe sua senha.";
+    setFieldErrors(fields);
+    if (Object.keys(fields).length) { setError("Confira os campos destacados."); focusFormField(Object.keys(fields)[0]); return; }
     setSubmitting(true);
 
     try {
@@ -53,7 +62,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <form className="card auth-card auth-form" onSubmit={handleSubmit}>
+      <form className="card auth-card auth-form" onSubmit={handleSubmit} noValidate>
         <div>
           <h2 className="section-title">Entrar na conta</h2>
           <p className="page-kicker">Acesse seus registros e acompanhe seus índices.</p>
@@ -66,9 +75,14 @@ export default function LoginPage() {
             id="email"
             required
             type="email"
+            autoComplete="email"
+            maxLength={160}
+            aria-invalid={Boolean(fieldErrors.email)}
+            aria-describedby={fieldErrors.email ? "login-email-error" : undefined}
             value={form.email}
             onChange={(event) => updateField("email", event.target.value)}
           />
+          {fieldErrors.email && <p className="field-error" id="login-email-error">{fieldErrors.email}</p>}
         </div>
 
         <div className="field">
@@ -76,15 +90,18 @@ export default function LoginPage() {
           <PasswordInput
             id="password"
             autoComplete="current-password"
+            aria-invalid={Boolean(fieldErrors.password)}
+            aria-describedby={fieldErrors.password ? "login-password-error" : undefined}
             placeholder="Digite sua senha"
             required
             value={form.password}
             onChange={(event) => updateField("password", event.target.value)}
           />
+          {fieldErrors.password && <p className="field-error" id="login-password-error">{fieldErrors.password}</p>}
         </div>
 
         <div className="auth-actions">
-          {error ? <p className="form-error">{error}</p> : null}
+          {error ? <p className="form-error" role="alert">{error}</p> : null}
           <button className="button" disabled={submitting} type="submit">{submitting ? "Entrando..." : "Entrar"}</button>
           <div className="auth-link-row">
             Ainda não tem conta? <Link className="auth-link" href="/cadastro">Criar cadastro</Link>

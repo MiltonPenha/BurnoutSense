@@ -51,7 +51,7 @@ export class DailyCheckInsService {
     const date = this.validateDate(payload.date ?? this.clock().today);
     let saved;
     try {
-      const context = await this.prisma.esbeuAssessment.findFirst({ where: { userId, source: 'context' }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], select: { id: true } });
+      const context = await this.prisma.esbeuAssessment.findFirst({ where: { userId, source: { in: ['context', 'guided_review'] } }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], select: { id: true } });
       if (!context) throw new ConflictException('Complete ou revise seu acompanhamento inicial antes do check-in.');
       const data = { mood: payload.mood, sleepHours: payload.sleepHours, energy: payload.energy ?? null, academicDemand: payload.academicDemand ?? null,
         observations: payload.observations ? { ...payload.observations } as Prisma.InputJsonObject : Prisma.DbNull,
@@ -61,7 +61,7 @@ export class DailyCheckInsService {
       if (error instanceof ConflictException) throw error;
       throw new ServiceUnavailableException('Não foi possível salvar seu check-in. Consulte o histórico antes de tentar novamente.');
     }
-    return { ...saved, indexUpdate: await this.evolution.recalculate(userId) };
+    return { ...saved, indexUpdate: await this.evolution.recalculate(userId, saved.id) };
   }
 
   recalculate(userId: string) { return this.evolution.recalculate(userId); }
@@ -81,12 +81,15 @@ export class DailyCheckInsService {
 
   async remove(userId: string, id: string) {
     try {
-      const result = await this.prisma.dailyCheckIn.deleteMany({ where: { userId, id } });
-      if (!result.count) throw new NotFoundException('Registro não encontrado.');
+      await this.prisma.$transaction(async tx => {
+        await tx.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock(hashtextextended(${userId}, 0))`;
+        const result = await tx.dailyCheckIn.deleteMany({ where: { userId, id } });
+        if (!result.count) throw new NotFoundException('Registro não encontrado.');
+      });
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
       throw new ServiceUnavailableException('Não foi possível excluir este check-in.');
     }
-    return { indexUpdate: await this.evolution.recalculate(userId) };
+    return { indexUpdate: await this.evolution.recalculate(userId, undefined, 'check_in_deleted') };
   }
 }

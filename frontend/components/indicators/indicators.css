@@ -1,4 +1,7 @@
 @layer components {
+  .assessment-dates { display: grid; gap: 4px; min-width: 190px; font-size: 12px; line-height: 1.6; }
+  .assessment-dates strong { font-weight: 600; }
+  .assessment-dates small { color: var(--muted); }
 .esbeu-page { max-width: 1200px; }
 .esbeu-page > * { margin-bottom: 24px; }
 .esbeu-page .page-header { display: block; }
@@ -30,7 +33,7 @@
 .esbeu-table td { white-space: nowrap; }
 .esbeu-table tfoot { font-weight: 700; }
 .esbeu-table-meta { display: block; color: var(--muted); font-size: 11px; margin-top: 5px; }
-.esbeu-link { color: var(--primary-dark); text-decoration: underline; text-underline-offset: 3px; }
+.esbeu-link { color: var(--link); text-decoration: underline; text-underline-offset: 3px; }
 .esbeu-trend { width: 100%; max-height: 340px; }
 .esbeu-legend { display: flex; flex-wrap: wrap; gap: 24px; font-size: 13px; }
 .esbeu-legend span:first-child { color: #2563eb; }

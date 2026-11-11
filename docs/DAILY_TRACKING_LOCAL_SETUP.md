@@ -33,7 +33,7 @@ para as regras de elegibilidade e os limites da integração.
 Use terminais separados no VS Code. Pré-requisitos: Node.js compatível com o
 Next.js do projeto (mínimo 20.9), npm, pnpm (versão do `backend/package.json`),
 PostgreSQL de desenvolvimento e Python 3.12 em venv. Use uma versão do código
-que já inclua os check-ins e suas duas migrações. Não sobrescreva arquivos
+que já inclua os check-ins, a revisão rápida e suas migrações. Não sobrescreva arquivos
 `.env` existentes.
 
 **PostgreSQL.** Se já houver um banco local autorizado, use-o e confira a
@@ -139,6 +139,40 @@ e `evolution.recordedDays` conta apenas os dias usados no cálculo. Um dia
 retroativo fora da janela aparece no histórico, mas não altera o índice.
 Um dia pode ser editado sem duplicar o registro; não use datas futuras.
 
+Para testar o aviso, grave seis dias recentes em uma conta fictícia: três
+com sono de baixa qualidade e pressão alta e três posteriores com respostas
+melhores. Abra o painel e confira o aviso de melhora. Inverta os grupos para
+testar o aviso de atenção. Altere apenas um dia em uma sequência estável para
+confirmar que não abre um aviso. Em **Revisar minha rotina**, confirme uma
+mudança e verifique a origem **Revisão rápida** no histórico; os check-ins
+devem continuar registrados. O aviso acompanha as respostas, mesmo quando o
+RF/A devolve o mesmo índice.
+
 Se faltar o pacote, a chave ou a versão de Python correta, informe qual
 pré-requisito falhou. Não substitua a previsão real por dados fictícios e não
 registre chaves, respostas ou dados pessoais no relatório de teste.
+
+## 4. Conferir dashboard e histórico
+
+A dashboard não repete o índice da sidebar nem a tabela de índices recentes.
+O gráfico começa em Semanal e permite Diário/Mensal. As médias usam o último
+cálculo de cada dia, no fuso de São Paulo. Check-ins retroativos não deslocam
+previsões atuais para o passado.
+
+Novos índices vinculam explicitamente o check-in que originou o cálculo.
+As datas de referência, cadastro, edição e cálculo são distintas. Excluir
+um dia exclui seus índices diretamente vinculados e recalcula o estado atual,
+preservando avaliações iniciais, revisões e resultados originados por outros dias.
+Registros antigos sem vínculo não recebem associações inventadas.
+
+O feedback de melhora/piora fica na própria dashboard, sem modal. A conclusão
+do check-in aparece em notificação temporária, não em faixa permanente.
+Consulte [os lembretes diários](DAILY_REMINDERS.md) para o envio por e-mail.
+
+O teste de integração abaixo exige os serviços locais e uma instalação do
+Playwright indicada em BURNOUTSENSE_PLAYWRIGHT_MODULE. Ele cria e remove
+somente contas fictícias e não aciona o teste de e-mail:
+
+```powershell
+node backend/test/verify-dashboard-flow.cjs
+```

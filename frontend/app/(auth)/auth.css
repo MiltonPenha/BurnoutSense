@@ -31,7 +31,7 @@
 .password-toggle:hover,
 .password-toggle:focus-visible {
   background: rgba(96, 165, 250, 0.14);
-  color: var(--primary-dark);
+  color: var(--link);
 }
 
 .password-toggle:focus-visible { outline: 2px solid var(--primary-dark); outline-offset: -2px; }
@@ -42,7 +42,7 @@
   margin: 6px 0 0;
   padding: 0;
   list-style: none;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .password-rules li {
@@ -64,7 +64,7 @@
 }
 
 .password-rules .valid {
-  color: #047857;
+  color: var(--success-ink);
 }
 
 .password-rules .valid span:first-child {
@@ -72,7 +72,7 @@
 }
 
 .password-rules .invalid {
-  color: #b45309;
+  color: var(--warning-ink);
 }
 
 .password-rules .invalid span:first-child {
@@ -142,7 +142,7 @@
 }
 
 .auth-link {
-  color: var(--primary-dark);
+  color: var(--link);
   font-weight: 800;
 }
 

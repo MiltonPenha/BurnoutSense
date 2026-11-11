@@ -17,6 +17,7 @@ export default function ComoFuncionaPage() {
       <details><summary>Por que ainda posso revisar minha rotina?</summary><p>Os check-ins não perguntam tudo. Informações como sua situação acadêmica ou profissional precisam ser revistas por você quando mudarem. A atualização diária ainda está sendo avaliada e não confirma melhora, piora ou diagnóstico de saúde.</p></details>
       <details><summary>Por que há perguntas complementares?</summary><p>Elas são opcionais e oferecem outro olhar para sua experiência acadêmica. O resultado aparece separado do índice calculado a partir da sua rotina.</p></details>
       <details><summary>Posso apagar meus registros?</summary><p>Sim. Abra um registro no histórico e escolha excluir. No perfil, você também pode excluir sua conta e os registros vinculados a ela.</p></details>
+      <details><summary>Como são preparadas as dicas e recomendações?</summary><p>O Google Gemini recebe apenas o percentual do seu índice e propõe ações curtas de autocuidado. Seu nome, e-mail e respostas não são enviados. As sugestões não explicam a causa do resultado nem substituem orientação profissional.</p></details>
     </section>
     <p className="help-note">O BurnoutSense oferece apoio ao seu acompanhamento. Se precisar de ajuda, procure alguém de confiança ou o apoio estudantil da sua instituição. A aplicação não substitui orientação profissional.</p>
     <div className="form-actions"><Link href="/registro" className="button">Fazer um registro</Link><Link href="/dashboard" className="button secondary">Voltar ao início</Link></div>

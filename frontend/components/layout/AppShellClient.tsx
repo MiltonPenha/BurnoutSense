@@ -3,12 +3,17 @@ import "./AppShell.css";
 
 import Link from "next/link";
 import Image from "next/image";
+import { X } from "lucide-react";
 import { formatIndex, indexColorBand } from "@/lib/esbeu-form";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { endSession, isAuthenticated, logoutUser, SESSION_TIMEOUT_MINUTES } from "@/lib/burnout-api";
-import { useBurnoutStore } from "@/hooks/useBurnoutStore";
+import { useEffect, useRef, useState } from "react";
+import { endSession, isAuthenticated, logoutUser, sessionAccountKey, SESSION_TIMEOUT_MINUTES } from "@/lib/burnout-api";
+import { BurnoutStoreProvider, useBurnoutStore } from "@/hooks/useBurnoutStore";
 import type { ReactNode } from "react";
+import { AppToast } from "@/components/ui/AppToast";
+import { AccessibleDialog } from "@/components/ui/AccessibleDialog";
+import { IndexHelp } from "@/components/indicators/IndexHelp";
+import { clearSessionDrafts } from "@/lib/session-draft";
 
 type SidebarProps = { store: ReturnType<typeof useBurnoutStore>; pathname: string; className?: string; onLogout: () => Promise<void>; onNavigate?: () => void };
 
@@ -25,12 +30,18 @@ export function AppShellClient({ children }: { children: ReactNode }) {
   const router = useRouter();
   const authRoute = pathname === "/login" || pathname === "/cadastro";
   const [authState, setAuthState] = useState("checking");
+  const [accountKey, setAccountKey] = useState("anonymous");
+  const previousAccount = useRef("");
   const [sessionNotice, setSessionNotice] = useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const loggedIn = authState === "authenticated";
 
   useEffect(() => {
     function refreshAuthState() {
+      const key = sessionAccountKey();
+      if (!isAuthenticated() || previousAccount.current && previousAccount.current !== key) clearSessionDrafts();
+      previousAccount.current = key;
+      setAccountKey(key);
       setAuthState(isAuthenticated() ? "authenticated" : "anonymous");
     }
 
@@ -103,24 +114,11 @@ export function AppShellClient({ children }: { children: ReactNode }) {
   }, [loggedIn, router]);
 
   useEffect(() => {
-    if (!isMobileMenuOpen) {
-      return undefined;
-    }
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setIsMobileMenuOpen(false);
-      }
-    }
-
-    document.body.style.overflow = "hidden";
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.body.style.overflow = "";
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isMobileMenuOpen]);
+    const desktop = window.matchMedia("(min-width: 901px)");
+    const closeOnDesktop = () => { if (desktop.matches) setIsMobileMenuOpen(false); };
+    desktop.addEventListener("change", closeOnDesktop);
+    return () => desktop.removeEventListener("change", closeOnDesktop);
+  }, []);
 
   async function handleLogout() {
     setIsMobileMenuOpen(false);
@@ -157,18 +155,14 @@ export function AppShellClient({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="app-shell">
+    <BurnoutStoreProvider key={accountKey}><div className="app-shell">
+      <a className="skip-link" href="#main-content">Ir para o conteúdo</a>
+      <AppToast />
       <SessionNotice message={sessionNotice} />
       <MobileHeader isOpen={isMobileMenuOpen} onToggle={() => setIsMobileMenuOpen((current) => !current)} />
       <Sidebars pathname={pathname} onLogout={handleLogout} isMobileMenuOpen={isMobileMenuOpen} onNavigate={() => setIsMobileMenuOpen(false)} />
-      <button
-        aria-label="Fechar menu"
-        className={`mobile-menu-overlay ${isMobileMenuOpen ? "open" : ""}`}
-        type="button"
-        onClick={() => setIsMobileMenuOpen(false)}
-      />
-      <main className="main">{children}</main>
-    </div>
+      <main className="main" id="main-content" tabIndex={-1}>{children}</main>
+    </div></BurnoutStoreProvider>
   );
 }
 
@@ -181,7 +175,7 @@ function MobileHeader({ isOpen, onToggle }: { isOpen: boolean; onToggle: () => v
         </span>
         <span>BurnoutSense</span>
       </Link>
-      <button className="mobile-menu-button" type="button" aria-label={isOpen ? "Fechar menu" : "Abrir menu"} onClick={onToggle}>
+      <button className="mobile-menu-button" type="button" aria-label={isOpen ? "Fechar menu" : "Abrir menu"} aria-expanded={isOpen} aria-controls="mobile-menu" onClick={onToggle}>
         <span className={isOpen ? "mobile-menu-icon close" : "mobile-menu-icon"} aria-hidden="true" />
       </button>
     </header>
@@ -190,23 +184,21 @@ function MobileHeader({ isOpen, onToggle }: { isOpen: boolean; onToggle: () => v
 
 function Sidebars({ pathname, onLogout, onNavigate, isMobileMenuOpen }: Omit<SidebarProps, "store"> & { isMobileMenuOpen: boolean }) {
   const store = useBurnoutStore();
+  useEffect(() => {
+    if (store.ready) document.documentElement.dataset.theme = store.profile.theme === "dark" ? "dark" : "";
+  }, [store.profile.theme, store.ready]);
   return <>
     <Sidebar store={store} pathname={pathname} onLogout={onLogout} />
-    <Sidebar store={store} className={`mobile-sidebar ${isMobileMenuOpen ? "open" : ""}`} pathname={pathname} onLogout={onLogout} onNavigate={onNavigate} />
+    <AccessibleDialog open={isMobileMenuOpen} onClose={onNavigate ?? (() => {})} label="Navegação" id="mobile-menu" className="mobile-menu-dialog">
+      <button className="mobile-menu-close" type="button" aria-label="Fechar menu" title="Fechar menu" onClick={onNavigate}><X size={20} aria-hidden="true" /></button>
+      <Sidebar store={store} className="mobile-sidebar open" pathname={pathname} onLogout={onLogout} onNavigate={onNavigate} />
+    </AccessibleDialog>
   </>;
 }
 
 function Sidebar({ store, className = "", onLogout, onNavigate, pathname }: SidebarProps) {
-  const { profile, ready, latestRecord } = store;
+  const { profile, latestRecord } = store;
   const initials = profile.name?.trim()?.slice(0, 1)?.toUpperCase() || "E";
-
-  useEffect(() => {
-    if (!ready) {
-      return;
-    }
-
-    document.documentElement.dataset.theme = profile.theme === "dark" ? "dark" : "";
-  }, [profile.theme, ready]);
 
   return (
     <aside className={`sidebar ${className}`.trim()}>
@@ -227,13 +219,14 @@ function Sidebar({ store, className = "", onLogout, onNavigate, pathname }: Side
           </div>
           <span>{latestRecord ? "Seu último índice" : "Seu primeiro registro"}</span>
           <span>Acompanhe sua rotina</span>
+          {latestRecord && <IndexHelp />}
         </section>
 
         <nav className="sidebar-nav" aria-label="Navegação principal">
           {navItems.map((item) => {
             const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
             return (
-              <Link key={item.href} className={`sidebar-link ${active ? "active" : ""}`} href={item.href} onClick={onNavigate}>
+              <Link key={item.href} className={`sidebar-link ${active ? "active" : ""}`} aria-current={active ? "page" : undefined} href={item.href} onClick={onNavigate}>
                 <SidebarIcon name={item.icon} />
                 <span>{item.label}</span>
               </Link>

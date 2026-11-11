@@ -6,8 +6,9 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { deleteCurrentUser, sendTestNotification } from "@/lib/burnout-api";
 import { useBurnoutStore } from "@/hooks/useBurnoutStore";
+import { AccessibleDialog } from "@/components/ui/AccessibleDialog";
 import type { ChangeEvent, FormEvent } from "react";
-import type { Notice, NotificationResult, Profile, Theme } from "@/lib/types";
+import type { Notice, Profile, Theme } from "@/lib/types";
 
 const tabs = [
   { id: "data", label: "Dados", icon: "👤" },
@@ -37,13 +38,14 @@ export default function PerfilPage() {
   const [draft, setDraft] = useState(profile);
   const [activeTab, setActiveTab] = useState("data");
   const [notice, setNotice] = useState<Notice | null>(null);
-  const [notificationTest, setNotificationTest] = useState<NotificationResult | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [removePhotoDialogOpen, setRemovePhotoDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPreference, setSavingPreference] = useState<string | null>(null);
   const noticeTimeout = useRef<number | undefined>(undefined);
+  const tabButtons = useRef<Record<string, HTMLButtonElement>>({});
+  const photoInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!ready) {
@@ -134,12 +136,10 @@ export default function PerfilPage() {
 
   async function handleTestNotification() {
     setSavingPreference("notification-test");
-    setNotificationTest(null);
 
     try {
       const result = await sendTestNotification({});
 
-      setNotificationTest(result);
       showNotice({ tone: result.dailyReminder.status === "sent" ? "success" : "error", message: result.message }, 5000);
     } catch {
       showNotice({ tone: "error", message: "Não foi possível testar as notificações agora." });
@@ -149,7 +149,6 @@ export default function PerfilPage() {
   }
 
   const initials = draft.name?.trim()?.slice(0, 1)?.toUpperCase() || "E";
-  const reminderStatus = notificationTest ? notificationStatusLabel(notificationTest.dailyReminder.status) : "";
 
   if (!ready || !profile.id) return <section className="page profile-page">
     <h1 className="page-title">Perfil e configurações</h1>
@@ -174,10 +173,19 @@ export default function PerfilPage() {
         </div>
       ) : null}
 
-      <div className="profile-tabs" role="tablist" aria-label="Seções do perfil">
+      <div className="profile-tabs" role="tablist" aria-label="Seções do perfil" onKeyDown={event => {
+        const index = tabs.findIndex(tab => tab.id === activeTab);
+        const next = event.key === "ArrowRight" ? (index + 1) % tabs.length : event.key === "ArrowLeft" ? (index + tabs.length - 1) % tabs.length : event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : -1;
+        if (next < 0) return;
+        event.preventDefault(); setActiveTab(tabs[next].id); tabButtons.current[tabs[next].id]?.focus();
+      }}>
         {tabs.map((tab) => (
           <button
             aria-selected={activeTab === tab.id}
+            id={`profile-${tab.id}-tab`}
+            aria-controls={`profile-${tab.id}-panel`}
+            tabIndex={activeTab === tab.id ? 0 : -1}
+            ref={element => { if (element) tabButtons.current[tab.id] = element; }}
             className={activeTab === tab.id ? "active" : ""}
             key={tab.id}
             role="tab"
@@ -191,8 +199,7 @@ export default function PerfilPage() {
       </div>
 
       <form onSubmit={handleSubmit}>
-        {activeTab === "data" ? (
-          <section className="card profile-card profile-identity-card">
+          <section hidden={activeTab !== "data"} className="card profile-card profile-identity-card" role="tabpanel" id="profile-data-panel" aria-labelledby="profile-data-tab" tabIndex={0}>
             <h2 className="section-title">Dados básicos</h2>
             <div className="profile-avatar-row">
               <span className="profile-avatar">
@@ -203,10 +210,11 @@ export default function PerfilPage() {
                   accept="image/png,image/jpeg,image/gif"
                   className="hidden-file-input"
                   id="profile-photo"
+                  ref={photoInput}
                   type="file"
                   onChange={handlePhotoChange}
                 />
-                <label className="button secondary tiny-button" htmlFor="profile-photo">Alterar foto</label>
+                <button id="profile-change-photo" className="button secondary tiny-button" type="button" onClick={() => photoInput.current?.click()}>Alterar foto</button>
                 {draft.avatarUrl ? (
                   <button className="button secondary tiny-button" type="button" onClick={() => setRemovePhotoDialogOpen(true)}>
                     Remover
@@ -248,14 +256,11 @@ export default function PerfilPage() {
               </span>
             </div>
           </section>
-        ) : null}
-
-        {activeTab === "notifications" ? (
-          <section className="card profile-card">
+          <section hidden={activeTab !== "notifications"} className="card profile-card" role="tabpanel" id="profile-notifications-panel" aria-labelledby="profile-notifications-tab" tabIndex={0}>
             <h2 className="section-title">Preferências de notificações</h2>
             <SettingsRow
               checked={draft.dailyReminder}
-              help="Às 12h (horário de Brasília), se você ainda não registrou hoje. As respostas consideram as últimas quatro semanas."
+              help="Às 12h (horário de Brasília), se você ainda não fez o check-in de hoje."
               label="Lembrete diário"
               onChange={(value) => updateField("dailyReminder", value)}
             />
@@ -265,21 +270,11 @@ export default function PerfilPage() {
                 <span>Envia um e-mail real usando sua preferência salva. Salve as alterações antes de testar.</span>
               </div>
               <button className="button secondary" disabled={savingPreference === "notification-test"} type="button" onClick={handleTestNotification}>
-                {savingPreference === "notification-test" ? "Testando..." : "Testar notificações"}
+                {savingPreference === "notification-test" ? "Testando..." : "Testar lembrete"}
               </button>
             </div>
-            {notificationTest ? (
-              <div className="notification-test-result" role="status">
-                <strong>{notificationTest.message}</strong>
-                <span>Lembrete: {reminderStatus}</span>
-              </div>
-            ) : null}
-            <p className="field-hint">No momento, enviamos apenas lembretes para registrar. Alertas personalizados ainda não estão disponíveis.</p>
           </section>
-        ) : null}
-
-        {activeTab === "preferences" ? (
-          <section className="card profile-card">
+          <section hidden={activeTab !== "preferences"} className="card profile-card" role="tabpanel" id="profile-preferences-panel" aria-labelledby="profile-preferences-tab" tabIndex={0}>
             <h2 className="section-title">Preferências de uso</h2>
             <div className="theme-panel">
               <div>
@@ -307,14 +302,12 @@ export default function PerfilPage() {
             </div>
 
           </section>
-        ) : null}
-
-        {activeTab === "privacy" ? (
-          <section className="card profile-card">
+          <section hidden={activeTab !== "privacy"} className="card profile-card" role="tabpanel" id="profile-privacy-panel" aria-labelledby="profile-privacy-tab" tabIndex={0}>
             <h2 className="section-title">Privacidade dos dados</h2>
             <div className="privacy-copy">
               <p>Seus registros são pessoais e usados apenas para gerar análises preventivas dentro do BurnoutSense.</p>
-              <p>Os dados não são compartilhados com terceiros. Você pode solicitar a exclusão a qualquer momento.</p>
+              <p>Para gerar dicas e recomendações, enviamos somente o percentual do seu índice ao Google Gemini, sem nome, e-mail ou respostas dos registros.</p>
+              <p>Você pode excluir seus registros ou sua conta a qualquer momento.</p>
               <p>Esta plataforma é uma ferramenta de apoio e não realiza diagnóstico clínico.</p>
             </div>
 
@@ -328,19 +321,15 @@ export default function PerfilPage() {
               </button>
             </div>
           </section>
-        ) : null}
-
         <div className="save-row">
           <button className="button" disabled={savingProfile} type="submit">{savingProfile ? "Salvando..." : "Salvar alterações"}</button>
         </div>
       </form>
 
-      {deleteDialogOpen ? (
-        <div className="modal-backdrop" role="presentation">
-          <div className="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-account-title">
+      <AccessibleDialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} titleId="delete-account-title" descriptionId="delete-account-description" busy={deleting}>
             <span className="alert-icon emoji-icon" aria-hidden="true">⚠️</span>
             <h2 className="confirm-title" id="delete-account-title">Excluir sua conta?</h2>
-            <p className="confirm-copy">
+            <p className="confirm-copy" id="delete-account-description">
               Essa ação removerá sua conta e encerrará a sessão atual. Confirme apenas se tiver certeza.
             </p>
             <div className="confirm-actions">
@@ -351,16 +340,12 @@ export default function PerfilPage() {
                 {deleting ? "Excluindo..." : "Confirmar exclusão"}
               </button>
             </div>
-          </div>
-        </div>
-      ) : null}
+      </AccessibleDialog>
 
-      {removePhotoDialogOpen ? (
-        <div className="modal-backdrop" role="presentation">
-          <div className="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="remove-photo-title">
+      <AccessibleDialog open={removePhotoDialogOpen} onClose={() => setRemovePhotoDialogOpen(false)} titleId="remove-photo-title" descriptionId="remove-photo-description" fallbackFocusId="profile-change-photo">
             <span className="alert-icon emoji-icon" aria-hidden="true">🖼️</span>
             <h2 className="confirm-title" id="remove-photo-title">Remover foto de perfil?</h2>
-            <p className="confirm-copy">
+            <p className="confirm-copy" id="remove-photo-description">
               A imagem atual será removida do seu perfil após salvar as alterações. Você poderá escolher outra foto quando quiser.
             </p>
             <div className="confirm-actions">
@@ -378,25 +363,11 @@ export default function PerfilPage() {
                 Remover foto
               </button>
             </div>
-          </div>
-        </div>
-      ) : null}
+      </AccessibleDialog>
 
       <p className="footer-note">BurnoutSense é uma ferramenta de apoio preventivo e não substitui acompanhamento médico ou psicológico.</p>
     </section>
   );
-}
-
-function notificationStatusLabel(status: string) {
-  const labels: Record<string, string> = {
-    sent: "enviado",
-    failed: "falhou",
-    skipped: "desativado",
-    not_configured: "SMTP não configurado",
-    simulated: "simulado"
-  };
-
-  return labels[status] ?? status;
 }
 
 function semesterNumberFromLabel(semester?: string) {

@@ -9,6 +9,7 @@ import { registerUser } from "@/lib/burnout-api";
 import { getError } from "@/lib/errors";
 import type { FormEvent } from "react";
 import { PasswordInput } from "../_components/PasswordInput";
+import { focusFormField } from "@/lib/form-focus";
 
 const passwordRules: { id: string; label: string; test: (password: string) => boolean }[] = [
   {
@@ -42,6 +43,7 @@ export default function CadastroPage() {
     confirmPassword: ""
   });
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const passwordChecks = passwordRules.map((rule) => ({
     ...rule,
@@ -50,25 +52,21 @@ export default function CadastroPage() {
   const passwordIsValid = passwordChecks.every((rule) => rule.valid);
 
   function updateField(field: keyof typeof form, value: string) {
+    setError(""); setFieldErrors(previous => { const next = { ...previous }; delete next[field]; return next; });
     setForm((current) => ({ ...current, [field]: value }));
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submitting) return;
+    const fields: Record<string, string> = {};
+    if (!form.name.trim()) fields.name = "Informe seu nome.";
+    if (!form.email.trim() || event.currentTarget.querySelector<HTMLInputElement>('#email')?.validity.typeMismatch) fields.email = "Informe um e-mail válido.";
+    if (!passwordIsValid) fields.password = "Complete os requisitos de senha indicados abaixo.";
+    if (!form.confirmPassword || form.password !== form.confirmPassword) fields.confirmPassword = "A confirmação precisa ser igual à senha.";
+    setFieldErrors(fields);
+    if (Object.keys(fields).length) { setError("Confira os campos destacados."); focusFormField(Object.keys(fields)[0]); return; }
     setSubmitting(true);
-
-    if (!passwordIsValid) {
-      setError("A senha ainda não cumpre todos os requisitos.");
-      setSubmitting(false);
-      return;
-    }
-
-    if (form.password !== form.confirmPassword) {
-      setError("As senhas precisam ser iguais.");
-      setSubmitting(false);
-      return;
-    }
 
     try {
       await registerUser(form);
@@ -101,7 +99,7 @@ export default function CadastroPage() {
         </div>
       </div>
 
-      <form className="card auth-card auth-form" onSubmit={handleSubmit}>
+      <form className="card auth-card auth-form" onSubmit={handleSubmit} noValidate>
         <div>
           <h2 className="section-title">Dados de acesso</h2>
           <p className="page-kicker">Use informações simples para iniciar o acompanhamento.</p>
@@ -112,12 +110,15 @@ export default function CadastroPage() {
           <input
             className="input"
             id="name"
+            aria-invalid={Boolean(fieldErrors.name)}
+            aria-describedby={fieldErrors.name ? "signup-name-error" : undefined}
             maxLength={120}
             autoComplete="name"
             required
             value={form.name}
             onChange={(event) => updateField("name", event.target.value)}
           />
+          {fieldErrors.name && <p className="field-error" id="signup-name-error">{fieldErrors.name}</p>}
         </div>
 
         <div className="field">
@@ -125,6 +126,8 @@ export default function CadastroPage() {
           <input
             className="input"
             id="email"
+            aria-invalid={Boolean(fieldErrors.email)}
+            aria-describedby={fieldErrors.email ? "signup-email-error" : undefined}
             maxLength={160}
             autoComplete="email"
             placeholder="seuemail@exemplo.com"
@@ -133,19 +136,24 @@ export default function CadastroPage() {
             value={form.email}
             onChange={(event) => updateField("email", event.target.value)}
           />
+          {fieldErrors.email && <p className="field-error" id="signup-email-error">{fieldErrors.email}</p>}
         </div>
 
         <div className="field">
           <label htmlFor="password">Senha</label>
           <PasswordInput id="password" maxLength={72} autoComplete="new-password" placeholder="Crie uma senha" required
+            aria-invalid={Boolean(fieldErrors.password)} aria-describedby={`password-rules${fieldErrors.password ? " signup-password-error" : ""}`}
             value={form.password} onChange={event => updateField("password", event.target.value)} />
+          {fieldErrors.password && <p className="field-error" id="signup-password-error">{fieldErrors.password}</p>}
         </div>
 
         <div className="field">
           <label htmlFor="confirmPassword">Confirmar senha</label>
           <PasswordInput id="confirmPassword" fieldName="confirmação de senha" maxLength={72} autoComplete="new-password" placeholder="Repita a senha" required
+            aria-invalid={Boolean(fieldErrors.confirmPassword)} aria-describedby={fieldErrors.confirmPassword ? "signup-confirm-error" : undefined}
             value={form.confirmPassword} onChange={event => updateField("confirmPassword", event.target.value)} />
-          <ul className="password-rules" aria-label="Requisitos da senha">
+          {fieldErrors.confirmPassword && <p className="field-error" id="signup-confirm-error">{fieldErrors.confirmPassword}</p>}
+          <ul className="password-rules" id="password-rules" aria-label="Requisitos da senha">
             {passwordChecks.map((rule) => (
               <li className={rule.valid ? "valid" : "invalid"} key={rule.id}>
                 <span aria-hidden="true">{rule.valid ? "✓" : "•"}</span>

@@ -2,6 +2,10 @@
   .daily-history { display: grid; gap: 16px; }
   .daily-history-item header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
   .daily-history-item header > div { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+  .daily-history-heading { min-width: 0; }
+  .daily-history-dates { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px 9px; color: var(--muted); font-size: 13px; line-height: 1.6; }
+  .daily-history-dates > span::before { content: "\00b7"; margin-right: 9px; }
+  .daily-history-actions { flex-shrink: 0; }
   .daily-history-item h2 { margin: 0; font-size: 18px; }
   .daily-history-item time { color: var(--muted); font-size: 13px; }
   .daily-history-mood { font-size: 24px; line-height: 1; }

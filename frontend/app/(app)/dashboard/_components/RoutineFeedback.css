@@ -1,0 +1,12 @@
+@layer pages {
+  .routine-feedback { display: grid; gap: 12px; padding: 22px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); }
+  .routine-feedback-heading { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; }
+  .routine-feedback-title { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .routine-feedback .routine-feedback-title h2 { font-size: 18px; margin: 0; }
+  .routine-feedback p { margin: 0; color: var(--muted); line-height: 1.55; }
+  .routine-feedback ul { margin: 0; padding-inline-start: 22px; line-height: 1.6; }
+  .routine-feedback > a { justify-self: start; }
+  .routine-feedback[data-tone] { border-color: var(--success-line); border-left: 4px solid var(--mint); background: var(--mint-soft); }
+  .routine-feedback[data-tone="worse"] { border-color: var(--primary-line); border-left-color: var(--primary); background: var(--primary-soft); }
+  .routine-feedback-icon { display: grid; place-items: center; flex: 0 0 20px; width: 20px; height: 20px; color: var(--ink); }
+}

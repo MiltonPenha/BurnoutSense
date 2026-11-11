@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import {
   createRecord,
   deleteRecord as removeRecord,
@@ -10,28 +11,20 @@ import {
   updateProfile as saveProfile
 } from "@/lib/burnout-api";
 import { defaultProfile, defaultRecords, sortRecords } from "@/lib/burnout-data";
-import type { Assessment, CreateAssessment, Profile } from "@/lib/types";
+import type { CreateAssessment, Profile } from "@/lib/types";
 
-type StoreChange = { records?: Assessment[]; profile?: Profile };
-
-const STORE_CHANGE_EVENT = "burnoutsense-store-change";
-
-function emitStoreChange(detail: StoreChange) {
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new CustomEvent(STORE_CHANGE_EVENT, { detail }));
-  }
-}
-
-export function useBurnoutStore() {
+function useStoreState() {
   const [records, setRecords] = useState(defaultRecords);
   const [profile, setProfile] = useState(defaultProfile);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const loadSequence = useRef(0);
 
   useEffect(() => {
     let active = true;
 
     async function loadInitialData() {
+      const sequence = ++loadSequence.current;
       try {
         const initialLoadOptions = { silentUnauthorized: true };
         const [nextRecords, nextProfile] = await Promise.allSettled([
@@ -39,7 +32,7 @@ export function useBurnoutStore() {
           getProfile(initialLoadOptions)
         ]);
 
-        if (!active) {
+        if (!active || sequence !== loadSequence.current) {
           return;
         }
 
@@ -47,11 +40,11 @@ export function useBurnoutStore() {
         if (nextProfile.status === "fulfilled") setProfile(nextProfile.value);
         setError(nextRecords.status === "rejected" || nextProfile.status === "rejected" ? "Não foi possível carregar todos os dados. Tente novamente." : null);
       } catch {
-        if (active) {
+        if (active && sequence === loadSequence.current) {
           setError("Não foi possível carregar os dados.");
         }
       } finally {
-        if (active) {
+        if (active && sequence === loadSequence.current) {
           setReady(true);
         }
       }
@@ -66,30 +59,11 @@ export function useBurnoutStore() {
     };
   }, []);
 
-  useEffect(() => {
-    function handleStoreChange(event: Event) {
-      if (!(event instanceof CustomEvent)) return;
-      const detail = event.detail as StoreChange;
-      if (detail?.records) {
-        setRecords(detail.records);
-      }
-
-      if (detail?.profile) {
-        setProfile(detail.profile);
-      }
-    }
-
-    window.addEventListener(STORE_CHANGE_EVENT, handleStoreChange);
-
-    return () => window.removeEventListener(STORE_CHANGE_EVENT, handleStoreChange);
-  }, []);
-
   const addRecord = useCallback(async (record: CreateAssessment) => {
     try {
       const savedRecord = await createRecord(record);
       const nextRecords = sortRecords([savedRecord, ...records.filter((item) => item.id !== savedRecord.id)]);
       setRecords(nextRecords);
-      emitStoreChange({ records: nextRecords });
       setError(null);
       return savedRecord;
     } catch (error) {
@@ -117,37 +91,30 @@ export function useBurnoutStore() {
     const previousRecords = records;
     const nextRecords = records.filter((record) => record.id !== id);
     setRecords(nextRecords);
-    emitStoreChange({ records: nextRecords });
 
     try {
       await removeRecord(id);
       setError(null);
     } catch (error) {
       setRecords(previousRecords);
-      emitStoreChange({ records: previousRecords });
       setError("Não foi possível excluir o registro.");
       throw error;
     }
   }, [records]);
 
   const updateProfile = useCallback(async (nextProfile: Profile) => {
-    const previousProfile = profile;
-    setProfile(nextProfile);
-    emitStoreChange({ profile: nextProfile });
+    ++loadSequence.current;
 
     try {
       const savedProfile = await saveProfile(nextProfile);
       setProfile(savedProfile);
-      emitStoreChange({ profile: savedProfile });
       setError(null);
       return savedProfile;
     } catch {
-      setProfile(previousProfile);
-      emitStoreChange({ profile: previousProfile });
       setError("Não foi possível salvar o perfil.");
       throw new Error("Profile update failed.");
     }
-  }, [profile]);
+  }, []);
 
   const orderedRecords = useMemo(() => sortRecords(records), [records]);
 
@@ -162,4 +129,17 @@ export function useBurnoutStore() {
     records: orderedRecords,
     updateProfile
   };
+}
+
+const BurnoutContext = createContext<ReturnType<typeof useStoreState> | null>(null);
+
+export function BurnoutStoreProvider({ children }: { children: ReactNode }) {
+  const store = useStoreState();
+  return createElement(BurnoutContext.Provider, { value: store }, children);
+}
+
+export function useBurnoutStore() {
+  const store = useContext(BurnoutContext);
+  if (!store) throw new Error("BurnoutStoreProvider is required.");
+  return store;
 }

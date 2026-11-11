@@ -3,9 +3,11 @@ import "./registro.css";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getCurrentContext, getDailyDay, getDailyOverview, recalculateDailyIndex } from "@/lib/burnout-api";
-import { CHECK_IN_FEEDBACK_KEY, dailyDate, indexUpdateMessage, isCalendarDay, shiftCalendarDay } from "@/lib/daily-checkin";
+import { dailyDate, indexUpdateMessage, isCalendarDay, shiftCalendarDay } from "@/lib/daily-checkin";
+import { showAppNotice } from "@/lib/toast";
 import { DailyCheckInForm } from "./_components/DailyCheckInForm";
 import { CheckInCalendar } from "./_components/CheckInCalendar";
+import { trapDialogFocus } from "@/components/ui/AccessibleDialog";
 import type { CurrentContext, DailyDay, DailyOverview, SavedDailyCheckIn } from "@/lib/types";
 
 function RegistroContent() {
@@ -59,7 +61,7 @@ function RegistroContent() {
   function onSaved(record: SavedDailyCheckIn) {
     const message = overview && record.date.slice(0, 10) < overview.windowStart && record.indexUpdate.status === "unchanged"
       ? "Dia adicionado ao histórico, fora da janela de cálculo atual." : indexUpdateMessage(record.indexUpdate);
-    try { sessionStorage.setItem(CHECK_IN_FEEDBACK_KEY, message); } catch { /* Navigation does not depend on browser storage. */ }
+    showAppNotice({ title: "Check-in salvo", message, tone: ["updated", "unchanged"].includes(record.indexUpdate.status) ? "success" : "warning" });
     window.dispatchEvent(new Event("burnoutsense-checkin-change"));
     window.dispatchEvent(new Event("burnoutsense-esbeu-change"));
     router.replace("/dashboard");
@@ -85,7 +87,7 @@ function RegistroContent() {
       : !error && <p role="status">Preparando seu acompanhamento…</p>}
     {notice && <p className="daily-update-notice" role="status">{notice}</p>}
     {overview?.evolution?.pending && <section className="daily-pending"><p>Há mudanças nos seus registros que ainda não entraram no índice atual.</p><button className="button secondary" type="button" disabled={retrying || saving} onClick={retry}>{retrying ? "Atualizando…" : "Tentar atualizar índice"}</button></section>}
-    <dialog ref={discardDialog} className="daily-date-dialog" aria-labelledby="discard-date-title">
+    <dialog ref={discardDialog} className="daily-date-dialog" aria-labelledby="discard-date-title" onKeyDown={trapDialogFocus}>
       <h2 id="discard-date-title">Trocar o dia do check-in?</h2>
       <p>As respostas não salvas serão descartadas ao abrir {dailyDate(pendingDate)}.</p>
       <div className="form-actions"><button type="button" className="button secondary" onClick={() => discardDialog.current?.close()}>Continuar preenchendo</button><button type="button" className="button" onClick={() => { discardDialog.current?.close(); openDay(pendingDate); }}>Trocar dia</button></div>

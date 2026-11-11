@@ -44,10 +44,6 @@ export class UsersService {
       updateData.name = data.name.trim();
     }
 
-    if (data.emailAlerts !== undefined) {
-      updateData.emailAlerts = data.emailAlerts;
-    }
-
     if (data.dailyReminder !== undefined) {
       updateData.dailyReminder = data.dailyReminder;
     }

@@ -13,6 +13,7 @@ import { StatusModule } from './status/status.module';
 import { UsersModule } from './users/users.module';
 import { EsbeuAssessmentsModule } from './esbeu-assessments/esbeu-assessments.module';
 import { DailyCheckInsModule } from './daily-check-ins/daily-check-ins.module';
+import { GuidanceModule } from './guidance/guidance.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { DailyCheckInsModule } from './daily-check-ins/daily-check-ins.module';
     AssessmentsModule,
     EsbeuAssessmentsModule,
     DailyCheckInsModule,
+    GuidanceModule,
     ResultsModule,
     StatusModule,
   ],

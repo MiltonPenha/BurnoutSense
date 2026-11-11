@@ -5,14 +5,14 @@
   .context-step h2 { margin: 0 0 12px; font-size: 20px; }
   .context-step h2:focus { outline: none; }
   .context-fields { display: grid; gap: 26px; margin-top: 26px; }
-  .context-fields .field input, .context-fields .field select { width: 100%; min-height: 46px; padding: 10px 12px; border-radius: 8px; background: var(--surface); color: var(--ink); border: 1px solid var(--line-strong); font: inherit; }
+  .context-fields .field input, .context-fields .field select { width: 100%; min-height: 46px; padding: 10px 12px; border-radius: 8px; background: var(--surface); color: var(--ink); border: 1px solid var(--line-strong); font: inherit; font-size: 16px; }
   .context-fields label, .context-choice-field legend { font-weight: 600; line-height: 1.5; }
   .context-choice-field { border: 0; margin: 0; padding: 0; min-width: 0; }
   .context-choice-field legend { margin-bottom: 12px; padding: 0; }
   .context-choices { display: flex; flex-wrap: wrap; gap: 8px; }
-  .context-choices label { display: flex; align-items: center; gap: 8px; padding: 11px 14px; border: 1px solid var(--line-strong); border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; }
+  .context-choices label { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 11px 14px; border: 1px solid var(--line-strong); border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: 500; }
   .context-choices label.selected { border-color: var(--primary); background: var(--primary-soft); }
-  .context-choices label:focus-within { outline: 2px solid var(--primary); outline-offset: 2px; }
+  .context-choices label:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
   .context-choices input { accent-color: var(--primary-dark); margin: 0; }
   .context-fields .field-hint { display: block; margin-top: 8px; color: var(--muted); }
   .context-check { display: flex; gap: 12px; align-items: flex-start; line-height: 1.7; margin: 18px 0; cursor: pointer; }
@@ -24,7 +24,11 @@
   .context-review-list { margin: 20px 0; }
   .context-review-list > div { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--line); }
   .context-review-list dd { margin: 0; }
-  .context-text-button { border: 0; background: transparent; color: var(--primary-dark); text-decoration: underline; font-size: 13px; padding: 6px; }
+  .context-text-button { border: 0; background: transparent; color: var(--link); text-decoration: underline; font-size: 14px; min-height: 40px; padding: 6px; }
+  .context-draft-note { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding-block: 10px; border-block: 1px solid var(--line); font-size: 14px; }
+  .context-draft-note p { margin: 0; color: var(--muted); }
+  .context-fields [aria-invalid="true"] { border-color: var(--danger-ink); }
+  .context-choice-field[aria-invalid="true"] { border-left: 3px solid var(--danger-ink); padding-left: 12px; }
   .context-success, .context-availability { padding: 16px; border-radius: 8px; background: var(--primary-soft); border: 1px solid var(--primary-line); line-height: 1.7; }
   .context-wizard .form-actions { margin-top: 22px; display: flex; flex-wrap: wrap; gap: 12px; }
   @media (max-width: 560px) { .context-review-list > div { align-items: flex-start; } .context-choices label { padding: 10px; } }

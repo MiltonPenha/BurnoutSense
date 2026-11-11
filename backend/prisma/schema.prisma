@@ -39,6 +39,7 @@ model User {
   assessments   Assessment[]
   esbeuAssessments EsbeuAssessment[]
   dailyCheckIns DailyCheckIn[]
+  reminderDeliveries DailyReminderDelivery[]
   sessions      AuthSession[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
@@ -116,6 +117,8 @@ model EsbeuAssessment {
   context            Json
   source             String   @default("context")
   evolution          Json?
+  dailyBaseline      Json?
+  dailyEvidenceSince DateTime?
   observedItems      Json?
   estimatedOverall   Float
   observedOverall    Float?
@@ -132,9 +135,12 @@ model EsbeuAssessment {
   adultConfirmed     Boolean
   enrolledConfirmed  Boolean
   createdAt          DateTime @default(now())
-  dailyCheckIns      DailyCheckIn[]
+  dailyCheckIns      DailyCheckIn[] @relation("CheckInContext")
+  triggerCheckInId   String?
+  triggerCheckIn     DailyCheckIn? @relation("CheckInTrigger", fields: [triggerCheckInId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt, id])
+  @@index([triggerCheckInId])
   @@map("esbeu_assessments")
 }
 
@@ -150,11 +156,25 @@ model DailyCheckIn {
   observations        Json?
   note                String @default("")
   contextAssessmentId String?
-  contextAssessment   EsbeuAssessment? @relation(fields: [contextAssessmentId], references: [id], onDelete: SetNull)
+  contextAssessment   EsbeuAssessment? @relation("CheckInContext", fields: [contextAssessmentId], references: [id], onDelete: SetNull)
+  triggeredAssessments EsbeuAssessment[] @relation("CheckInTrigger")
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
   @@unique([userId, date])
   @@index([userId, date, id])
   @@map("daily_check_ins")
+}
+
+model DailyReminderDelivery {
+  userId        String
+  user          User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date          DateTime @db.Date
+  claimedAt     DateTime?
+  sentAt        DateTime?
+  nextAttemptAt DateTime?
+  attempts      Int @default(0)
+
+  @@id([userId, date])
+  @@map("daily_reminder_deliveries")
 }

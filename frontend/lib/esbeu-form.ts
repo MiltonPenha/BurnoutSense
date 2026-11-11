@@ -1,25 +1,45 @@
-import type { ContextValues, FormField } from "./types";
+import type { Assessment, ContextValues, FormField } from "./types";
+
+export class SchemaValidationError extends Error {
+  fieldId: string;
+  constructor(fieldId: string, message: string) { super(message); this.name = "SchemaValidationError"; this.fieldId = fieldId; }
+}
+
+export function reviewDetails(record: Assessment) {
+  const { evolution } = record;
+  return evolution && "kind" in evolution && evolution.kind === "guided_review" ? evolution : null;
+}
 
 // Convert only public schema fields, preserving numeric zero and the NA option.
 export function readSchemaFields(fields: FormField[], data: { get: (key: string) => unknown }, prefix: string): ContextValues {
   const result: ContextValues = {};
   for (const field of fields) {
     const raw = data.get(`${prefix}-${field.identifier}`);
-    if (typeof raw !== "string" || raw.trim() === "") throw new Error(`Responda: ${field.name}.`);
+    if (typeof raw !== "string" || raw.trim() === "") throw new SchemaValidationError(field.identifier, "Selecione ou informe uma resposta.");
     if (raw === "na" && field.allows_not_applicable) result[field.identifier] = "Não se aplica";
     else if (field.choices.length) {
-      if (!/^\d+$/.test(raw) || Number(raw) >= field.choices.length) throw new Error("Alternativa inválida.");
+      if (!/^\d+$/.test(raw) || Number(raw) >= field.choices.length) throw new SchemaValidationError(field.identifier, "Selecione uma das alternativas disponíveis.");
       result[field.identifier] = field.choices[Number(raw)];
     } else {
-      const value = Number(raw.replace(",", "."));
-      if (!Number.isFinite(value) || (field.data_type === "integer" && !Number.isInteger(value))
+      const normalized = raw.trim().replace(",", ".");
+      const value = Number(normalized);
+      if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(normalized) || !Number.isFinite(value) || (field.data_type === "integer" && !Number.isInteger(value))
         || (field.minimum !== null && value < field.minimum) || (field.maximum !== null && value > field.maximum)) {
-        throw new Error(`Confira: ${field.name}.`);
+        throw new SchemaValidationError(field.identifier, `Informe ${field.data_type === "integer" ? "um número inteiro" : "um número válido"}${field.minimum !== null && field.maximum !== null ? ` entre ${field.minimum} e ${field.maximum}` : field.minimum !== null ? ` a partir de ${field.minimum}` : ""}.`);
       }
       result[field.identifier] = value;
     }
   }
   return result;
+}
+
+export function schemaFieldErrors(fields: FormField[], values: Record<string, string>, prefix = "ctx") {
+  const errors: Record<string, string> = {};
+  for (const field of fields) {
+    try { readSchemaFields([field], new Map([[`${prefix}-${field.identifier}`, values[field.identifier] ?? ""]]), prefix); }
+    catch (error) { if (error instanceof SchemaValidationError) errors[field.identifier] = error.message; }
+  }
+  return errors;
 }
 
 export function formatEsbeu(value: unknown) {

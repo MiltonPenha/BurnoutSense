@@ -5,7 +5,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 const { chromium } = await import(pathToFileURL(process.env.BURNOUTSENSE_PLAYWRIGHT_MODULE).href);
 const base = process.env.BURNOUTSENSE_E2E_BASE_URL;
-const apiBase = process.env.BURNOUTSENSE_E2E_API_URL || "http://127.0.0.1:3001";
+const apiBase = process.env.BURNOUTSENSE_E2E_API_URL || "http://localhost:3001";
 const output = process.env.BURNOUTSENSE_E2E_OUTPUT;
 const example = JSON.parse(process.env.BURNOUTSENSE_E2E_CONTEXT);
 const browser = await chromium.launch({ channel: "msedge", headless: true });
@@ -89,7 +89,7 @@ try {
   await page.unroute(saveEndpoint);
   await page.getByRole("button", { name: "Salvar meu dia", exact: true }).click();
   await page.waitForURL("**/dashboard");
-  await page.getByText("Check-in salvo.", { exact: true }).waitFor();
+  await page.getByText("Check-in salvo", { exact: true }).waitFor();
   check("saved_check_in_returns_to_dashboard_with_feedback", true);
   const firstDay = await api("/daily-check-ins/overview");
   await page.locator("main").getByRole("link", { name: "Novo registro", exact: true }).click();
@@ -118,10 +118,10 @@ try {
   const calendar = page.getByRole("dialog", { name: "Selecionar data" });
   await calendar.getByRole("grid").waitFor();
   check("calendar_fits_small_mobile", await calendar.evaluate(element => element.scrollWidth <= element.clientWidth));
-  const month = calendar.getByRole("combobox", { name: "Mês", exact: true });
-  const initialMonth = await month.inputValue();
+  const month = calendar.getByRole("button", { name: "Mês", exact: true });
+  const initialMonth = await month.innerText();
   await calendar.getByRole("button", { name: "Mês anterior" }).click();
-  check("calendar_can_navigate_to_previous_month", await month.inputValue() !== initialMonth);
+  check("calendar_can_navigate_to_previous_month", await month.innerText() !== initialMonth);
   await calendar.getByRole("button", { name: "Próximo mês" }).click();
   await page.screenshot({ path: path.join(output, "check-in-calendar-dark.png") });
   const selectedDay = calendar.locator(`[data-day="${updatedDay.today}"] button`);
@@ -145,10 +145,11 @@ try {
   const retro = await api("/daily-check-ins/overview");
   check("forgotten_day_saved_without_overwriting_today", retro.today === updatedDay.today && retro.completedDays === 2 && retro.todayCheckIn.id === firstDay.todayCheckIn.id);
   const beforeReview = await api("/esbeu-assessments/current");
-  await page.getByText("2 dias usados no cálculo", { exact: true }).waitFor();
-  check("daily_index_is_marked_experimental", await page.getByText("Atualização em teste", { exact: true }).isVisible());
+  check("daily_index_provenance_is_preserved", beforeReview.assessment.source === "daily_experimental" && beforeReview.assessment.evolution.recordedDays === 2);
   await page.screenshot({ path: path.join(output, "dashboard-experimental-mobile.png"), fullPage: true });
-  await page.getByRole("link", { name: "Revisar minha rotina", exact: true }).click();
+  await page.goto(base + "/registro");
+  await page.getByRole("link", { name: "Minha rotina mudou", exact: true }).click();
+  await page.getByRole("link", { name: "Revisão completa", exact: true }).click();
   await page.getByRole("heading", { name: "Tudo pronto para calcular?" }).waitFor();
   check("valid_consent_not_repeated_on_review", await page.getByRole("checkbox", { name: "Confirmo que tenho 18 anos ou mais.", exact: true }).count() === 0 && await page.getByRole("checkbox", { name: "Revisei minhas respostas e confirmo que representam minha rotina recente.", exact: true }).count() === 1);
   await page.getByRole("button", { name: "Revisar respostas", exact: true }).nth(1).click();
@@ -168,7 +169,7 @@ try {
   const revised = await api("/esbeu-assessments/current");
   check("review_new_index_preserves_original_consent", revised.assessment.id !== initial.assessment.id && revised.assessment.consentAcceptedAt === initial.assessment.consentAcceptedAt && revised.assessment.context.sleep_hours === 6.5 && revised.assessment.observedOverall === 2);
   await page.getByRole("link", { name: "Ver meu acompanhamento", exact: true }).click();
-  await page.getByRole("heading", { name: "Seu índice atual", exact: true }).waitFor();
+  await page.getByRole("heading", { name: "Evolução do acompanhamento", exact: true }).waitFor();
   await page.getByText("2 dias acompanhados", { exact: true }).waitFor();
   check("dashboard_calendar_marks_only_real_check_ins", await page.locator(".tracking-days li").count() === 28 && await page.locator('.tracking-days li[data-recorded="true"]').count() === 2);
   check("dashboard_days_have_visible_dates", await page.locator(".tracking-days time").count() === 28 && /^\d{2}\/\d{2}$/.test(await page.locator(".tracking-days time").first().innerText()));
@@ -194,7 +195,8 @@ try {
   await page.screenshot({ path: path.join(output, "dashboard-dark.png"), fullPage: true });
   await page.goto(base + "/historico");
   await page.getByRole("heading", { name: "Calmo", exact: true }).waitFor();
-  const indexCount = (await api("/esbeu-assessments")).items.length;
+  const beforeDelete = (await api("/esbeu-assessments")).items;
+  const linkedIds = beforeDelete.filter(row => row.triggerCheckIn).map(row => row.id);
   for (let i = 0; i < 2; i++) {
     await page.getByRole("button", { name: /^Excluir check-in de/ }).first().click();
     const removed = page.waitForResponse(response => response.url().includes("/daily-check-ins/") && response.request().method() === "DELETE");
@@ -203,12 +205,13 @@ try {
     await page.getByRole("dialog").waitFor({ state: "hidden" });
   }
   await page.getByRole("heading", { name: "Seu primeiro check-in está esperando por você", exact: true }).waitFor();
-  check("daily_delete_confirmation_preserves_index_history", (await api("/esbeu-assessments")).items.length === indexCount);
+  const remainingIndices = (await api("/esbeu-assessments")).items;
+  check("daily_delete_removes_linked_results_and_preserves_manual_context", remainingIndices.every(row => !linkedIds.includes(row.id)) && remainingIndices.some(row => row.id === revised.assessment.id));
   await page.getByRole("tab", { name: "Check-ins diários", exact: true }).focus();
   await page.keyboard.press("ArrowRight");
   check("history_tabs_work_from_the_keyboard", await page.getByRole("tab", { name: "Índices e rotina", exact: true }).getAttribute("aria-selected") === "true");
   await page.getByRole("link", { name: "Ver avaliação", exact: true }).first().waitFor();
-  check("separate_index_history", await page.getByRole("link", { name: "Ver avaliação", exact: true }).count() === indexCount);
+  check("separate_index_history", await page.getByRole("link", { name: "Ver avaliação", exact: true }).count() === remainingIndices.length);
   await page.goto(base + "/perfil");
   await page.locator("#course").fill("Curso fictício de verificação");
   await page.locator("#semester").selectOption("4");

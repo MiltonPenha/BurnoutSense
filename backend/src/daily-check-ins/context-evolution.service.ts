@@ -20,11 +20,11 @@ export class ContextEvolutionService {
     const today = calendarDay(new Date(), this.config.get<string>('DAILY_REMINDER_TIMEZONE') ?? 'America/Sao_Paulo');
     const since = utcDay(today); since.setUTCDate(since.getUTCDate() - 27);
     const orderBy = [{ createdAt: 'desc' as const }, { id: 'desc' as const }];
-    const anchor = await db.esbeuAssessment.findFirst({ where: { userId, source: 'context' }, orderBy });
+    const anchor = await db.esbeuAssessment.findFirst({ where: { userId, source: { in: ['context', 'guided_review'] } }, orderBy });
     const latest = await db.esbeuAssessment.findFirst({ where: { userId }, orderBy });
     if (!anchor || !latest) return null;
-    const rows = await db.dailyCheckIn.findMany({ where: { userId, date: { gte: since, lte: utcDay(today) }, updatedAt: { gte: anchor.createdAt } }, orderBy: { date: 'asc' }, take: 28 });
-    return { anchor, latest, today, since, aggregate: aggregateContext(anchor.context, rows) };
+    const rows = await db.dailyCheckIn.findMany({ where: { userId, date: { gte: since, lte: utcDay(today) }, updatedAt: { gte: anchor.dailyEvidenceSince ?? anchor.createdAt } }, orderBy: { date: 'asc' }, take: 28 });
+    return { anchor, latest, today, since, aggregate: aggregateContext(anchor.dailyBaseline ?? anchor.context, rows) };
   }
 
   async status(userId: string) {
@@ -35,7 +35,7 @@ export class ContextEvolutionService {
       recordedDays: snapshot?.aggregate.recordedDays ?? 0 };
   }
 
-  async recalculate(userId: string) {
+  async recalculate(userId: string, triggerCheckInId?: string, reason = triggerCheckInId ? 'check_in_saved' : 'window_refresh') {
     if (!this.enabled()) return { status: 'disabled' as const };
     try {
       // Serialize derived predictions per owner, but daily persistence happens first and
@@ -45,15 +45,20 @@ export class ContextEvolutionService {
         const snapshot = await this.snapshot(tx, userId);
         if (!snapshot) return { status: 'needs_context' as const };
         const { anchor, latest, aggregate, today, since } = snapshot;
+        const trigger = triggerCheckInId ? await tx.dailyCheckIn.findFirst({ where: { userId, id: triggerCheckInId } }) : null;
+        if (triggerCheckInId && !trigger) return { status: 'superseded' as const };
         if (!anchor.adultConfirmed || !anchor.enrolledConfirmed || anchor.consentVersion !== ESBEU_CONSENT_VERSION) return { status: 'needs_context' as const };
         if (contextKey(aggregate.context) === contextKey(latest.context)) return { status: 'unchanged' as const, assessment: latest };
         const prediction = await this.ai.predict({ context: aggregate.context });
         const fresh = await this.snapshot(tx, userId);
         if (!fresh || fresh.anchor.id !== anchor.id || fresh.latest.id !== latest.id || fresh.today !== today || fresh.aggregate.fingerprint !== aggregate.fingerprint) return { status: 'superseded' as const };
+        if (trigger && !await tx.dailyCheckIn.findFirst({ where: { userId, id: trigger.id, updatedAt: trigger.updatedAt } })) return { status: 'superseded' as const };
         const { context, ...provenance } = aggregate;
         const assessment = await tx.esbeuAssessment.create({ data: {
-          userId, context, source: 'daily_experimental',
-          evolution: { ...provenance, version: EVOLUTION_VERSION, experimental: true, anchorAssessmentId: anchor.id,
+          userId, context, source: 'daily_experimental', triggerCheckInId: trigger?.id ?? null,
+          evolution: { ...provenance, reason, version: EVOLUTION_VERSION, experimental: true, anchorAssessmentId: anchor.id,
+            ...(trigger ? { trigger: { id: trigger.id, date: trigger.date.toISOString().slice(0, 10),
+              createdAt: trigger.createdAt.toISOString(), updatedAt: trigger.updatedAt.toISOString() } } : {}),
             windowStart: since.toISOString().slice(0, 10), windowEnd: today, observedDaysOnly: true } as Prisma.InputJsonObject,
           estimatedOverall: prediction.esbeu_overall, modelName: prediction.model_name, modelVersion: prediction.model_version,
           datasetVersion: prediction.dataset_version, contractVersion: prediction.contract_version,

@@ -5,7 +5,6 @@ export interface Profile {
   email: string;
   course: string;
   semester: string;
-  emailAlerts: boolean;
   dailyReminder: boolean;
   avatarUrl: string;
   theme: Theme;
@@ -27,16 +26,27 @@ export interface FormField {
 }
 export interface FormSchema { fields: FormField[]; consent: { version: string; text: string } }
 export interface EvolutionMetadata {
+  reason?: "check_in_saved" | "check_in_deleted" | "window_refresh";
+  trigger?: CheckInOrigin;
   recordedDays: number; experimental: boolean; version: string;
   anchorAssessmentId: string; windowStart: string; windowEnd: string;
   aggregatedFields: string[]; carriedFields: string[];
 }
+export interface CheckInOrigin { id: string; date: string; createdAt: string; updatedAt: string }
+export interface TrendRecord { id: string; createdAt: string; estimatedOverall: number; triggerCheckIn?: CheckInOrigin | null }
+export type ReviewTopicId = "demandas" | "trabalho" | "apoio" | "rotina";
+export interface ReviewTopic { id: ReviewTopicId; title: string; description: string; fieldIds: string[] }
+export interface ReviewPlan { topics: ReviewTopic[]; suggested: ReviewTopicId | null }
+export interface GuidedReviewMetadata {
+  kind: "guided_review"; topic: ReviewTopicId; topicTitle: string; reviewedFields: string[]; previousEstimatedOverall: number;
+}
 export interface Assessment {
-  id: string; createdAt: string; source: "context" | "daily_experimental";
+  triggerCheckIn?: CheckInOrigin | null;
+  id: string; createdAt: string; source: "context" | "daily_experimental" | "guided_review";
   estimatedOverall: number; observedOverall: number | null;
   observedExhaustion: number | null; observedDistancing: number | null; observedInefficacy: number | null;
   modelName: string; modelVersion: string; datasetVersion: string;
-  contractVersion: string; formVersion: string; evolution: EvolutionMetadata | null;
+  contractVersion: string; formVersion: string; evolution: EvolutionMetadata | GuidedReviewMetadata | null;
 }
 export interface AssessmentDetail extends Assessment {
   context: ContextValues; observedItems?: ContextValues | null;
@@ -76,7 +86,12 @@ export interface SystemStatus {
   checkedAt: string;
 }
 export interface NotificationResult {
-  dailyReminder: { status: string; reason?: string }; emailAlert: { status: string; reason?: string }; message: string;
+  dailyReminder: { status: string; reason?: string }; message: string;
 }
 export interface Notice { tone: "success" | "error" | "warning"; message: string }
+export interface GuidanceItem { title: string; text: string }
+export type GuidanceResult = { assessmentId: string } & (
+  { status: "ready"; provider: "gemini"; generatedAt: string; basedOnPercentage: number; tips: GuidanceItem[]; recommendations: GuidanceItem[] }
+  | { status: "not_configured" | "invalid_credentials" | "rate_limited" | "unavailable"; message: string }
+);
 export type ToastStyle = React.CSSProperties & { "--toast-duration": string };

@@ -107,21 +107,11 @@
   background: var(--surface-soft);
 }
 
-.notification-test-panel span,
-.notification-test-result span {
+.notification-test-panel span {
   display: block;
   color: var(--muted);
-  font-size: 12px;
-  line-height: 1.45;
-}
-
-.notification-test-result {
-  border: 1px solid var(--success-line);
-  border-radius: 16px;
-  padding: 13px 16px;
-  margin-top: 12px;
-  background: var(--success-soft);
-  color: var(--success-ink);
+  font-size: 14px;
+  line-height: 1.6;
 }
 
 .settings-row + .settings-row {
@@ -131,8 +121,8 @@
 .settings-help,
 .privacy-copy {
   color: var(--muted);
-  font-size: 12px;
-  line-height: 1.35;
+  font-size: 14px;
+  line-height: 1.6;
 }
 
 .privacy-copy {
@@ -263,8 +253,8 @@
 .privacy-danger-zone span {
   display: block;
   color: var(--muted);
-  font-size: 12px;
-  line-height: 1.45;
+  font-size: 14px;
+  line-height: 1.6;
 }
 
 .theme-options {
@@ -290,7 +280,7 @@
 .theme-options button.active {
   border-color: var(--primary);
   background: var(--primary-soft);
-  color: var(--primary-dark);
+  color: var(--link);
 }
 
 .theme-options strong {

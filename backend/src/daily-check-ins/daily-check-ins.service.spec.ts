@@ -17,7 +17,8 @@ describe('Daily check-ins independent of model inference', () => {
     jest.useFakeTimers().setSystemTime(new Date('2026-11-05T01:30:00Z'));
     table = { upsert: jest.fn().mockResolvedValue({ id: 'daily' }), findMany: jest.fn().mockResolvedValue([]), findFirst: jest.fn(), deleteMany: jest.fn() };
     context = { findFirst: jest.fn().mockResolvedValue({ id: 'context' }) };
-    service = new DailyCheckInsService({ dailyCheckIn: table, esbeuAssessment: context } as unknown as PrismaService,
+    const tx = { dailyCheckIn: table, esbeuAssessment: context, $queryRaw: jest.fn() };
+    service = new DailyCheckInsService({ ...tx, $transaction: (operation: (db: typeof tx) => unknown) => operation(tx) } as unknown as PrismaService,
       { get: () => 'America/Sao_Paulo' } as unknown as ConfigService,
       { status: jest.fn().mockResolvedValue({ enabled: false, pending: false }), recalculate: jest.fn().mockResolvedValue({ status: 'unavailable' }) } as unknown as ContextEvolutionService);
   });
@@ -30,7 +31,7 @@ describe('Daily check-ins independent of model inference', () => {
       create: expect.objectContaining({ contextAssessmentId: 'context', mood: 'Calmo', note: 'exemplo' }),
       update: expect.objectContaining({ energy: 2 }),
     }));
-    expect(context.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: 'owner', source: 'context' } }));
+    expect(context.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: 'owner', source: { in: ['context', 'guided_review'] } } }));
   });
   it('requires an initial assessment without fabricating one', async () => {
     context.findFirst.mockResolvedValue(null);

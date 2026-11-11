@@ -1,11 +1,19 @@
 import { defaultProfile, STORAGE_KEYS } from "@/lib/burnout-data";
 import { ApiError } from "./errors";
-import type { AccountProfile, Assessment, AssessmentDetail, AuthResponse, CreateAssessment, CurrentContext, DailyCheckIn, DailyDay, DailyOverview, FormSchema, IndexUpdate, NotificationResult, PageResult, Profile, ReviewContext, SaveDailyCheckIn, SavedDailyCheckIn, SystemStatus } from "./types";
+import type { GuidanceResult } from "./types";
+import { createSessionReadCache } from "./session-read-cache";
+import { clearSessionDrafts } from "./session-draft";
+import type { AccountProfile, Assessment, AssessmentDetail, AuthResponse, CreateAssessment, CurrentContext, DailyCheckIn, DailyDay, DailyOverview, FormSchema, IndexUpdate, NotificationResult, PageResult, Profile, ReviewContext, ReviewPlan, ReviewTopicId, SaveDailyCheckIn, SavedDailyCheckIn, SystemStatus, TrendRecord } from "./types";
 
 type LoadOptions = { silentUnauthorized?: boolean };
+
+export function getGuidance(assessmentId: string) {
+  return request<GuidanceResult>(`/guidance/${encodeURIComponent(assessmentId)}`);
+}
 type RequestOptions = Omit<RequestInit, "headers"> & { auth?: boolean; sessionExpiredOnUnauthorized?: boolean; retryAuthOnUnauthorized?: boolean; headers?: Record<string, string> };
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const readCache = createSessionReadCache();
 
 const AUTH_KEYS = {
   accessToken: "burnoutsense.auth.accessToken",
@@ -89,6 +97,7 @@ function notifySessionExpired(reason = "expired") {
 }
 
 function clearAuthTokens(reason?: string, options: { showMessage?: boolean } = {}) {
+  readCache.clear(); clearSessionDrafts();
   const shouldShowMessage = options.showMessage ?? Boolean(reason);
 
   if (typeof window !== "undefined") {
@@ -103,6 +112,7 @@ function clearAuthTokens(reason?: string, options: { showMessage?: boolean } = {
 }
 
 function persistAuthResponse(authResponse: AuthResponse) {
+  readCache.clear();
   writeToken(AUTH_KEYS.accessToken, authResponse.accessToken);
   writeToken(AUTH_KEYS.refreshToken, authResponse.refreshToken);
   markActiveBrowserSession();
@@ -136,7 +146,23 @@ export function isAuthenticated() {
   return Boolean(readToken(AUTH_KEYS.accessToken));
 }
 
-async function refreshAuthToken() {
+// UI state isolation only. Authorization is always checked by the backend.
+export function sessionAccountKey() {
+  try {
+    const payload = readToken(AUTH_KEYS.accessToken)?.split(".")[1];
+    if (!payload) return "anonymous";
+    const claims: unknown = JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
+    return claims && typeof claims === "object" && "sub" in claims && typeof claims.sub === "string" ? claims.sub : "anonymous";
+  } catch { return "anonymous"; }
+}
+
+let refreshing: Promise<boolean> | null = null;
+function refreshAuthToken() {
+  refreshing ??= performRefresh().finally(() => { refreshing = null; });
+  return refreshing;
+}
+
+async function performRefresh() {
   const refreshToken = readToken(AUTH_KEYS.refreshToken);
 
   if (!refreshToken) {
@@ -165,6 +191,17 @@ function requireBackend() {
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const method = (options.method ?? "GET").toUpperCase();
+  const token = readToken(AUTH_KEYS.accessToken);
+  if (method === "GET" && options.auth !== false && token) {
+    return readCache.read(`${token}:${path}:${options.sessionExpiredOnUnauthorized !== false}`, () => performApiRequest<T>(path, options));
+  }
+  if (method !== "GET") readCache.clear();
+  try { return await performApiRequest<T>(path, options); }
+  finally { if (method !== "GET") readCache.clear(); }
+}
+
+async function performApiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   requireBackend();
   const { auth = true, sessionExpiredOnUnauthorized = true, retryAuthOnUnauthorized = true, headers, ...fetchOptions } = options;
   const shouldAttachAuth = auth;
@@ -235,7 +272,6 @@ function normalizeProfile(user: AccountProfile): Profile {
     course: normalizeCourse(userHasField("course") ? user.course : accountProfile.course),
     semester: normalizeSemester(userHasField("semester") ? user.semester : accountProfile.semester),
     avatarUrl: userHasField("avatarUrl") ? user.avatarUrl ?? "" : accountProfile.avatarUrl ?? "",
-    emailAlerts: user.emailAlerts ?? accountProfile.emailAlerts,
     dailyReminder: user.dailyReminder ?? accountProfile.dailyReminder,
     theme: accountProfile.theme ?? "light"
   };
@@ -256,6 +292,10 @@ export async function getDailyDay(date: string) { return request<DailyDay>(`/dai
 export async function saveDailyCheckIn(payload: SaveDailyCheckIn) { return request<SavedDailyCheckIn>("/daily-check-ins", { method: "PUT", body: JSON.stringify(payload) }); }
 export async function recalculateDailyIndex() { return request<IndexUpdate>("/daily-check-ins/recalculate", { method: "POST" }); }
 export async function reviewContext(payload: ReviewContext) { return request<Assessment>("/esbeu-assessments/review", { method: "POST", body: JSON.stringify(payload) }); }
+export async function getReviewPlan() { return request<ReviewPlan>("/esbeu-assessments/review-topics"); }
+export async function guidedReview(payload: { topic: ReviewTopicId; sourceAssessmentId: string; confirmed: true; changes: ReviewContext["context"] }) {
+  return request<Assessment>("/esbeu-assessments/guided-review", { method: "POST", body: JSON.stringify(payload) });
+}
 export async function getDailyOverview() { return request<DailyOverview>("/daily-check-ins/overview"); }
 export async function saveTodayCheckIn(payload: SaveDailyCheckIn) { return request<SavedDailyCheckIn>("/daily-check-ins/today", { method: "PUT", body: JSON.stringify(payload) }); }
 export async function getDailyPage(cursor?: string | null) { return request<PageResult<DailyCheckIn>>(`/daily-check-ins${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`); }
@@ -267,6 +307,7 @@ export async function getEsbeuPage(cursor?: string | null, options: LoadOptions 
   });
 }
 export async function getRecords(options: LoadOptions = {}) { return (await getEsbeuPage(null, options)).items; }
+export async function getAssessmentTrend() { return request<TrendRecord[]>("/esbeu-assessments/trend"); }
 export async function getRecordById(id: string) { return request<AssessmentDetail>(`/esbeu-assessments/${encodeURIComponent(id)}`); }
 export async function createRecord(record: CreateAssessment) {
   return request<Assessment>("/esbeu-assessments", { method: "POST", body: JSON.stringify(record) });
@@ -283,7 +324,7 @@ export async function getProfile(options: LoadOptions = {}) {
 export async function updateProfile(profile: Profile) {
   const user = await request<AccountProfile>("/users/me", {
     method: "PATCH",
-    body: JSON.stringify({ name: profile.name, emailAlerts: profile.emailAlerts, dailyReminder: profile.dailyReminder,
+    body: JSON.stringify({ name: profile.name, dailyReminder: profile.dailyReminder,
       course: profile.course, semester: profile.semester, avatarUrl: profile.avatarUrl ?? "" })
   });
   const normalized = { ...normalizeProfile(user), theme: profile.theme ?? "light" };

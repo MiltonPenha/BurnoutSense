@@ -44,9 +44,7 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
 
   async sendTestNotification(user: AuthenticatedUser, _preferences: TestNotificationDto) {
     const profile = await this.usersService.findSafeById(user.id);
-    const emailAlerts = false;
     const dailyReminder = profile.dailyReminder;
-    const emailAlert = { status: 'skipped', reason: 'Alertas por escore não estão disponíveis na metodologia atual.' };
     const reminder = await this.deliverEmail(
       dailyReminder,
       profile.email,
@@ -58,18 +56,14 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
     this.logger.log(
       JSON.stringify({
         type: 'notification-test',
-        userId: profile.id,
-        email: profile.email,
-        emailAlert: emailAlert.status,
         dailyReminder: reminder.status,
       }),
     );
 
     return {
       deliveryMode: this.isSmtpConfigured() ? 'smtp' : 'not-configured',
-      emailAlert,
       dailyReminder: reminder,
-      message: this.buildResultMessage(emailAlerts, dailyReminder, emailAlert.status, reminder.status),
+      message: this.buildResultMessage(dailyReminder, reminder.status),
     };
   }
 
@@ -78,7 +72,8 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
     const now = new Date();
     const localParts = getDateTimeParts(now, this.getDailyReminderTimezone());
 
-    if (localParts.hour !== this.getDailyReminderHour() || localParts.minute !== this.getDailyReminderMinute()) {
+    const elapsed = localParts.hour * 60 + localParts.minute - (this.getDailyReminderHour() * 60 + this.getDailyReminderMinute());
+    if (elapsed < 0 || elapsed > 10) {
       return;
     }
 
@@ -111,6 +106,21 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
           continue;
         }
 
+        const date = utcDay(reminderKey);
+        const where = { userId_date: { userId: user.id, date } };
+        await this.prisma.dailyReminderDelivery.upsert({ where, create: { userId: user.id, date }, update: {} });
+        const claim = await this.prisma.dailyReminderDelivery.updateMany({
+          where: { userId: user.id, date, sentAt: null, attempts: { lt: 3 },
+            AND: [{ OR: [{ claimedAt: null }, { claimedAt: { lt: new Date(now.getTime() - 5 * 60_000) } }] },
+              { OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: now } }] }] },
+          data: { claimedAt: now, nextAttemptAt: new Date(now.getTime() + 60_000), attempts: { increment: 1 } },
+        });
+        if (!claim.count) continue;
+        const preference = await this.prisma.user.findUnique({ where: { id: user.id }, select: { dailyReminder: true } });
+        if (!preference?.dailyReminder || await this.hasAssessmentOnDate(user.id, reminderKey)) {
+          await this.prisma.dailyReminderDelivery.update({ where, data: { claimedAt: null } });
+          continue;
+        }
         const result = await this.deliverEmail(
           true,
           user.email,
@@ -119,12 +129,11 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
           this.buildDailyReminderHtml(user.name),
         );
 
+        await this.prisma.dailyReminderDelivery.update({ where, data: { claimedAt: null, ...(result.status === 'sent' ? { sentAt: new Date() } : {}) } });
         if (result.status === 'sent') this.sentDailyReminderKeys.add(userReminderKey);
         this.logger.log(
           JSON.stringify({
             type: 'daily-reminder',
-            userId: user.id,
-            email: user.email,
             status: result.status,
             date: localParts.dateKey,
           }),
@@ -132,11 +141,11 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
       }
 
       this.pruneSentReminderKeys(reminderKey);
-    } catch (error) {
+    } catch {
       this.logger.warn(
         JSON.stringify({
           type: 'daily-reminder-failed',
-          reason: error instanceof Error ? error.message : 'Unknown reminder scheduler error',
+          reason: 'Falha ao processar os lembretes.',
         }),
       );
     } finally {
@@ -145,24 +154,7 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async hasAssessmentOnDate(userId: string, dateKey: string) {
-    const daily = await this.prisma.dailyCheckIn.findUnique({ where: { userId_date: { userId, date: utcDay(dateKey) } }, select: { id: true } });
-    if (daily) return true;
-    // Query a bounded UTC envelope, then compare the configured local calendar day.
-    const day = Date.parse(`${dateKey}T00:00:00.000Z`);
-    const assessments = await this.prisma.esbeuAssessment.findMany({
-      where: {
-        userId,
-        createdAt: {
-          gte: new Date(day - 24 * 60 * 60 * 1000),
-          lt: new Date(day + 48 * 60 * 60 * 1000),
-        },
-      },
-      select: {
-        createdAt: true,
-      },
-    });
-
-    return assessments.some((assessment) => getDateTimeParts(assessment.createdAt, this.getDailyReminderTimezone()).dateKey === dateKey);
+    return Boolean(await this.prisma.dailyCheckIn.findUnique({ where: { userId_date: { userId, date: utcDay(dateKey) } }, select: { id: true } }));
   }
 
   private async deliverEmail(enabled: boolean, recipient: string, subject: string, text: string, html?: string) {
@@ -212,8 +204,6 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
       this.logger.warn(
         JSON.stringify({
           type: 'notification-delivery-failed',
-          recipient,
-          subject,
           reason,
         }),
       );
@@ -235,21 +225,21 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
     );
   }
 
-  private buildResultMessage(emailAlerts: boolean, dailyReminder: boolean, emailStatus: string, reminderStatus: string) {
-    if (!emailAlerts && !dailyReminder) {
-      return 'Nenhuma notificacao ativa para testar.';
+  private buildResultMessage(dailyReminder: boolean, reminderStatus: string) {
+    if (!dailyReminder) {
+      return 'Ative e salve o lembrete diário antes de testar.';
     }
 
-    if (emailStatus === 'sent' || reminderStatus === 'sent') {
+    if (reminderStatus === 'sent') {
       return 'E-mail de teste enviado. Verifique a caixa de entrada e o spam.';
     }
 
-    if (emailStatus === 'not_configured' || reminderStatus === 'not_configured') {
-      return 'SMTP nao configurado. Preencha as variaveis SMTP no backend para receber e-mails reais.';
+    if (reminderStatus === 'not_configured') {
+      return 'SMTP não configurado. Confira as variáveis SMTP no backend.';
     }
 
-    if (emailStatus === 'failed' || reminderStatus === 'failed') {
-      return 'Nao foi possivel enviar o e-mail de teste. Verifique a conexao SMTP e as credenciais do provedor.';
+    if (reminderStatus === 'failed') {
+      return 'Não foi possível enviar o lembrete de teste. Confira a conexão SMTP e as credenciais.';
     }
 
     return 'Teste processado.';
@@ -260,7 +250,7 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
       `Olá, ${firstName(name)}.`,
       '',
       'Que tal reservar um momento para acompanhar sua rotina no BurnoutSense?',
-      'Você pode fazer um registro hoje, considerando as últimas quatro semanas ao responder às perguntas. As janelas dos registros podem se sobrepor.',
+      'Registre como foi seu dia: sono, demandas dos estudos, descanso e apoio. Um registro breve já ajuda a acompanhar sua rotina.',
       '',
       'A porcentagem exibida é uma posição na escala ESB-eu, não uma probabilidade de burnout ou diagnóstico.',
       '',
@@ -278,7 +268,7 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
       badge: 'Check-in diário',
       title: `Olá, ${firstName(name)}. Um momento para cuidar da sua rotina?`,
       intro:
-        'Se fizer sentido para você, reserve um momento para seu registro. Responda considerando as últimas quatro semanas, mesmo que acompanhe diariamente. As janelas podem se sobrepor.',
+        'Reserve um momento para contar como foi seu dia. Sono, demandas, descanso e apoio ajudam a acompanhar sua rotina.',
       tone: 'mint',
       sections: [
         {
@@ -342,11 +332,7 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
       return 'Falha de conexao SMTP. A rede pode estar bloqueando a porta do provedor.';
     }
 
-    if (smtpError.response) {
-      return smtpError.response;
-    }
-
-    return smtpError.message;
+    return 'Não foi possível concluir o envio pelo provedor SMTP.';
   }
 }
 

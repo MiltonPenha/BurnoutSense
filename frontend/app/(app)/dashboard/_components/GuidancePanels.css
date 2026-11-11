@@ -1,0 +1,12 @@
+@layer pages {
+  .guidance-list { list-style: none; display: grid; gap: 16px; padding: 0; margin: 20px 0 0; }
+  .guidance-list li { padding-top: 14px; border-top: 1px solid var(--line); }
+  .guidance-list li:first-child { padding-top: 0; border-top: 0; }
+  .guidance-list h3 { margin: 0 0 6px; font-size: 15px; line-height: 1.5; }
+  .guidance-list p { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.7; overflow-wrap: anywhere; }
+  .guidance-status { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+  .guidance-status p, .guidance-footnote { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+  .guidance-status .button { flex-shrink: 0; gap: 7px; }
+  .guidance-footnote { grid-column: 1 / -1; }
+  @media (max-width: 560px) { .guidance-status { align-items: flex-start; flex-direction: column; } }
+}

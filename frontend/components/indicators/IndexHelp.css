@@ -1,0 +1,11 @@
+@layer components {
+  .index-help { max-width: 46ch; font-size: 14px; line-height: 1.6; }
+  .index-help summary { display: flex; align-items: center; gap: 7px; min-height: 40px; width: fit-content; cursor: pointer; color: var(--link); font-weight: 600; list-style: none; border-radius: 4px; }
+  .index-help summary::-webkit-details-marker { display: none; }
+  .index-help summary svg { flex-shrink: 0; }
+  .index-help summary:hover { text-decoration: underline; text-underline-offset: 3px; }
+  .index-help p { margin: 0; color: var(--muted); }
+  .sidebar .index-help { width: 100%; text-align: left; font-size: 13px; }
+  .sidebar .index-help summary { margin-inline: auto; color: #dbeafe; font-size: 12px; }
+  .sidebar .index-help p { color: #f1f5f9; padding: 8px 0; }
+}

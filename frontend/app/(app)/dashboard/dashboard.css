@@ -1,8 +1,11 @@
 @layer pages {
-  .dashboard-check-in-feedback { padding: 12px 16px; border: 1px solid var(--success-line); border-radius: 8px; background: var(--success-soft); color: var(--ink); }
-  .dashboard-check-in-feedback strong { color: var(--success-ink); }
-  .tracking-summary { display: grid; grid-template-columns: minmax(0, 1fr) minmax(272px, 1.4fr) minmax(0, 1fr); gap: 24px; padding: 24px 0; border-block: 1px solid var(--line); }
+  .dashboard-overview { display: grid; grid-template-columns: minmax(300px, .85fr) minmax(0, 1.15fr); align-items: start; gap: 28px; padding-block: 20px; border-block: 1px solid var(--line); }
+  .tracking-summary { display: grid; gap: 20px; min-width: 0; }
   .tracking-summary > div { display: grid; align-content: start; gap: 10px; min-width: 0; }
+  .tracking-summary .tracking-today { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  .tracking-today > div { display: grid; gap: 5px; }
+  .tracking-summary .tracking-review { min-height: 38px; gap: 7px; padding: 8px 12px; border-radius: 7px; border-color: var(--primary-line); font-size: 12px; }
+  .tracking-summary .tracking-review:hover { background: var(--primary-soft); border-color: var(--primary); }
   .tracking-summary span { color: var(--muted); line-height: 1.6; font-size: 13px; }
   .tracking-summary strong { font-size: 16px; }
   .tracking-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; list-style: none; margin: 0; padding: 0; max-width: 336px; }
@@ -31,6 +34,14 @@
   .feedback-icon-mint { background: var(--mint-soft); }
   .feedback-placeholder { display: flex; align-items: center; min-height: 76px; padding-top: 12px; }
   .feedback-placeholder p { margin: 0; color: var(--muted); font-size: 13px; max-width: 44ch; }
+  .review-invite { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+  .review-invite p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+  .review-invite-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  @media (max-width: 960px) {
+    .dashboard-overview { grid-template-columns: 1fr; gap: 24px; }
+    .tracking-summary { grid-template-columns: minmax(0, 1fr) minmax(272px, 1fr); }
+    .tracking-summary .tracking-today { align-content: start; justify-content: flex-start; }
+  }
   @media (max-width: 640px) {
     .tracking-summary { grid-template-columns: 1fr; gap: 20px; }
     .dashboard-page .dashboard-heading { flex-direction: column; align-items: flex-start; }

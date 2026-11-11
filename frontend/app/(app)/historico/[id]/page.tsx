@@ -6,8 +6,9 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { deleteRecord, getEsbeuForm, getRecordById } from "@/lib/burnout-api";
 import { EsbeuResult } from "@/components/indicators/EsbeuResult";
-import { assessmentDate } from "@/components/indicators/EsbeuHistoryTable";
+import { AssessmentDates } from "@/components/indicators/AssessmentDates";
 import { getError } from "@/lib/errors";
+import { reviewDetails } from "@/lib/esbeu-form";
 import type { AssessmentDetail, FormSchema } from "@/lib/types";
 
 export default function AvaliacaoPage() {
@@ -32,11 +33,13 @@ export default function AvaliacaoPage() {
     catch { setError("Não foi possível confirmar a exclusão. Consulte o histórico antes de repetir."); setBusy(false); }
   }
   const names = Object.fromEntries((schema?.fields ?? []).map((field) => [field.identifier, field.name]));
+  const review = record && reviewDetails(record);
   return <section className="page esbeu-page"><header className="page-header"><Link href="/historico" className="esbeu-link">← Voltar ao histórico</Link><h1 className="page-title">Seu registro e seus indicadores</h1></header>
     {error && <p role="alert" className="form-error">{error}</p>}
     {!record && !error && <p role="status">Carregando avaliação…</p>}
-    {record && <><p>Registrada em {assessmentDate(record.createdAt)}.</p><EsbeuResult record={record} />
-      <section className="card"><h2>Suas respostas</h2><p>{record.source === "daily_experimental" ? "Estas são as informações usadas neste cálculo: parte vem dos seus dias registrados e parte da última rotina completa que você informou." : "Estas são as respostas que você enviou neste registro."}</p>
+    {record && <><AssessmentDates record={record} /><EsbeuResult record={record} />
+      {review && <section className="card"><h2>O que mudou: {review.topicTitle}</h2><ul>{review.reviewedFields.map((label) => <li key={label}>{label}</li>)}</ul></section>}
+      <section className="card"><h2>Suas respostas</h2><p>{record.source === "daily_experimental" ? "Estas são as informações usadas neste cálculo: parte vem dos seus dias registrados e parte da rotina que você informou." : record.source === "guided_review" ? "Este cálculo usa as respostas revisadas junto com o restante do contexto anterior." : "Estas são as respostas que você enviou neste registro."}</p>
         <dl className="esbeu-context-list">{Object.entries(record.context).map(([key, value]) => <div key={key}><dt>{names[key] ?? key}</dt><dd>{String(value)}</dd></div>)}</dl></section>
       {record.observedItems && <details className="card"><summary>Ver os 14 itens respondidos</summary><dl className="esbeu-context-list">{Object.entries(record.observedItems).map(([key, value]) => <div key={key}><dt>{names[key] ?? key}</dt><dd>{value}</dd></div>)}</dl></details>}
       <section className="card"><h2>Excluir esta avaliação</h2><p>A exclusão remove as respostas e resultados desta avaliação da sua conta.</p>

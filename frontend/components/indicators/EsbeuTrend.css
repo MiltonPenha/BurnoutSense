@@ -1,0 +1,17 @@
+@layer components {
+  .index-chart { min-width: 0; }
+  .index-chart > header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  .index-chart h2 { font-size: 18px; margin: 0 0 4px; }
+  .index-chart p { color: var(--muted); margin: 0; font-size: 13px; line-height: 1.6; }
+  .index-chart-modes { display: flex; gap: 2px; padding: 3px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+  .index-chart-modes button { min-height: 34px; padding: 6px 12px; border: 0; border-radius: 4px; color: var(--muted); background: transparent; cursor: pointer; font: inherit; font-size: 13px; }
+  .index-chart-modes button[aria-pressed="true"] { background: var(--primary-soft); color: var(--ink); font-weight: 700; }
+  .index-chart-plot { display: block; width: 100%; height: 180px; margin-top: 8px; color: var(--muted); }
+  .index-chart .index-chart-note { font-size: 12px; }
+  .index-chart-data { margin-top: 8px; font-size: 13px; }
+  .index-chart-data summary { cursor: pointer; color: var(--muted); }
+  @media (max-width: 640px) {
+    .index-chart-plot { height: 160px; }
+    .index-chart-modes button { padding-inline: 10px; }
+  }
+}

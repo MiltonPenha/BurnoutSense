@@ -5,6 +5,7 @@ import { AuthenticatedUser } from '../auth/types/authenticated-user';
 import { CreateEsbeuAssessmentDto } from './dto/create-esbeu-assessment.dto';
 import { ListEsbeuAssessmentsDto } from './dto/list-esbeu-assessments.dto';
 import { ReviewContextDto } from './dto/review-context.dto';
+import { GuidedContextReviewDto } from './dto/guided-context-review.dto';
 import { EsbeuAssessmentsService } from './esbeu-assessments.service';
 
 @UseGuards(JwtAuthGuard)
@@ -19,6 +20,18 @@ export class EsbeuAssessmentsController {
   @Post('review')
   @Header('Cache-Control', 'no-store')
   review(@CurrentUser() user: AuthenticatedUser, @Body() payload: ReviewContextDto) { return this.service.review(user.id, payload); }
+
+  @Post('guided-review')
+  @Header('Cache-Control', 'no-store')
+  guidedReview(@CurrentUser() user: AuthenticatedUser, @Body() payload: GuidedContextReviewDto) { return this.service.guidedReview(user.id, payload); }
+
+  @Get('review-topics')
+  @Header('Cache-Control', 'no-store')
+  reviewTopics(@CurrentUser() user: AuthenticatedUser) { return this.service.reviewTopics(user.id); }
+
+  @Get('trend')
+  @Header('Cache-Control', 'no-store')
+  trend(@CurrentUser() user: AuthenticatedUser) { return this.service.trend(user.id); }
 
   @Get('form')
   @Header('Cache-Control', 'no-store')

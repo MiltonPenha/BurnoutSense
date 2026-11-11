@@ -3,5 +3,5 @@
   .history-view-tabs button { min-height: 44px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--muted); padding: 8px 14px; font: inherit; font-weight: 600; cursor: pointer; }
   .history-view-tabs button:hover { color: var(--ink); }
   .history-view-tabs button[aria-selected="true"] { color: var(--ink); background: var(--surface); border-color: var(--line-strong); }
-  .history-view-tabs button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  .history-view-tabs button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 }

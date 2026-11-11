@@ -20,7 +20,8 @@ describe('Private ESB-eu application assessments', () => {
     ai = { predict: jest.fn().mockResolvedValue(prediction), score: jest.fn().mockResolvedValue(observed),
       formSchema: jest.fn().mockResolvedValue({ form_version: 'forms/1.0' }) };
     config = { get: jest.fn() };
-    service = new EsbeuAssessmentsService({ esbeuAssessment: repository } as unknown as PrismaService,
+    const db = { esbeuAssessment: repository, $queryRaw: jest.fn() };
+    service = new EsbeuAssessmentsService({ ...db, $transaction: (operation: (tx: typeof db) => unknown) => operation(db) } as unknown as PrismaService,
       ai as unknown as AiService, config as unknown as ConfigService);
   });
 
@@ -82,6 +83,14 @@ describe('Private ESB-eu application assessments', () => {
     expect(query.select.context).toBeUndefined();
     expect(query.select.observedItems).toBeUndefined();
   });
+  it('returns the complete chart series scoped to its owner without private answers', async () => {
+    await service.trend('owner');
+    expect(repository.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { userId: 'owner' },
+      select: { id: true, createdAt: true, estimatedOverall: true, triggerCheckIn: expect.any(Object) },
+    }));
+    expect(repository.findMany.mock.calls[0][0]).not.toHaveProperty('take');
+  });
 
   it('does not allow another owner to use a detail or pagination cursor', async () => {
     repository.findFirst.mockResolvedValue(null);
@@ -124,5 +133,37 @@ describe('Private ESB-eu application assessments', () => {
     repository.findFirst.mockResolvedValue({ id: 'latest', adultConfirmed: true, enrolledConfirmed: true, consentVersion: 'old' });
     await expect(service.review('owner', { sourceAssessmentId: 'latest', confirmed: true, context: { updated: 1 } })).rejects.toBeInstanceOf(BadRequestException);
     expect(ai.predict).not.toHaveBeenCalled();
+  });
+
+  it('changes only confirmed guided fields and retains original daily evidence without making inferred answers the baseline', async () => {
+    const date = new Date('2026-10-30T15:00:00Z');
+    const latest = { id: 'latest', estimatedOverall: 1.5, adultConfirmed: true, enrolledConfirmed: true, consentVersion: ESBEU_CONSENT_VERSION,
+      consentAcceptedAt: date, context: { sleep_hours: 7, subject_overload: 3, academic_support: 1 } };
+    repository.findFirst.mockResolvedValueOnce(latest).mockResolvedValueOnce({ createdAt: date,
+      context: { sleep_hours: 4, subject_overload: 3, academic_support: 1 } }).mockResolvedValueOnce({ id: latest.id });
+    await service.guidedReview('owner', { topic: 'demandas', sourceAssessmentId: latest.id, confirmed: true, changes: { subject_overload: 1 } });
+    expect(ai.predict).toHaveBeenCalledWith({ context: { sleep_hours: 7, subject_overload: 1, academic_support: 1 } });
+    expect(repository.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
+      source: 'guided_review', dailyEvidenceSince: date, dailyBaseline: { sleep_hours: 4, subject_overload: 1, academic_support: 1 },
+      evolution: expect.objectContaining({ topic: 'demandas', reviewedFields: ['Sobrecarga de disciplinas'], previousEstimatedOverall: 1.5 }),
+    }) }));
+  });
+
+  it('rejects fields outside the guided review and stale sources without calling AI', async () => {
+    await expect(service.guidedReview('owner', { topic: 'demandas', sourceAssessmentId: 'latest', confirmed: true, changes: { sleep_hours: 8 } })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.guidedReview('owner', { topic: 'demandas', sourceAssessmentId: 'latest', confirmed: true, changes: { academic_support: 4 } })).rejects.toBeInstanceOf(BadRequestException);
+    repository.findFirst.mockResolvedValue({ id: 'newer' });
+    await expect(service.guidedReview('owner', { topic: 'apoio', sourceAssessmentId: 'latest', confirmed: true, changes: { academic_support: 4 } })).rejects.toBeInstanceOf(ConflictException);
+    expect(ai.predict).not.toHaveBeenCalled();
+  });
+
+  it('does not recalculate or persist when a confirmed topic has no changed answers', async () => {
+    const latest = { id: 'latest', adultConfirmed: true, enrolledConfirmed: true, consentVersion: ESBEU_CONSENT_VERSION,
+      context: { academic_support: 4 } };
+    repository.findFirst.mockResolvedValue(latest);
+    await expect(service.guidedReview('owner', { topic: 'apoio', sourceAssessmentId: latest.id, confirmed: true, changes: { academic_support: 4 } }))
+      .rejects.toBeInstanceOf(BadRequestException);
+    expect(ai.predict).not.toHaveBeenCalled();
+    expect(repository.create).not.toHaveBeenCalled();
   });
 });

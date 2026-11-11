@@ -1,7 +1,5 @@
 import type { DailyQuestion, IndexUpdate } from "./types";
 
-export const CHECK_IN_FEEDBACK_KEY = "burnoutsense.check-in-feedback";
-
 export const energyLabels = ["Sem energia", "Baixa", "Média", "Boa", "Muito boa"];
 export const demandLabels = ["Muito leve", "Leve", "Moderada", "Intensa", "Muito intensa"];
 
@@ -13,8 +11,8 @@ export const dailyQuestions: DailyQuestion[] = [
 ];
 
 export function indexUpdateMessage(update?: IndexUpdate | null) {
-  if (update?.status === "updated") return "Seu índice foi recalculado com o contexto atualizado.";
-  if (update?.status === "unchanged") return "Seu registro foi considerado. As informações do cálculo permanecem iguais.";
+  if (update?.status === "updated") return "Seu dia foi salvo e o índice foi recalculado.";
+  if (update?.status === "unchanged") return "Seu dia foi salvo. As informações usadas no cálculo permaneceram iguais.";
   if (update?.status === "disabled") return "Seu dia foi salvo. A atualização pelos check-ins está desativada neste ambiente.";
   if (update?.status === "needs_context") return "Seu dia foi salvo. Revise sua rotina para continuar atualizando o índice.";
   return "Seu dia foi salvo, mas a atualização do índice ficou pendente. Você pode tentar o cálculo novamente.";

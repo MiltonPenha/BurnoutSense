@@ -14,8 +14,10 @@ A interface apresenta esse escore também como **posição percentual na escala*
 de probabilidade de burnout. API, banco, treinamento e métricas mantêm 0–4.
 O acompanhamento começa com um contexto completo sobre as últimas quatro
 semanas. Os check-ins descrevem dias específicos e podem ser retroativos. Na
-[integração experimental](docs/DAILY_TRACKING.md), os dias registrados dentro da
-janela de 28 dias atualizam parte do contexto sem alterar o treinamento do RF/A.
+[integração experimental](docs/DAILY_TRACKING.md), salvar ou editar o check-in
+com a data mais recente pode recalcular o índice com os registros elegíveis dos
+últimos 28 dias. Registros com data anterior ficam no histórico e podem entrar
+no próximo recálculo. O RF/A continua usando o mesmo artefato treinado.
 
 O BurnoutSense não fornece diagnóstico, classificação clínica, porcentagem de
 risco ou confiança individual. Os modelos ainda não possuem validação
@@ -26,9 +28,10 @@ independente em novos participantes.
 - Cadastro, login e acesso autenticado às informações da própria conta.
 - Formulário contextual com tipos e alternativas fornecidos pelo serviço de IA.
 - Check-in diário em duas etapas, com seleção de data e histórico separado dos índices.
-- Estimativa pelo Random Forest/A e identificação da versão usada.
+- Estimativa pelo Random Forest (RF/A), com a versão registrada em cada avaliação.
 - Medição direta ESB-eu opcional, com média global e três dimensões.
-- Painel com calendário de check-ins, gráfico diário, semanal e mensal e resumo da rotina recente.
+- Painel com calendário de check-ins, gráfico diário, semanal e mensal e comparação
+  dos sete check-ins mais recentes com os sete anteriores quando há dados suficientes.
 - Revisão de rotina por tema, disponível a qualquer momento, com sugestão após sete dias sem revisão.
 - Dicas e recomendações opcionais do Gemini, disponíveis após o primeiro índice.
 - Histórico paginado de check-ins e índices, perfil e temas claro e escuro.
@@ -68,10 +71,11 @@ O CSV de pesquisa não participa da inferência e não é distribuído pelo Git.
 mantendo caráter científico experimental. O pacote treinado é privado e deve
 ser recebido separadamente de um responsável autorizado.
 
-**Ridge** é um candidato separado para comparação local. A funcionalidade
-shadow é desativada por padrão, exige configuração explícita, autenticação e
-ambiente local/teste. Não altera a resposta RF/A, não aparece como opção para
-estudantes e não grava previsões no banco. Veja [Ridge shadow](docs/RIDGE_SHADOW.md).
+O projeto preserva dois usos do Ridge na pesquisa: o
+[artefato histórico v1](ai-service/MODEL_CARD.md) e o
+[candidato experimental](docs/RIDGE_SHADOW.md) para comparação local opcional.
+A rota de comparação fica desativada por padrão. Para a demonstração do TCC,
+use o pacote RF/A e confirme o modelo ativo antes de criar avaliações.
 
 As versões científicas e seus protocolos são preservados. Métricas e métodos
 estão nos documentos técnicos; não representam precisão individual ou validação clínica.
@@ -183,7 +187,10 @@ ao executável do venv e as variáveis RF/A definidas:
 Mantenha PostgreSQL, FastAPI, NestJS e Next.js ativos. Acesse
 `http://localhost:3000`; backend em `http://localhost:3001`; Swagger em
 `http://127.0.0.1:8000/docs`. `/health` verifica o processo; `/ready` exige
-`X-API-Key` e confirma o carregamento RF/A. `/v1/examples` fornece entradas fictícias.
+`X-API-Key` e confirma que o artefato configurado carregou. Para a demonstração,
+confira em `GET /v1/model`, com a mesma chave, se `model_name` é
+`random_forest` e `dataset_version` é `rf-a-candidate-v1`.
+`/v1/examples` fornece entradas fictícias.
 
 ## Testes
 

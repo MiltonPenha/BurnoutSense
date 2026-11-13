@@ -2,28 +2,35 @@
 
 import "./RoutineFeedback.css";
 import Link from "next/link";
-import { ArrowRight, BookOpen, CircleAlert, Moon, TrendingUp } from "lucide-react";
+import { ArrowLeftRight, ArrowRight, BookOpen, CircleAlert, HandHeart, Moon, TrendingUp } from "lucide-react";
 import { dailyDate, dailyQuestions } from "@/lib/daily-checkin";
 import type { RoutineTrend } from "@/lib/routine-trend";
 import type { DailyCheckIn } from "@/lib/types";
 
 const hours = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 });
 const pressureLevels = ["Nenhuma", "Baixa", "Moderada", "Alta", "Extrema"];
+const changeIcons = {
+  sleep_quality: Moon,
+  assessment_pressure: BookOpen,
+  study_rest_difficulty: ArrowLeftRight,
+  personal_support: HandHeart
+};
 
 export function RoutineFeedback({ trend, latestCheckIn }: { trend: RoutineTrend | null; latestCheckIn?: DailyCheckIn }) {
   const tone = trend?.strong ? trend.direction : null;
-  const lines = trend?.changes.map(({ key, label }) => <li key={key}>{label}</li>) ?? [];
-  if (trend && Math.abs(trend.sleepDelta) >= 1) lines.push(<li key="hours">{hours.format(Math.abs(trend.sleepDelta))} h {trend.sleepDelta > 0 ? "a mais" : "a menos"} de sono por noite (mediana)</li>);
+  const ComparisonIcon = tone === "better" ? TrendingUp : tone === "worse" ? CircleAlert : ArrowLeftRight;
+  const sleepDelta = trend?.sleepDelta ?? 0;
+  const hasSleepChange = Math.abs(sleepDelta) >= 1;
 
   const observations = latestCheckIn?.observations;
   const quality = observations && dailyQuestions[0].labels[observations.sleep_quality];
   const pressure = observations && pressureLevels[observations.assessment_pressure];
 
-  return <section className="routine-feedback" data-tone={tone ?? undefined} aria-labelledby="routine-feedback-title">
+  return <section className="routine-feedback" data-comparison={trend ? "" : undefined} data-tone={tone ?? undefined} aria-labelledby="routine-feedback-title">
     <div className="routine-feedback-content">
       <header className="routine-feedback-heading">
         <div className="routine-feedback-title">
-          {tone && <span className="routine-feedback-icon">{tone === "better" ? <TrendingUp size={20} aria-hidden="true" /> : <CircleAlert size={20} aria-hidden="true" />}</span>}
+          {trend && <span className="routine-feedback-icon"><ComparisonIcon size={19} aria-hidden="true" /></span>}
           <h2 id="routine-feedback-title">{tone === "better" ? "Que bom ver essa melhora!" : tone === "worse" ? "Sua rotina merece atenção" : trend ? "O que mudou na sua rotina" : "Sua rotina recente"}</h2>
         </div>
         {trend ? <p>Seus 7 check-ins mais recentes em comparação com os 7 anteriores</p>
@@ -31,8 +38,16 @@ export function RoutineFeedback({ trend, latestCheckIn }: { trend: RoutineTrend 
           : <p>Nenhum check-in recente.</p>}
       </header>
       {trend ? (
-        lines.length > 0 ? <ul className="routine-changes">{lines}</ul>
-          : <p className="routine-changes">Sem mudanças consistentes nesse período.</p>
+        trend.changes.length || hasSleepChange ? <ul className="routine-changes" role="list">
+          {trend.changes.map(({ key, label }) => {
+            const Icon = changeIcons[key];
+            return <li key={key}><Icon size={16} aria-hidden="true" /><span>{label}</span></li>;
+          })}
+          {hasSleepChange && <li>
+            <Moon size={16} aria-hidden="true" />
+            <span><strong>{hours.format(Math.abs(sleepDelta))} h {sleepDelta > 0 ? "a mais" : "a menos"}</strong> de sono por noite <span className="routine-change-note">(mediana)</span></span>
+          </li>}
+        </ul> : <p className="routine-changes">Sem mudanças consistentes nesse período.</p>
       ) : latestCheckIn && (
         <dl className="routine-snapshot">
           <div>

@@ -5,6 +5,10 @@ escreve orientações breves de autocuidado a partir do percentual já calculado
 Não recebe nome, e-mail, identificador, texto livre ou as 22 respostas do contexto.
 As orientações não são diagnóstico nem uma explicação causal da previsão.
 
+O formulário inicial mostra o aviso sobre o envio do percentual antes da
+confirmação de uso da aplicação. O aviso também está disponível no perfil
+e em **Como funciona**.
+
 ## Configuração local
 
 No `backend/.env`, ignorado pelo Git:

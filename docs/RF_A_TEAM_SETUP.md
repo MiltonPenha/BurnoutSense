@@ -115,10 +115,10 @@ npm ci
 npm run dev
 ```
 
-Acessar http://localhost:3000, cadastrar/usar conta exclusivamente de teste,
-abrir Nova avaliação e preencher as 22 perguntas com valores fictícios. A
-medição direta opcional pode ficar desmarcada. Confirmar rótulo experimental,
-modelo e base no resultado. Não usar dados dos participantes nesses testes.
+Acesse http://localhost:3000 com uma conta fictícia e use **Fazer primeiro
+registro** para preencher as 22 perguntas. A medição direta é opcional.
+Confira o índice na interface e confirme `random_forest` e `rf-a-candidate-v1`
+em `GET /v1/model`, com a chave de serviço.
 
 ## Problemas e retorno
 

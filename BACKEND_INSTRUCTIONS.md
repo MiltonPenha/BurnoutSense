@@ -16,7 +16,7 @@ A chave de serviço só fica no servidor. O JWT do usuário não substitui a cha
 
 Obtenha as chaves, tipos e enumerações canônicas em `GET /v1/schema` da IA; não invente mapeamentos para as perguntas diárias anteriores. São 22 campos contextuais, obrigatórios; não envie e-mail, identificador, elegibilidade nem itens ESB-eu na previsão. Exemplos gerados do esquema estão em `/v1/examples` e são explicitamente artificiais.
 
-Resposta de previsão: `kind=estimated_score`, `esbeu_overall` numérico de 0 a 4, `model_name`, `dataset_version`, `contract_version`. A interface pode arredondar para duas casas para exibição, preservando o valor original no armazenamento. Identifique como “ESB-eu estimada pelo contexto”. Não converta para porcentagem, confiança, escala 1–10 ou faixa diagnóstica.
+A resposta de previsão contém `kind=estimated_score`, `esbeu_overall` numérico de 0 a 4, `model_name`, `dataset_version` e `contract_version`. A API e o banco preservam o escore original. A interface identifica o resultado como ESB-eu estimada e apresenta a posição percentual na escala (`escore / 4 * 100`). Esse percentual não representa probabilidade, faixa diagnóstica ou confiança.
 
 Os 14 itens são usados separadamente em `POST /v1/esbeu/score` para escore observado e dimensões. Não são 14 preditores adicionais. Não exiba dimensões estimadas: o alvo do modelo é apenas o escore geral.
 
@@ -24,7 +24,9 @@ Erros: 401 chave inválida na IA; 422 contrato inválido ou estimativa fora de d
 
 ## Retirada do fluxo anterior
 
-Scripts, relatórios de treino, classificador, normalizadores, fatores heurísticos, calibração, alertas por classe, cálculo local e geração externa de insights foram retirados. As rotas POST/PATCH `/assessments` e GET `/results/...` respondem 410; GET/DELETE de avaliações antigas preservam o controle de propriedade. Não se convertem resultados históricos para ESB-eu.
+O fluxo legado de classificação, seus fatores heurísticos e alertas por classe foram retirados. As rotas POST/PATCH `/assessments` e GET `/results/...` respondem 410. GET/DELETE de avaliações antigas preservam o controle de propriedade. As avaliações do fluxo legado permanecem em seu formato original.
+
+A [integração opcional com Gemini](docs/GEMINI_GUIDANCE.md) gera orientações gerais a partir do percentual de uma avaliação já calculada. Ela usa uma rota autenticada separada da previsão.
 
 Prisma mantém esquema e migrações históricos para não destruir registros. Essa retenção é armazenamento histórico, sem classificador ativo. A persistência ESB-eu usa a nova tabela `esbeu_assessments`, com migração aditiva. Não reutiliza `riskLevel`, `riskScore` ou `confidence`. As telas ESB-eu estão implementadas, com formulários e resultados distintos do armazenamento histórico.
 
@@ -34,8 +36,11 @@ Confira [métricas históricas e critérios](docs/ESBEU_METRICS.md). Testar um e
 
 ## Comparação Ridge separada
 
-O RF/A permanece como única fonte da previsão oficial consumida e persistida
-pelo NestJS. O endpoint FastAPI `POST /v1/experimental/shadow/predict` é local,
+Na configuração oficial do TCC, o NestJS consome e persiste a previsão RF/A
+da rota `/v1/predict`. O FastAPI também mantém o carregador v1 para
+compatibilidade histórica. Confira `random_forest` e `rf-a-candidate-v1` em
+`GET /v1/model` antes da demonstração. O endpoint FastAPI
+`POST /v1/experimental/shadow/predict` é local,
 opcional, autenticado e desativado por padrão; não possui encaminhamento NestJS
 ou opção pública na interface. Usa as mesmas 22 entradas e retorna duas versões
 identificadas, sem gravação no banco. Falhas do Ridge não substituem o resultado

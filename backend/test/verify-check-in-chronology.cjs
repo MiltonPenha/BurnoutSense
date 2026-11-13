@@ -29,9 +29,14 @@ async function main() {
     const tag = randomBytes(8).toString('hex');
     auth = await json('/auth/register', 'POST', { name: 'Teste fictício de ordem dos dias', email: 'qa-order-' + tag + '@example.invalid', password: 'Teste1' + tag });
     await json('/users/me', 'PATCH', { dailyReminder: false });
-    const ready = await fetch(cfg.AI_SERVICE_URL + '/ready', { headers: { 'X-API-Key': cfg.AI_SERVICE_API_KEY } });
+    const aiHeaders = { 'X-API-Key': cfg.AI_SERVICE_API_KEY };
+    const ready = await fetch(cfg.AI_SERVICE_URL + '/ready', { headers: aiHeaders });
     check('real RF/A is ready', ready.ok);
-    const example = await (await fetch(cfg.AI_SERVICE_URL + '/v1/examples', { headers: { 'X-API-Key': cfg.AI_SERVICE_API_KEY } })).json();
+    const modelResponse = await fetch(cfg.AI_SERVICE_URL + '/v1/model', { headers: aiHeaders });
+    assert.ok(modelResponse.ok, 'Could not confirm the FastAPI model');
+    const model = await modelResponse.json();
+    check('the official Random Forest is loaded', model.model_name === 'random_forest' && model.dataset_version === 'rf-a-candidate-v1');
+    const example = await (await fetch(cfg.AI_SERVICE_URL + '/v1/examples', { headers: aiHeaders })).json();
     const form = await json('/esbeu-assessments/form');
     await json('/esbeu-assessments', 'POST', { context: example.prediction_request.context, adult: true, enrolled: true, consent: true, consentVersion: form.consent.version });
     const today = (await json('/daily-check-ins/overview')).today;
@@ -63,8 +68,9 @@ async function main() {
     const overview = await json('/daily-check-ins/overview');
     check('14 distinct recent days are available', overview.completedDays === 14);
     const final = await current();
-    const prediction = await (await fetch(cfg.AI_SERVICE_URL + '/v1/predict', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-API-Key': cfg.AI_SERVICE_API_KEY }, body: JSON.stringify({ context: final.context }) })).json();
-    check('final index matches unchanged RF/A', Math.abs(final.estimatedOverall - prediction.esbeu_overall) < 1e-10);
+    const prediction = await (await fetch(cfg.AI_SERVICE_URL + '/v1/predict', { method: 'POST', headers: { ...aiHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify({ context: final.context }) })).json();
+    check('final index matches unchanged RF/A', final.modelName === model.model_name && final.datasetVersion === model.dataset_version
+      && Math.abs(final.estimatedOverall - prediction.esbeu_overall) < 1e-10);
     if (process.env.BURNOUTSENSE_PLAYWRIGHT_MODULE) {
       const { chromium } = require(process.env.BURNOUTSENSE_PLAYWRIGHT_MODULE);
       browser = await chromium.launch({ channel: 'msedge', headless: true });

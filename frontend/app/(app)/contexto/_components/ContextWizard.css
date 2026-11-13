@@ -17,8 +17,9 @@
   .context-fields .field-hint { display: block; margin-top: 8px; color: var(--muted); }
   .context-check { display: flex; gap: 12px; align-items: flex-start; line-height: 1.7; margin: 18px 0; cursor: pointer; }
   .context-check input { flex: 0 0 auto; margin-top: 5px; width: 18px; height: 18px; accent-color: var(--primary-dark); }
-  .context-consent { border: 0; padding: 18px 0; margin: 0; }
+  .context-consent { border: 0; padding: 0; margin: 24px 0 0; min-width: 0; }
   .context-consent legend { font-weight: 700; }
+  .context-consent > p { margin: 8px 0 0; max-width: 70ch; color: var(--muted); font-size: 14px; line-height: 1.6; }
   .context-wizard summary { cursor: pointer; font-weight: 600; line-height: 1.6; }
   .context-extra { border-top: 1px solid var(--line); padding-top: 20px; margin-top: 22px; }
   .context-review-list { margin: 20px 0; }

@@ -21,7 +21,7 @@ A migração `20261030100000_add_esbeu_assessments` adiciona uma tabela própria
 
 `modelVersion` é o SHA-256 do artefato, um identificador de integridade, sem parâmetros aprendidos ou pipeline serializado. `datasetVersion` identifica a coleta usada no treinamento, não os registros operacionais desta tabela.
 
-O consentimento de uso `esbeu-app/1` descreve armazenamento na conta, exclusão, ausência de incorporação automática ao treinamento, ausência de envio a IA generativa externa e limites da estimativa. É uma autorização de uso da aplicação, distinta do TCLE da pesquisa; não se afirma aprovação institucional com esse checkbox. O servidor exige consentimento, idade mínima de 18 anos e matrícula confirmados, sem preseleção no formulário.
+O consentimento de uso `esbeu-app/1` descreve armazenamento na conta, exclusão, ausência de incorporação automática ao treinamento e limites da estimativa. O aviso visível antes da confirmação explica o envio do percentual ao Gemini para orientações gerais quando a integração está ativa. As respostas e as notas permanecem na aplicação. A autorização de uso da aplicação é distinta do TCLE da pesquisa. O servidor exige consentimento, idade mínima de 18 anos e matrícula confirmados, com caixas inicialmente desmarcadas.
 
 As avaliações são imutáveis: não há PATCH. Um novo contexto gera outro registro. DELETE remove uma avaliação do próprio usuário; exclusão da conta remove suas avaliações por cascade. Listas retornam somente resumos, 25 registros por página; contexto e itens são expostos apenas no detalhe do dono autenticado. Uma conta não pode consultar, excluir ou usar o cursor de outra conta. Não há rota de listagem global.
 

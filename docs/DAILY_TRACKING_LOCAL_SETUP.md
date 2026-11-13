@@ -61,8 +61,9 @@ variáveis do RF/A configuradas conforme o guia:
 ```
 
 Confira `GET /health` e depois `GET /ready` com o cabeçalho `X-API-Key`,
-conforme o guia RF/A. `/health` sozinho não confirma que o modelo carregou.
-Sem o pacote ou com `/ready` falhando, o fluxo completo não está pronto.
+conforme o guia RF/A. Use a mesma chave em `GET /v1/model` para confirmar
+`model_name: random_forest` e `dataset_version: rf-a-candidate-v1`.
+`/ready` confirma o carregamento do artefato configurado.
 Ridge, Gemini e SMTP não são requisitos para este teste.
 
 **NestJS (porta 3001).** Em `backend/`, crie a configuração só se não existir:
@@ -115,7 +116,9 @@ Abra [o painel local](http://localhost:3000) com os quatro serviços ativos.
 
 ## 3. Validar sem usar dados reais
 
-1. Use uma conta fictícia em banco de desenvolvimento. Clique em **Fazer
+1. Use uma conta fictícia nova em banco de desenvolvimento. O gráfico combina
+   resultados já calculados. Uma conta nova começa com os resultados do modelo
+   ativo na demonstração. Clique em **Fazer
    primeiro registro**, complete o contexto com respostas fictícias e confira
    se o primeiro índice aparece no painel.
 2. Clique em **Novo registro**. Salve o check-in de hoje com respostas de sono

@@ -14,13 +14,53 @@
   .routine-feedback .routine-feedback-heading h2 { font-size: 18px; margin: 0; }
   .routine-feedback-heading p { font-size: 13px; }
   .routine-feedback p { margin: 0; color: var(--muted); line-height: 1.55; }
-  .routine-feedback .routine-changes { margin: 12px 0 0; }
-  .routine-feedback ul { padding-inline-start: 18px; line-height: 1.55; }
   .routine-feedback .routine-review { justify-content: space-between; gap: 10px; box-shadow: none; }
   .routine-review svg { flex: none; }
-  .routine-feedback[data-tone] { border-color: var(--success-line); border-left: 4px solid var(--mint); background: var(--mint-soft); }
-  .routine-feedback[data-tone="worse"] { border-color: var(--primary-line); border-left-color: var(--primary); background: var(--primary-soft); }
-  .routine-feedback-icon { display: grid; place-items: center; flex: 0 0 20px; width: 20px; height: 20px; color: var(--link); }
+  .routine-feedback[data-comparison] {
+    --routine-accent: var(--link);
+    --routine-tint: var(--primary-soft);
+    --routine-border: var(--primary-line);
+    padding: clamp(16px, 3vw, 24px);
+    background: color-mix(in srgb, var(--routine-tint) 68%, var(--surface));
+    border-color: var(--routine-border);
+  }
+  .routine-feedback[data-tone="better"] {
+    --routine-accent: var(--success-ink);
+    --routine-tint: var(--mint-soft);
+    --routine-border: var(--success-line);
+  }
+  .routine-feedback[data-tone="worse"] {
+    --routine-accent: var(--warning-ink);
+    --routine-tint: var(--warning-bg);
+    --routine-border: var(--warning-line);
+  }
+  .routine-feedback-icon {
+    display: grid;
+    place-items: center;
+    flex: 0 0 30px;
+    height: 30px;
+    border: 1px solid var(--routine-border);
+    border-radius: 8px;
+    background: var(--routine-tint);
+    color: var(--routine-accent);
+  }
+  .routine-feedback .routine-changes { margin: 12px 0 0; }
+  .routine-feedback ul.routine-changes {
+    display: grid;
+    gap: 6px;
+    list-style: none;
+    padding: 0;
+  }
+  .routine-changes li {
+    display: grid;
+    grid-template-columns: 16px minmax(0, 1fr);
+    align-items: start;
+    gap: 9px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .routine-changes li svg { margin-top: 2px; color: var(--routine-accent); }
+  .routine-change-note { color: var(--muted); font-size: 12px; }
   .routine-snapshot {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));

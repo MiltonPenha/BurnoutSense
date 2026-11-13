@@ -13,6 +13,7 @@ export const dailyQuestions: DailyQuestion[] = [
 
 export function indexUpdateMessage(update?: IndexUpdate | null) {
   if (update?.status === "updated") return "Seu dia foi salvo e o índice foi recalculado.";
+  if (update?.status === "historical") return "Dia salvo no histórico. Seu índice atual foi mantido porque já existe um check-in mais recente.";
   if (update?.status === "unchanged") return "Seu dia foi salvo. As informações usadas no cálculo permaneceram iguais.";
   if (update?.status === "disabled") return "Seu dia foi salvo. A atualização pelos check-ins está desativada neste ambiente.";
   if (update?.status === "needs_context") return "Seu dia foi salvo. Revise sua rotina para continuar atualizando o índice.";

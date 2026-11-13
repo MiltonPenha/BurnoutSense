@@ -59,9 +59,9 @@ function RegistroContent() {
     window.dispatchEvent(new Event("burnoutsense-esbeu-change"));
   }
   function onSaved(record: SavedDailyCheckIn) {
-    const message = overview && record.date.slice(0, 10) < overview.windowStart && record.indexUpdate.status === "unchanged"
+    const message = overview && record.date.slice(0, 10) < overview.windowStart && ["historical", "unchanged"].includes(record.indexUpdate.status)
       ? "Dia adicionado ao histórico, fora da janela de cálculo atual." : indexUpdateMessage(record.indexUpdate);
-    showAppNotice({ title: "Check-in salvo", message, tone: ["updated", "unchanged"].includes(record.indexUpdate.status) ? "success" : "warning" });
+    showAppNotice({ title: "Check-in salvo", message, tone: ["updated", "unchanged", "historical"].includes(record.indexUpdate.status) ? "success" : "warning" });
     window.dispatchEvent(new Event("burnoutsense-checkin-change"));
     window.dispatchEvent(new Event("burnoutsense-esbeu-change"));
     router.replace("/dashboard");

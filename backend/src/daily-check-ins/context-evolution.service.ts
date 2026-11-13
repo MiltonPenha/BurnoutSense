@@ -24,14 +24,31 @@ export class ContextEvolutionService {
     const latest = await db.esbeuAssessment.findFirst({ where: { userId }, orderBy });
     if (!anchor || !latest) return null;
     const rows = await db.dailyCheckIn.findMany({ where: { userId, date: { gte: since, lte: utcDay(today) }, updatedAt: { gte: anchor.dailyEvidenceSince ?? anchor.createdAt } }, orderBy: { date: 'asc' }, take: 28 });
-    return { anchor, latest, today, since, aggregate: aggregateContext(anchor.dailyBaseline ?? anchor.context, rows) };
+    const newest = await db.dailyCheckIn.findFirst({ where: { userId, date: { lte: utcDay(today) } }, orderBy: { date: 'desc' } });
+    return { anchor, latest, newest, today, since, aggregate: aggregateContext(anchor.dailyBaseline ?? anchor.context, rows) };
+  }
+
+  private needsCalculation(snapshot: NonNullable<Awaited<ReturnType<ContextEvolutionService['snapshot']>>>) {
+    if (contextKey(snapshot.aggregate.context) === contextKey(snapshot.latest.context)) return false;
+    const { newest, latest, since } = snapshot;
+    // Historical edits stay deferred across midnight, not just on the save date.
+    // If all daily evidence expires, a refresh can return to the confirmed context.
+    return !newest || newest.date < since
+      || newest.updatedAt > (newest.indexProcessedRevision ?? latest.createdAt);
+  }
+
+  private async acknowledge(db: Prisma.TransactionClient, userId: string, newest: NonNullable<Awaited<ReturnType<ContextEvolutionService['snapshot']>>>['newest']) {
+    if (!newest) return true;
+    const result = await db.dailyCheckIn.updateMany({ where: { userId, id: newest.id, updatedAt: newest.updatedAt },
+      data: { indexProcessedRevision: newest.updatedAt, updatedAt: newest.updatedAt } });
+    return result.count === 1;
   }
 
   async status(userId: string) {
     if (!this.enabled()) return { enabled: false, pending: false, recordedDays: 0 };
     const snapshot = await this.snapshot(this.prisma, userId);
     return { enabled: true, experimental: true, version: EVOLUTION_VERSION,
-      pending: snapshot ? contextKey(snapshot.aggregate.context) !== contextKey(snapshot.latest.context) : false,
+      pending: snapshot ? this.needsCalculation(snapshot) : false,
       recordedDays: snapshot?.aggregate.recordedDays ?? 0 };
   }
 
@@ -44,15 +61,22 @@ export class ContextEvolutionService {
         await tx.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock(hashtextextended(${userId}, 0))`;
         const snapshot = await this.snapshot(tx, userId);
         if (!snapshot) return { status: 'needs_context' as const };
-        const { anchor, latest, aggregate, today, since } = snapshot;
+        const { anchor, latest, newest, aggregate, today, since } = snapshot;
         const trigger = triggerCheckInId ? await tx.dailyCheckIn.findFirst({ where: { userId, id: triggerCheckInId } }) : null;
         if (triggerCheckInId && !trigger) return { status: 'superseded' as const };
+        if (trigger && (trigger.date < since || newest && trigger.date < newest.date)) return { status: 'historical' as const };
         if (!anchor.adultConfirmed || !anchor.enrolledConfirmed || anchor.consentVersion !== ESBEU_CONSENT_VERSION) return { status: 'needs_context' as const };
-        if (contextKey(aggregate.context) === contextKey(latest.context)) return { status: 'unchanged' as const, assessment: latest };
+        if (!trigger && reason === 'window_refresh' && !this.needsCalculation(snapshot)) return { status: 'unchanged' as const, assessment: latest };
+        if (contextKey(aggregate.context) === contextKey(latest.context)) {
+          if (!await this.acknowledge(tx, userId, newest)) return { status: 'superseded' as const };
+          return { status: 'unchanged' as const, assessment: latest };
+        }
         const prediction = await this.ai.predict({ context: aggregate.context });
         const fresh = await this.snapshot(tx, userId);
-        if (!fresh || fresh.anchor.id !== anchor.id || fresh.latest.id !== latest.id || fresh.today !== today || fresh.aggregate.fingerprint !== aggregate.fingerprint) return { status: 'superseded' as const };
+        if (!fresh || fresh.anchor.id !== anchor.id || fresh.latest.id !== latest.id || fresh.today !== today || fresh.aggregate.fingerprint !== aggregate.fingerprint
+          || fresh.newest?.id !== newest?.id || fresh.newest?.updatedAt.getTime() !== newest?.updatedAt.getTime()) return { status: 'superseded' as const };
         if (trigger && !await tx.dailyCheckIn.findFirst({ where: { userId, id: trigger.id, updatedAt: trigger.updatedAt } })) return { status: 'superseded' as const };
+        if (!await this.acknowledge(tx, userId, newest)) return { status: 'superseded' as const };
         const { context, ...provenance } = aggregate;
         const assessment = await tx.esbeuAssessment.create({ data: {
           userId, context, source: 'daily_experimental', triggerCheckInId: trigger?.id ?? null,

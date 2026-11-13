@@ -48,8 +48,8 @@ async function main() {
     const initial = await apiCall('/esbeu-assessments', 'POST', { context, consent: true, adult: true, enrolled: true, consentVersion: form.consent.version });
     const today = (await apiCall('/daily-check-ins/overview')).today;
     const days = [];
-    for (let offset = -5; offset < 0; offset++) {
-      const positive = offset >= -2 || offset === -4;
+    for (let offset = -13; offset < 0; offset++) {
+      const positive = offset >= -6 || offset === -12;
       days.push(await apiCall('/daily-check-ins', 'PUT', { date: shift(today, offset), mood: positive ? 'Calmo' : 'Cansado',
         sleepHours: positive ? 8 : 5, observations: positive ? good : poor }));
     }

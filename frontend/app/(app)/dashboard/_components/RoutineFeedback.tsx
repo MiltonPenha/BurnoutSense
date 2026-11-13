@@ -26,7 +26,7 @@ export function RoutineFeedback({ trend, latestCheckIn }: { trend: RoutineTrend 
           {tone && <span className="routine-feedback-icon">{tone === "better" ? <TrendingUp size={20} aria-hidden="true" /> : <CircleAlert size={20} aria-hidden="true" />}</span>}
           <h2 id="routine-feedback-title">{tone === "better" ? "Que bom ver essa melhora!" : tone === "worse" ? "Sua rotina merece atenção" : trend ? "O que mudou na sua rotina" : "Sua rotina recente"}</h2>
         </div>
-        {trend ? <p>Seus 3 check-ins mais recentes em comparação com os 3 anteriores</p>
+        {trend ? <p>Seus 7 check-ins mais recentes em comparação com os 7 anteriores</p>
           : latestCheckIn ? <p>Último check-in em <time dateTime={latestCheckIn.date.slice(0, 10)}>{dailyDate(latestCheckIn.date)}</time></p>
           : <p>Nenhum check-in recente.</p>}
       </header>

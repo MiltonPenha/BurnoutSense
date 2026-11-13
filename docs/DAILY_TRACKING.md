@@ -29,14 +29,17 @@ stay in the application.
 3. A date picker accepts today or a valid previous calendar day. Future and nonexistent
    dates are rejected server-side. There is one entry per owner/date; revisiting a date
    opens that day's actual saved answers for editing.
-4. After saving, the enabled adapter builds a candidate full context and invokes RF/A
+4. Saving or editing the newest check-in by **reference date** lets the enabled adapter build a candidate full context and invoke RF/A
    only if its inputs differ from the latest saved context. Equal inputs do not generate
-   duplicate assessments or a forced score movement.
+   duplicate assessments or a forced score movement. Saving an earlier date only updates
+   history and returns `historical`, even when it was submitted after today's check-in.
+   Those observations may join the 28-day average when the newest check-in is saved again.
 5. Indexes are historical snapshots, except directly linked results are removed when
    their triggering check-in is deleted. The sidebar and panel refresh.
-   The panel separately compares medians of the three most recent complete check-ins
-   with the three preceding ones. All six dates must be within 14 days and the newest
-   three within seven days. Sleep duration is descriptive, not inherently better or
+   The panel separately compares medians of the seven most recent complete check-ins
+   with the seven preceding ones. All 14 dates must be within 28 days and the newest
+   seven within 14 days. With consecutive days this compares two weeks; skipped days
+   are never fabricated. Sleep duration is descriptive, not inherently better or
    worse. Highlighted inline feedback requires two ordinal signals moving one level
    in the same direction, or one moving two levels, with no opposing signal.
    Feedback stays in the dashboard and links to topic choice without a modal.
@@ -70,8 +73,11 @@ stay in the application.
 - Mood and optional notes are stored for the student's history, not sent to RF/A.
 - Missing days receive no zero, fabricated observation, baseline pseudo-count or weight.
   One recorded day can change the candidate inputs, but remains sparse experimental evidence.
-- Backdated entries affect the present window, not old index snapshots. Entries outside
-  the window remain in history but do not affect the current calculation.
+- An older reference date does not trigger a prediction or replace the current index.
+  It remains eligible evidence for the next newest-day save, without backdating index
+  snapshots. A backdated entry can trigger a prediction if it is the newest reference
+  date for that account (for example, yesterday saved before today's check-in).
+  Entries outside the window remain in history but do not affect the current calculation.
 - Edits replace the observation for that day, not add a second daily sample.
 - Deletion removes the day and results explicitly linked through `triggerCheckInId`
   using a foreign-key cascade and the per-owner advisory lock. Other snapshots
@@ -107,6 +113,14 @@ overview detects differing candidate inputs and offers a retry. Per-owner adviso
 serializes derived calculations, and evidence/anchor are rechecked after inference to
 avoid publishing a result from superseded observations.
 
+The newest day stores `indexProcessedRevision`, including when its inputs are unchanged.
+Acknowledging that revision preserves `updatedAt`; it is not a user edit. Historical-only
+changes do not create a pending update or bypass the rule through the retry endpoint.
+A failed newest-day prediction remains retryable. A refresh when all daily evidence has
+expired and deletions can still recalculate; they have their own provenance and are not
+historical saves. Merely crossing midnight does not release deferred historical changes.
+The next newest-day save applies the then-current 28-day window, including any expired days.
+
 ## API
 
 - `GET /daily-check-ins/overview`: today's date, recent days, distinct count, window start,
@@ -114,6 +128,7 @@ avoid publishing a result from superseded observations.
 - `GET /daily-check-ins/day/:date`: the authenticated owner's entry or null for that date.
 - `PUT /daily-check-ins`: date, mood, sleepHours, observations and optional note.
   observations contains exactly the four canonical ordinal field identifiers above.
+  `indexUpdate.status=historical` means the date was saved without recalculating the index.
 - `PUT /daily-check-ins/today`: retained for old clients. Legacy entries without the new
   observations do not become model evidence.
 - `POST /daily-check-ins/recalculate`: retries current context calculation without resaving.
@@ -143,6 +158,8 @@ resetting accounts. `20261110020000_allow_guided_context_source` extends the
 allowed assessment origins.
 `20261110030000_link_check_in_predictions` adds trigger links without guessing
 old origins; `20261110040000_track_daily_reminders` adds delivery tracking.
+`20261113010000_track_processed_check_in_revision` adds a nullable processing watermark
+without resetting check-ins, assessments or accounts.
 Python 3.12 and the private RF/A package remain separately configured; never commit secrets.
 
 Tests cover available-day aggregation, ordinal boundaries, unchanged inputs, evidence

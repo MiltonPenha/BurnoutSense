@@ -160,6 +160,7 @@ model DailyCheckIn {
   triggeredAssessments EsbeuAssessment[] @relation("CheckInTrigger")
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
+  indexProcessedRevision DateTime?
 
   @@unique([userId, date])
   @@index([userId, date, id])

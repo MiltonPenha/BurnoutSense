@@ -70,7 +70,7 @@ export interface DailyCheckIn {
 }
 export interface SaveDailyCheckIn { date?: string; mood: string; sleepHours: number; observations?: DailyObservations; note?: string; energy?: number; academicDemand?: number }
 export interface IndexUpdate {
-  status: "updated" | "unchanged" | "disabled" | "needs_context" | "superseded" | "unavailable";
+  status: "updated" | "unchanged" | "historical" | "disabled" | "needs_context" | "superseded" | "unavailable";
   assessment?: AssessmentDetail;
 }
 export interface SavedDailyCheckIn extends DailyCheckIn { indexUpdate: IndexUpdate }

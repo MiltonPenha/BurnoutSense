@@ -130,23 +130,30 @@ Abra [o painel local](http://localhost:3000) com os quatro serviços ativos.
 |---|---|
 | `updated` | Um novo cálculo foi salvo. O número pode ser igual, mesmo com entradas diferentes. |
 | `unchanged` | As entradas agregadas não mudaram, então não houve nova chamada ao RF/A. |
+| `historical` | Dia anterior ao check-in mais recente salvo no histórico, sem recalcular o índice atual. |
 | `disabled` | Confira os dois flags do NestJS e reinicie o processo. |
 | `needs_context` | Confirme que a conta tem um contexto inicial válido e consentimento atual. |
 | `unavailable` ou `superseded` | O dia foi salvo, mas o resultado não foi publicado. Confira a prontidão da IA ou o estado mais recente antes de tentar atualizar novamente. |
 
 Em `GET /daily-check-ins/overview`, `evolution.enabled` deve ser `true`
-e `evolution.recordedDays` conta apenas os dias usados no cálculo. Um dia
+e `evolution.recordedDays` conta os dias elegíveis para o próximo cálculo. Os dias
+efetivamente utilizados ficam na proveniência do índice salvo. Um dia
 retroativo fora da janela aparece no histórico, mas não altera o índice.
 Um dia pode ser editado sem duplicar o registro; não use datas futuras.
 
-Para testar o aviso, grave seis dias recentes em uma conta fictícia: três
-com sono de baixa qualidade e pressão alta e três posteriores com respostas
+Para testar o aviso, grave 14 dias recentes em uma conta fictícia: sete
+com sono de baixa qualidade e pressão alta e sete posteriores com respostas
 melhores. Abra o painel e confira o aviso de melhora. Inverta os grupos para
 testar o aviso de atenção. Altere apenas um dia em uma sequência estável para
 confirmar que não abre um aviso. Em **Revisar minha rotina**, confirme uma
 mudança e verifique a origem **Revisão rápida** no histórico; os check-ins
 devem continuar registrados. O aviso acompanha as respostas, mesmo quando o
 RF/A devolve o mesmo índice.
+
+Para testar a ordem, salve hoje e depois ontem: o segundo salvamento deve retornar
+`historical`, sem novo índice. Salvar ou editar novamente o dia mais recente permite
+recalcular a média dos dias elegíveis. Se ontem ainda for a data mais recente da conta,
+ele também pode calcular; ao salvar hoje depois disso, hoje passa a ser a referência.
 
 Se faltar o pacote, a chave ou a versão de Python correta, informe qual
 pré-requisito falhou. Não substitua a previsão real por dados fictícios e não
@@ -182,4 +189,12 @@ somente contas fictícias e não aciona o teste de e-mail:
 
 ```powershell
 node backend/test/verify-dashboard-flow.cjs
+```
+
+O teste específico de ordem das datas e comparação 7 + 7 usa o mesmo ambiente.
+Ele valida hoje/ontem, edição retroativa, ausência de pendência artificial e a média
+preservada, removendo somente sua própria conta fictícia ao finalizar:
+
+```powershell
+node backend/test/verify-check-in-chronology.cjs
 ```

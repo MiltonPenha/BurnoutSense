@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { calculationDate, dailyDate, isCalendarDay, shiftCalendarDay } from "../lib/daily-checkin.ts";
+import { calculationDate, dailyDate, indexUpdateMessage, isCalendarDay, shiftCalendarDay } from "../lib/daily-checkin.ts";
+
+test("historical saves explain why the current index was preserved", () => {
+  assert.match(indexUpdateMessage({ status: "historical" }), /índice atual foi mantido/);
+  assert.doesNotMatch(indexUpdateMessage({ status: "historical" }), /pendente|recalculado/);
+});
 
 test("date shortcuts use calendar days across month, year and leap day boundaries", () => {
   assert.equal(shiftCalendarDay("2026-01-01", -1), "2025-12-31");

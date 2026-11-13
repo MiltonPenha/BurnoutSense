@@ -47,6 +47,7 @@ try {
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
   await page.getByRole("heading", { name: "Sua primeira avaliação" }).waitFor();
   check("empty_dashboard_without_fabricated_index", true);
+  check("guidance_sections_visible_and_locked_before_first_record", await page.getByText("Disponível após salvar sua primeira avaliação.", { exact: true }).count() === 2);
   const schema = await api("/esbeu-assessments/form");
   await page.goto(base + "/registro");
   await page.waitForURL("**/contexto");
@@ -65,7 +66,15 @@ try {
   const initial = await api("/esbeu-assessments/current");
   check("first_index_immediate_with_complete_canonical_context", Object.keys(initial.assessment.context).length === 22 && initial.canReuseConsent);
   check("sidebar_displays_normalized_index", Number(await page.getByRole("meter", { name: "Índice de acompanhamento" }).getAttribute("aria-valuenow")) === initial.assessment.estimatedOverall * 25);
-  await page.getByRole("link", { name: "Fazer check-in de hoje", exact: true }).click();
+  await page.getByRole("link", { name: "Ver meu acompanhamento", exact: true }).click();
+  await page.getByRole("heading", { name: "Calendário de check-ins", exact: true }).waitFor();
+  const routine = page.getByRole("region", { name: "Sua rotina recente", exact: true });
+  await routine.getByRole("link", { name: "Revisar minha rotina", exact: true }).waitFor();
+  check("routine_review_is_optional_before_the_weekly_suggestion", (await api("/esbeu-assessments/review-topics")).suggested === null
+    && await page.getByRole("complementary", { name: "Sugestão de revisão da rotina" }).count() === 0);
+  await routine.getByRole("link", { name: "Revisar minha rotina", exact: true }).click();
+  await page.waitForURL("**/contexto?revisao=escolher");
+  await page.goto(base + "/registro");
   await page.getByRole("heading", { name: "Como foi seu dia?", exact: true }).waitFor();
   await page.getByRole("radio", { name: "Triste", exact: true }).waitFor();
   await page.screenshot({ path: path.join(output, "check-in-etapa-1.png"), style: "nextjs-portal { display: none }" });
@@ -173,8 +182,10 @@ try {
   check("review_new_index_preserves_original_consent", revised.assessment.id !== initial.assessment.id && revised.assessment.consentAcceptedAt === initial.assessment.consentAcceptedAt && revised.assessment.context.sleep_hours === 6.5 && revised.assessment.observedOverall === 2);
   await page.getByRole("link", { name: "Ver meu acompanhamento", exact: true }).click();
   await page.getByRole("heading", { name: "Evolução do acompanhamento", exact: true }).waitFor();
+  check("guidance_sections_unlock_after_first_record", await page.getByText("Disponível após salvar sua primeira avaliação.", { exact: true }).count() === 0);
   await page.getByText("2 dias acompanhados", { exact: true }).waitFor();
   check("dashboard_calendar_marks_only_real_check_ins", await page.locator(".tracking-days li").count() === 28 && await page.locator('.tracking-days li[data-recorded="true"]').count() === 2);
+  check("calendar_days_open_the_corresponding_check_in", await page.locator(".tracking-days li a").evaluateAll(links => links.every(link => new URL(link.href).searchParams.get("date") === link.querySelector("time").dateTime)));
   check("dashboard_days_have_visible_dates", await page.locator(".tracking-days time").count() === 28 && /^\d{2}\/\d{2}$/.test(await page.locator(".tracking-days time").first().innerText()));
   check("dashboard_has_one_header_action_and_no_help_link", await page.locator("main .dashboard-heading").getByRole("link", { name: "Novo registro" }).count() === 1 && await page.locator('main a[href="/como-funciona"]').count() === 0);
   check("feedback_boxes_are_separate_and_unfabricated", await page.locator(".dashboard-feedback > section").count() === 2);

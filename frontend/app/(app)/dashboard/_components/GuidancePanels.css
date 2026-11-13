@@ -1,4 +1,6 @@
 @layer pages {
+  .guidance-locked { gap: 8px; color: var(--muted); }
+  .guidance-locked svg { flex-shrink: 0; }
   .guidance-list { list-style: none; display: grid; gap: 16px; padding: 0; margin: 20px 0 0; }
   .guidance-list li { padding-top: 14px; border-top: 1px solid var(--line); }
   .guidance-list li:first-child { padding-top: 0; border-top: 0; }

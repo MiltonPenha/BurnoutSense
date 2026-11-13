@@ -22,7 +22,9 @@ function TrackingDays({ overview }: { overview: DailyOverview }) {
         const status = recorded.has(date) ? "registrado" : "sem registro";
         const label = `${dailyDate(date)}: ${status}${date === overview.today ? " (hoje)" : ""}`;
         return <li key={date} data-recorded={recorded.has(date)} data-today={date === overview.today} title={label}>
-          <time dateTime={date} aria-hidden="true">{date.slice(8, 10)}/{date.slice(5, 7)}</time><span className="tracking-day-label">{label}</span>
+          <Link href={`/registro?date=${date}`} aria-label={label} aria-current={date === overview.today ? "date" : undefined}>
+            <time dateTime={date} aria-hidden="true">{date.slice(8, 10)}/{date.slice(5, 7)}</time>
+          </Link>
         </li>;
       })}
     </ol>
@@ -54,10 +56,10 @@ export default function DashboardPage() {
     </header>
     {error && <p role="alert" className="form-error">{error}</p>}
     {records === null && !error && <p role="status">Carregando registros…</p>}
-    {records?.length === 0 && <section className="card empty-state dashboard-empty"><div><h2>Sua primeira avaliação</h2><p>Conte como foram suas últimas quatro semanas. Depois, acompanhe sua rotina com check-ins rápidos.</p><Link href="/registro" className="button">Fazer primeiro registro</Link></div></section>}
+    {records?.length === 0 && <section className="card empty-state dashboard-empty"><div><h2>Sua primeira avaliação</h2><p>Conte como foram suas últimas quatro semanas. Depois, acompanhe sua rotina com check-ins rápidos.</p><Link href="/contexto" className="button">Fazer primeiro registro</Link></div></section>}
     {records && records.length > 0 && <>
       <div className="dashboard-overview">
-      <section className="tracking-summary" aria-label="Seu acompanhamento diário"><div className="tracking-today"><div><span>Check-in de hoje</span><strong>{daily?.todayCheckIn ? `${daily.todayCheckIn.mood} · registrado` : daily ? "Ainda não registrado" : "Carregando…"}</strong></div>{daily?.todayCheckIn && <Link href="/registro" className="button secondary tracking-review"><Pencil size={15} aria-hidden="true" />Revisar check-in</Link>}</div>
+      <section className="tracking-summary" aria-labelledby="tracking-title"><h2 id="tracking-title">Calendário de check-ins</h2><div className="tracking-today"><div><span>Check-in de hoje</span><strong>{daily?.todayCheckIn ? `${daily.todayCheckIn.mood} · registrado` : daily ? "Ainda não registrado" : dailyError ? "Indisponível" : "Carregando…"}</strong></div>{daily?.todayCheckIn && <Link href="/registro" className="button secondary tracking-review"><Pencil size={15} aria-hidden="true" />Revisar check-in</Link>}</div>
         <div><span>Últimos 28 dias</span><strong>{daily ? `${daily.completedDays} ${daily.completedDays === 1 ? "dia acompanhado" : "dias acompanhados"}` : "…"}</strong>{daily && <TrackingDays overview={daily} />}</div>
       </section>
       <EsbeuTrend timeZone={daily?.timeZone} />
@@ -69,8 +71,9 @@ export default function DashboardPage() {
           <h2 id="routine-feedback-title">Sua rotina recente</h2>
           {latestDay && <p>Em {dailyDate(latestDay.date)}: {new Intl.NumberFormat("pt-BR").format(latestDay.sleepHours)} h de sono{latestQuality && ` · Qualidade do sono: ${latestQuality}`}{latestPressure && ` · Pressão: ${latestPressure}`}.</p>}
           <p>As mudanças na sua rotina aparecerão aqui quando houver registros recentes suficientes para comparar.</p>
+          <Link className="button secondary" href="/contexto?revisao=escolher">Revisar minha rotina</Link>
         </section>)}
-      {daily && daily.completedDays > 0 && accountId && <ReviewInvite key={accountId} today={daily.today} accountId={accountId} />}</>}
+      {daily && accountId && <ReviewInvite key={accountId} today={daily.today} accountId={accountId} />}</>}
     <GuidancePanels key={records?.[0]?.id ?? "empty"} assessmentId={records?.[0]?.id} loading={records === null} failed={Boolean(error)} />
   </section>;
 }

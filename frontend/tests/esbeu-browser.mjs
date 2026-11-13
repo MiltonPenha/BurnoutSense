@@ -45,7 +45,7 @@ try {
   await page.getByRole("button", { name: "Ocultar senha", exact: true }).click();
   check("login_password_can_be_hidden_again", await page.locator("#password").getAttribute("type") === "password");
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
-  await page.getByRole("heading", { name: "Seu acompanhamento começa aqui" }).waitFor();
+  await page.getByRole("heading", { name: "Sua primeira avaliação" }).waitFor();
   check("empty_dashboard_without_fabricated_index", true);
   const schema = await api("/esbeu-assessments/form");
   await page.goto(base + "/registro");
@@ -64,8 +64,11 @@ try {
   await page.getByText("Seu primeiro índice está pronto.", { exact: true }).waitFor();
   const initial = await api("/esbeu-assessments/current");
   check("first_index_immediate_with_complete_canonical_context", Object.keys(initial.assessment.context).length === 22 && initial.canReuseConsent);
+  check("sidebar_displays_normalized_index", Number(await page.getByRole("meter", { name: "Índice de acompanhamento" }).getAttribute("aria-valuenow")) === initial.assessment.estimatedOverall * 25);
   await page.getByRole("link", { name: "Fazer check-in de hoje", exact: true }).click();
   await page.getByRole("heading", { name: "Como foi seu dia?", exact: true }).waitFor();
+  await page.getByRole("radio", { name: "Triste", exact: true }).waitFor();
+  await page.screenshot({ path: path.join(output, "check-in-etapa-1.png"), style: "nextjs-portal { display: none }" });
   check("new_day_has_no_mocked_answers", await page.locator('input[type="radio"]:checked').count() === 0 && await page.locator("#daily-sleep").inputValue() === "");
   await page.getByRole("radio", { name: "Triste", exact: true }).check();
   await page.locator("#daily-sleep").fill("7.5");
@@ -183,9 +186,9 @@ try {
   const meter = page.locator(".sidebar:not(.mobile-sidebar) .sidebar-index-meter");
   await meter.locator("strong").waitFor();
   check("sidebar_index_uses_yellow_in_the_middle_band", await meter.getAttribute("data-band") === "yellow");
-  const ringTransform = await meter.evaluate(element => getComputedStyle(element, "::before").transform);
-  await page.waitForFunction(previous => getComputedStyle(document.querySelector(".sidebar:not(.mobile-sidebar) .sidebar-index-meter"), "::before").transform !== previous, ringTransform);
-  check("only_sidebar_ring_rotates", await meter.locator("strong").evaluate(element => getComputedStyle(element).transform === "none"));
+  const ringOpacity = await meter.evaluate(element => getComputedStyle(element, "::before").opacity);
+  await page.waitForFunction(previous => getComputedStyle(document.querySelector(".sidebar:not(.mobile-sidebar) .sidebar-index-meter"), "::before").opacity !== previous, ringOpacity);
+  check("only_sidebar_ring_animates", await meter.locator("strong").evaluate(element => getComputedStyle(element).animationName === "none"));
   await page.emulateMedia({ reducedMotion: "reduce" });
   check("sidebar_ring_respects_reduced_motion", await meter.evaluate(element => getComputedStyle(element, "::before").animationName === "none"));
   await page.emulateMedia({ reducedMotion: "no-preference" });

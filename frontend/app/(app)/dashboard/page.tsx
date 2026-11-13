@@ -48,13 +48,13 @@ export default function DashboardPage() {
   const latestQuality = latestDay?.observations ? dailyQuestions[0].labels[latestDay.observations.sleep_quality] : null;
   const latestPressure = latestDay?.observations ? dailyQuestions[1].labels[latestDay.observations.assessment_pressure] : null;
   return <section className="page esbeu-page dashboard-page">
-    <header className="page-header dashboard-heading"><div><p className="overline">Seu espaço de acompanhamento</p><h1 className="page-title">Seus indicadores, com mais clareza</h1>
+    <header className="page-header dashboard-heading"><div><h1 className="page-title">Acompanhamento</h1>
       <p className="page-kicker">Acompanhe seus registros e perceba como sua rotina acadêmica se relaciona com seu bem-estar.</p></div>
       {records && records.length > 0 && <Link href="/registro" className="button dashboard-new-record"><Plus size={16} aria-hidden="true" /> Novo registro</Link>}
     </header>
     {error && <p role="alert" className="form-error">{error}</p>}
     {records === null && !error && <p role="status">Carregando registros…</p>}
-    {records?.length === 0 && <section className="card empty-state dashboard-empty"><div><h2>Seu acompanhamento começa aqui</h2><p>Faça seu primeiro registro para começar a acompanhar seus índices.</p></div><Link href="/registro" className="button">Fazer primeiro registro</Link></section>}
+    {records?.length === 0 && <section className="card empty-state dashboard-empty"><div><h2>Sua primeira avaliação</h2><p>Conte como foram suas últimas quatro semanas. Depois, acompanhe sua rotina com check-ins rápidos.</p><Link href="/registro" className="button">Fazer primeiro registro</Link></div></section>}
     {records && records.length > 0 && <>
       <div className="dashboard-overview">
       <section className="tracking-summary" aria-label="Seu acompanhamento diário"><div className="tracking-today"><div><span>Check-in de hoje</span><strong>{daily?.todayCheckIn ? `${daily.todayCheckIn.mood} · registrado` : daily ? "Ainda não registrado" : "Carregando…"}</strong></div>{daily?.todayCheckIn && <Link href="/registro" className="button secondary tracking-review"><Pencil size={15} aria-hidden="true" />Revisar check-in</Link>}</div>

@@ -16,7 +16,6 @@
 .esbeu-score-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; }
 .esbeu-score-heading h2, .esbeu-page .esbeu-score-heading h2 { margin: 0; font-size: 20px; }
 .index-source { border-radius: 5px; padding: 5px 8px; background: var(--primary-soft); color: var(--ink); font-size: 12px; font-weight: 600; }
-.index-source.is-experimental { background: var(--lavender-soft); }
 .index-meta { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 12px; color: var(--muted); font-size: 13px; line-height: 1.55; }
 .esbeu-score-value { font-size: 44px; font-weight: 800; margin: 14px 0; line-height: 1.25 !important; }
 .esbeu-score-value small { font-size: 17px; color: var(--muted); }

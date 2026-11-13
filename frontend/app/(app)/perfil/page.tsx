@@ -3,6 +3,8 @@ import "./perfil.css";
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { Bell, LockKeyhole, Moon, SlidersHorizontal, Sun, UserRound } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { deleteCurrentUser, sendTestNotification } from "@/lib/burnout-api";
 import { useBurnoutStore } from "@/hooks/useBurnoutStore";
@@ -11,15 +13,15 @@ import type { ChangeEvent, FormEvent } from "react";
 import type { Notice, Profile, Theme } from "@/lib/types";
 
 const tabs = [
-  { id: "data", label: "Dados", icon: "👤" },
-  { id: "notifications", label: "Notificações", icon: "🔔" },
-  { id: "preferences", label: "Preferências", icon: "⚙️" },
-  { id: "privacy", label: "Privacidade", icon: "🔒" }
+  { id: "data", label: "Dados", Icon: UserRound },
+  { id: "notifications", label: "Notificações", Icon: Bell },
+  { id: "preferences", label: "Preferências", Icon: SlidersHorizontal },
+  { id: "privacy", label: "Privacidade", Icon: LockKeyhole }
 ];
 
-const themeOptions: { id: Theme; label: string; icon: string; help: string }[] = [
-  { id: "light", label: "Claro", icon: "☀️", help: "Visual leve para uso diário." },
-  { id: "dark", label: "Escuro", icon: "🌚", help: "Menos luminosidade para estudar à noite." }
+const themeOptions: { id: Theme; label: string; Icon: LucideIcon }[] = [
+  { id: "light", label: "Claro", Icon: Sun },
+  { id: "dark", label: "Escuro", Icon: Moon }
 ];
 
 const semesterOptions = Array.from({ length: 12 }, (_, index) => index + 1);
@@ -192,7 +194,7 @@ export default function PerfilPage() {
             type="button"
             onClick={() => setActiveTab(tab.id)}
           >
-            <span className="tab-emoji emoji-icon" aria-hidden="true">{tab.icon}</span>
+            <tab.Icon size={18} strokeWidth={1.7} aria-hidden="true" />
             {tab.label}
           </button>
         ))}
@@ -291,10 +293,9 @@ export default function PerfilPage() {
                     type="button"
                     onClick={() => handleThemeChange(option.id)}
                   >
-                    <span className="tab-emoji emoji-icon" aria-hidden="true">{option.icon}</span>
+                    <option.Icon size={20} strokeWidth={1.7} aria-hidden="true" />
                     <span>
                       <strong>{option.label}</strong>
-                      <small>{option.help}</small>
                     </span>
                   </button>
                 ))}
@@ -327,7 +328,6 @@ export default function PerfilPage() {
       </form>
 
       <AccessibleDialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} titleId="delete-account-title" descriptionId="delete-account-description" busy={deleting}>
-            <span className="alert-icon emoji-icon" aria-hidden="true">⚠️</span>
             <h2 className="confirm-title" id="delete-account-title">Excluir sua conta?</h2>
             <p className="confirm-copy" id="delete-account-description">
               Essa ação removerá sua conta e encerrará a sessão atual. Confirme apenas se tiver certeza.
@@ -343,7 +343,6 @@ export default function PerfilPage() {
       </AccessibleDialog>
 
       <AccessibleDialog open={removePhotoDialogOpen} onClose={() => setRemovePhotoDialogOpen(false)} titleId="remove-photo-title" descriptionId="remove-photo-description" fallbackFocusId="profile-change-photo">
-            <span className="alert-icon emoji-icon" aria-hidden="true">🖼️</span>
             <h2 className="confirm-title" id="remove-photo-title">Remover foto de perfil?</h2>
             <p className="confirm-copy" id="remove-photo-description">
               A imagem atual será removida do seu perfil após salvar as alterações. Você poderá escolher outra foto quando quiser.

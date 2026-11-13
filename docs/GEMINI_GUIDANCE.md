@@ -44,6 +44,12 @@ entre contas, porque não há conteúdo pessoal nelas. Reiniciar o backend limpa
 o cache. Solicitações simultâneas equivalentes são agrupadas; falhas têm espera
 de 60 segundos e nunca são substituídas por uma resposta fictícia.
 
+O painel consulta as orientações para a avaliação mais recente ao carregar ou
+quando o identificador da avaliação muda. O check-in pode alterar o percentual
+indiretamente, pelo recálculo do RF/A. Com a mesma porcentagem arredondada,
+as orientações podem ser reutilizadas até o cache expirar. A rotina recente
+compara os check-ins no BurnoutSense, sem enviar essa comparação ao Gemini.
+
 A geração tem limite de 20 segundos, duas chamadas simultâneas e a proteção
 global de requisições do NestJS. Falhas do Gemini não impedem salvar check-ins
 nem visualizar o índice. O conteúdo pode variar mesmo para índices próximos.

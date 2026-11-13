@@ -297,10 +297,8 @@ export async function guidedReview(payload: { topic: ReviewTopicId; sourceAssess
   return request<Assessment>("/esbeu-assessments/guided-review", { method: "POST", body: JSON.stringify(payload) });
 }
 export async function getDailyOverview() { return request<DailyOverview>("/daily-check-ins/overview"); }
-export async function saveTodayCheckIn(payload: SaveDailyCheckIn) { return request<SavedDailyCheckIn>("/daily-check-ins/today", { method: "PUT", body: JSON.stringify(payload) }); }
 export async function getDailyPage(cursor?: string | null) { return request<PageResult<DailyCheckIn>>(`/daily-check-ins${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`); }
 export async function deleteDailyCheckIn(id: string) { return request<{ indexUpdate: IndexUpdate }>(`/daily-check-ins/${encodeURIComponent(id)}`, { method: "DELETE" }); }
-export async function getEsbeuMetrics() { return request("/ai/metrics"); }
 export async function getEsbeuPage(cursor?: string | null, options: LoadOptions = {}) {
   return request<PageResult<Assessment>>(`/esbeu-assessments${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`, {
     sessionExpiredOnUnauthorized: !options.silentUnauthorized

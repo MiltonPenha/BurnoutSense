@@ -84,9 +84,6 @@
   display: grid;
   place-items: center;
   padding: 40px 20px;
-  background:
-    linear-gradient(135deg, rgba(219, 234, 254, 0.62), rgba(236, 253, 245, 0.54) 48%, rgba(255, 247, 237, 0.5)),
-    linear-gradient(180deg, #ffffff 0%, var(--bg) 100%);
 }
 
 .auth-panel {
@@ -152,13 +149,6 @@
   font-size: 12px;
   line-height: 1.45;
   text-align: center;
-}
-
-:root[data-theme="dark"] .auth-main {
-  background:
-    radial-gradient(circle at top left, rgba(96, 165, 250, 0.16), transparent 34%),
-    radial-gradient(circle at bottom right, rgba(52, 211, 153, 0.12), transparent 32%),
-    linear-gradient(180deg, #111827 0%, #0F172A 100%);
 }
 
 :root[data-theme="dark"] .auth-title,

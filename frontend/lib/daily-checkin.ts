@@ -2,9 +2,10 @@ import type { DailyQuestion, IndexUpdate } from "./types";
 
 export const energyLabels = ["Sem energia", "Baixa", "Média", "Boa", "Muito boa"];
 export const demandLabels = ["Muito leve", "Leve", "Moderada", "Intensa", "Muito intensa"];
+export const sleepQualityLabels = ["Muito ruim", "Ruim", "Regular", "Boa", "Muito boa"];
 
 export const dailyQuestions: DailyQuestion[] = [
-  { key: "sleep_quality", title: "Como foi a qualidade do seu sono?", labels: ["Muito ruim", "Ruim", "Regular", "Boa", "Muito boa"] },
+  { key: "sleep_quality", title: "Como foi a qualidade do seu sono?", labels: sleepQualityLabels },
   { key: "assessment_pressure", title: "Quanto as provas e os prazos pressionaram você?", labels: ["Nada", "Pouco", "Moderadamente", "Bastante", "Extremamente"] },
   { key: "study_rest_difficulty", title: "Foi difícil conciliar estudos e descanso?", labels: ["Nada", "Pouco", "Moderadamente", "Bastante", "Extremamente"] },
   { key: "personal_support", title: "Quanto apoio você sentiu de pessoas próximas?", labels: ["Nenhum", "Pouco", "Moderado", "Bastante", "Muito"] },

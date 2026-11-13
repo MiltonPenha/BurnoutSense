@@ -1,0 +1,122 @@
+:root {
+  --action: #175e57;
+  --action-hover: #104a44;
+  --action-ink: #fff;
+  --link: #175e57;
+  --focus: #175e57;
+  --chart-accent: #175e57;
+  --primary: #47867b;
+  --primary-dark: #175e57;
+  --primary-soft: #e6f2ee;
+  --primary-line: #bedbd3;
+  --study-photo: url("/imgs/pausa-nos-estudos.webp");
+  --study-background-opacity: .14;
+}
+
+:root[data-theme="dark"] {
+  --action: #a9e2d5;
+  --action-hover: #c4eee5;
+  --action-ink: #122d28;
+  --link: #a9e2d5;
+  --focus: #a9e2d5;
+  --chart-accent: #a9e2d5;
+  --primary: #81bdb1;
+  --primary-dark: #a9e2d5;
+  --primary-soft: #193632;
+  --primary-line: #305951;
+  --study-background-opacity: .22;
+}
+
+body { isolation: isolate; }
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto auto;
+  z-index: -1;
+  width: min(100%, 920px);
+  height: min(88svh, 680px);
+  background: var(--study-photo) center top / cover;
+  mask-image: radial-gradient(ellipse at top right, black 12%, transparent 76%);
+  opacity: var(--study-background-opacity);
+  pointer-events: none;
+}
+
+.app-shell, .app-shell .main { background: transparent; }
+.app-shell .sidebar, .app-shell .mobile-menu-dialog { background: #172b32; box-shadow: none; }
+.app-shell .sidebar .avatar, .profile-page .profile-avatar { background: #dcefe9; color: #173b36; }
+
+.app-shell .page { padding-top: clamp(24px, 4vw, 56px); }
+.app-shell .page-title {
+  font-size: clamp(28px, 3.8vw, 40px);
+  font-weight: 650;
+  letter-spacing: -.045em;
+}
+.app-shell .button, .auth-main .button { border-radius: 10px; min-height: 44px; }
+.app-shell .card { box-shadow: none; border-radius: 16px; }
+.app-shell .dashboard-page { max-width: 1176px; }
+.dashboard-page .dashboard-empty {
+  min-height: 305px;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  padding: clamp(24px, 5vw, 58px);
+  background: var(--primary-soft);
+  border-color: var(--primary-line);
+}
+.dashboard-empty > div { max-width: 33ch; }
+.dashboard-page .dashboard-empty .button { margin-top: 18px; }
+.dashboard-page .dashboard-empty h2 { font-size: clamp(30px, 4vw, 52px); line-height: 1.08; letter-spacing: -.045em; }
+.dashboard-empty::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 0 38%;
+  z-index: -1;
+  background: linear-gradient(90deg, var(--primary-soft), transparent 68%), var(--study-photo) center 39% / cover;
+  opacity: .5;
+}
+:root[data-theme="dark"] .dashboard-empty::before { opacity: .7; }
+.dashboard-page .dashboard-overview {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: clamp(16px, 3vw, 28px);
+}
+.dashboard-page .tracking-days li { border-radius: 7px; min-height: 30px; }
+.dashboard-page .tracking-days li[data-today="true"] { border-color: var(--primary); }
+.dashboard-page .routine-feedback { border-radius: 16px; }
+.dashboard-page .feedback-icon { background: var(--primary-soft); color: var(--link); }
+.app-shell .result-score-note { margin: 0 0 10px; color: var(--muted); font-size: 14px; }
+
+.daily-page .daily-date-row {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  padding: 14px 18px;
+}
+.daily-page .daily-date-shortcuts button { min-height: 44px; }
+.daily-page .daily-fields { border-radius: 16px; }
+.daily-page .daily-moods label { background: var(--surface); border-radius: 10px; font-size: 13px; }
+.daily-page .daily-moods label svg { color: var(--link); pointer-events: none; }
+.daily-page .daily-moods label.selected,
+.daily-page .daily-rating-options label.selected { background: var(--primary-soft); border-color: var(--primary); }
+.daily-page .daily-steps li[aria-current="step"] > span { background: var(--action); color: var(--action-ink); }
+.daily-page .daily-rating-options label { border-radius: 9px; }
+.daily-page .daily-context { border-radius: 14px; }
+.profile-page .profile-tabs button.active { background: var(--primary-soft); border-color: var(--primary-line); color: var(--ink); }
+
+@media (max-width: 640px) {
+  body::before { background-position: 72% top; }
+  .dashboard-page .dashboard-empty { min-height: 0; padding-bottom: 164px; }
+  .dashboard-empty::before {
+    inset: auto 0 0;
+    height: 165px;
+    background: linear-gradient(180deg, var(--primary-soft), transparent 65%), var(--study-photo) center 35% / cover;
+  }
+  .daily-page .daily-moods > div { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .daily-page .daily-moods label { font-size: 12px; overflow-wrap: anywhere; }
+  .daily-page .daily-date-row { padding: 12px; }
+}

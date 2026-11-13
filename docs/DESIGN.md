@@ -3,19 +3,22 @@
 ## Organização
 
 - `frontend/app/globals.css`: tokens, fontes/base, resets e regras globais.
+- `frontend/app/product.css`: paleta do produto e fundo fotográfico translúcido
+  compartilhado pelas telas, com ajustes para os dois temas e para celular.
 - `frontend/components/ui/primitives.css`: controles e primitivas compartilhadas.
 - Componentes reutilizados mantêm seus próprios arquivos CSS ao lado do TSX.
 - Cada página mantém o CSS da sua rota. Não colocar estilos de uma página
   específica no arquivo global.
-- Ordem das camadas: `base`, `components`, `pages`. Evitar regras fora das
-  camadas para contornar conflitos; corrigir a origem da sobreposição.
+- Ordem das camadas: `base`, `components`, `pages`. Manter regras novas
+  de componentes e páginas nas camadas correspondentes.
 
 ## Cores e leitura
 
-O azul de marca `--primary` continua em `#60A5FA`; não é o fundo padrão de
-botões com texto branco. As ações usam `--action: #2563EB`, hover `#1D4ED8`
-e texto branco, com contraste superior a 4,5:1. Links e foco têm tokens próprios
-para cada tema. Cores das faixas do indicador não definem categorias clínicas.
+As ações principais usam `--action` e `--action-ink`, com verde-petróleo no
+tema claro e menta no escuro. Links e foco têm tokens próprios para cada tema.
+O anel da sidebar preenche proporcionalmente ao índice e usa as faixas de cor
+da interface. A transição respeita `prefers-reduced-motion`. As cores têm função
+visual e não definem categorias clínicas.
 
 Base de leitura e campos: 16px. Instruções e controles compactos: 14-15px;
 metadados curtos podem ser menores sem substituir o texto principal. Não reduzir
@@ -37,6 +40,10 @@ Validar overflow, quebra de linha, foco e temas, não apenas a captura desktop.
   em erros ou logs.
 - `IndexHelp` oferece a explicação curta e opcional do percentual; a ajuda longa
   permanece no "Como funciona".
+- O painel resume o último check-in ou mostra mudanças da rotina quando há
+  registros suficientes. A ação de revisão abre a escolha de tema.
+- Os ícones de humor são compartilhados entre o formulário de check-in e o
+  histórico. Editar e excluir têm ícones e rótulos de texto.
 
 ## Estado e dados temporários
 

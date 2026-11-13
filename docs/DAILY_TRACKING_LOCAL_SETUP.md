@@ -159,15 +159,22 @@ O gráfico começa em Semanal e permite Diário/Mensal. As médias usam o últim
 cálculo de cada dia, no fuso de São Paulo. Check-ins retroativos não deslocam
 previsões atuais para o passado.
 
+Na vista diária, as bolinhas mostram índices pela data de cálculo. Os losangos
+marcam os check-ins recentes pela data escolhida pelo estudante. Se os dias 11
+e 12 forem registrados no dia 12 e os cálculos acontecerem no dia 12, o gráfico
+mostra dois losangos e uma bolinha para o último cálculo do dia 12.
+
 Novos índices vinculam explicitamente o check-in que originou o cálculo.
 As datas de referência, cadastro, edição e cálculo são distintas. Excluir
 um dia exclui seus índices diretamente vinculados e recalcula o estado atual,
 preservando avaliações iniciais, revisões e resultados originados por outros dias.
 Registros antigos sem vínculo não recebem associações inventadas.
 
-O feedback de melhora/piora fica na própria dashboard, sem modal. A conclusão
-do check-in aparece em notificação temporária, não em faixa permanente.
+O cartão de rotina recente resume o último check-in e dá acesso à revisão.
+Quando há registros suficientes, apresenta a comparação de melhora ou piora
+na própria dashboard. A conclusão do check-in aparece em notificação temporária.
 Consulte [os lembretes diários](DAILY_REMINDERS.md) para o envio por e-mail.
+As dicas gerais usam uma [integração opcional com Gemini](GEMINI_GUIDANCE.md).
 
 O teste de integração abaixo exige os serviços locais e uma instalação do
 Playwright indicada em BURNOUTSENSE_PLAYWRIGHT_MODULE. Ele cria e remove

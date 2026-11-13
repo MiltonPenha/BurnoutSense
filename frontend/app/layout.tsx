@@ -1,5 +1,6 @@
 import "@/app/globals.css";
 import "@/components/ui/primitives.css";
+import "@/app/product.css";
 import localFont from "next/font/local";
 import { AppShell } from "@/components/layout/AppShell";
 import type { Metadata } from "next";

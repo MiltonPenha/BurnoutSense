@@ -4,12 +4,12 @@ import "./AppShell.css";
 import Link from "next/link";
 import Image from "next/image";
 import { X } from "lucide-react";
-import { formatIndex, indexColorBand } from "@/lib/esbeu-form";
+import { formatIndex, indexColorBand, indexPercentage } from "@/lib/esbeu-form";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { endSession, isAuthenticated, logoutUser, sessionAccountKey, SESSION_TIMEOUT_MINUTES } from "@/lib/burnout-api";
 import { BurnoutStoreProvider, useBurnoutStore } from "@/hooks/useBurnoutStore";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { AppToast } from "@/components/ui/AppToast";
 import { AccessibleDialog } from "@/components/ui/AccessibleDialog";
 import { IndexHelp } from "@/components/indicators/IndexHelp";
@@ -199,6 +199,7 @@ function Sidebars({ pathname, onLogout, onNavigate, isMobileMenuOpen }: Omit<Sid
 function Sidebar({ store, className = "", onLogout, onNavigate, pathname }: SidebarProps) {
   const { profile, latestRecord } = store;
   const initials = profile.name?.trim()?.slice(0, 1)?.toUpperCase() || "E";
+  const percentage = indexPercentage(latestRecord?.estimatedOverall);
 
   return (
     <aside className={`sidebar ${className}`.trim()}>
@@ -213,14 +214,17 @@ function Sidebar({ store, className = "", onLogout, onNavigate, pathname }: Side
           </span>
         </Link>
 
-        <section className="risk-orb tone-neutral" aria-label="Último índice registrado">
-          <div className="sidebar-index-meter" data-band={indexColorBand(latestRecord?.estimatedOverall)}>
-            <strong>{latestRecord ? formatIndex(latestRecord.estimatedOverall) : "—"}</strong>
+        {percentage !== null && <section className="risk-orb" aria-label="Último índice registrado">
+          <div className="sidebar-index-meter" data-band={indexColorBand(latestRecord?.estimatedOverall)} data-empty={percentage === 0} role="meter" aria-label="Índice de acompanhamento" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percentage} aria-valuetext={formatIndex(latestRecord?.estimatedOverall)} style={{ "--index-offset": 100 - percentage } as CSSProperties}>
+            <svg viewBox="0 0 112 112" fill="none" aria-hidden="true">
+              <circle className="sidebar-index-track" cx="56" cy="56" r="47" />
+              <circle className="sidebar-index-fill" cx="56" cy="56" r="47" pathLength="100" transform="rotate(-90 56 56)" />
+            </svg>
+            <strong>{formatIndex(latestRecord?.estimatedOverall)}</strong>
           </div>
-          <span>{latestRecord ? "Seu último índice" : "Seu primeiro registro"}</span>
-          <span>Acompanhe sua rotina</span>
-          {latestRecord && <IndexHelp />}
-        </section>
+          <span>Seu último índice</span>
+          <IndexHelp />
+        </section>}
 
         <nav className="sidebar-nav" aria-label="Navegação principal">
           {navItems.map((item) => {

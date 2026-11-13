@@ -73,7 +73,7 @@ function RegistroContent() {
     finally { setRetrying(false); }
   }
   return <section className="page daily-page">
-    <header className="page-header"><div><p className="overline">Um dia de cada vez</p><h1 className="page-title">Como foi seu dia?</h1><p className="page-kicker">Registre seu momento e acompanhe as mudanças na sua rotina.</p></div></header>
+    <header className="page-header"><div><h1 className="page-title">Como foi seu dia?</h1><p className="page-kicker">Um check-in rápido sobre seu sono, seus estudos e como você se sentiu.</p></div></header>
     {overview && <div className="daily-date-row">
       <CheckInCalendar date={date} today={overview.today} disabled={saving || retrying} onSelect={selectDate} />
       <div className="daily-date-shortcuts" role="group" aria-label="Datas rápidas">

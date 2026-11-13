@@ -253,21 +253,6 @@
   min-width: 0;
 }
 
-.emoji-icon {
-  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", var(--font-geist), sans-serif;
-  line-height: 1;
-}
-
-.alert-icon.emoji-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 17px;
-  line-height: 1;
-  text-align: center;
-  transform: none;
-}
-
 .card-title {
   margin: 0 0 18px;
   font-size: 15px;
@@ -425,38 +410,6 @@ select.input {
 
 .compact-header .page-title {
   font-size: 29px;
-}
-
-.alert-icon {
-  position: relative;
-  width: 28px;
-  height: 28px;
-  border-radius: 11px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: #FFE4E6;
-  color: var(--danger-ink);
-  flex: 0 0 28px;
-  font-size: 16px;
-  line-height: 1;
-}
-
-.alert-icon.emoji-icon::before,
-.alert-icon.emoji-icon::after {
-  content: none;
-}
-
-.alert-icon.emoji-icon {
-  padding-bottom: 0;
-  text-indent: 0;
-  transform: none;
-}
-
-.alert-icon.emoji-icon span {
-  display: block;
-  line-height: 1;
-  transform: translateY(-2px);
 }
 
 .field-hint {

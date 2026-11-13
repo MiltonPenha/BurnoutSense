@@ -13,18 +13,21 @@ function IndexBar({ value, label }: { value: number | null; label: string }) {
 }
 
 export function EsbeuResult({ record, title = "Seu índice", timeZone }: { record: Assessment; title?: string; timeZone?: string }) {
-  const experimental = record.source === "daily_experimental";
+  const fromCheckIns = record.source === "daily_experimental";
   const days = record.evolution && "recordedDays" in record.evolution ? record.evolution.recordedDays : undefined;
   const hasComplement = record.observedOverall !== null;
   return (
     <section className={`esbeu-results${hasComplement ? " has-complement" : ""}`} aria-label="Indicadores do seu registro">
       <article className="card esbeu-score">
-        <div className="esbeu-score-heading"><h2>{title}</h2><span className={`index-source${experimental ? " is-experimental" : ""}`}>{experimental ? "Atualização em teste" : record.source === "guided_review" ? "Revisão rápida" : "Contexto informado"}</span></div>
+        <div className="esbeu-score-heading">
+          <h2>{title}</h2>
+          {!fromCheckIns && <span className="index-source">{record.source === "guided_review" ? "Revisão rápida" : "Contexto informado"}</span>}
+        </div>
         <p className="esbeu-score-value">{formatIndex(record.estimatedOverall)}</p>
         <p className="result-score-note">ESB-eu estimada: {formatEsbeu(record.estimatedOverall)} de 4</p>
         <IndexBar value={record.estimatedOverall} label="Índice calculado do registro" />
         <div className="index-meta"><time dateTime={record.createdAt}>Calculado em {calculationDate(record.createdAt, timeZone)}</time>
-          {experimental && days !== undefined && <span>{days === 1 ? "1 dia usado no cálculo" : `${days} dias usados no cálculo`}</span>}
+          {fromCheckIns && days !== undefined && <span>{days === 1 ? "1 dia usado no cálculo" : `${days} dias usados no cálculo`}</span>}
         </div>
         {record.source === "context" && !hasComplement && <p className="result-score-note">Questionário complementar não respondido.</p>}
         <IndexHelp />

@@ -46,7 +46,13 @@ POST recebe `context` (exatamente os 22 campos), `consent=true`, `adult=true`, `
 
 `/registro` deriva perguntas, alternativas, tipos, instruções e limites de `form_schema.py` via FastAPI e NestJS. Não há cópia manual de categorias. Campos iniciam vazios e consentimentos desmarcados; zero e “Não se aplica” permanecem distintos. Respostas ficam no formulário em memória, sem armazenamento em localStorage ou telemetria. Autenticação requer backend configurado: não há login de demonstração ou salvamento fictício.
 
-`/dashboard` distingue ESB-eu estimada e observada, apresenta as dimensões somente quando medidas e mostra até 25 avaliações em ordem de registro. Janelas das últimas quatro semanas podem se sobrepor; o gráfico não indica previsão futura. A tabela científica mantém R² negativo e separa métricas agregadas da confiança de uma pessoa. `/historico` pagina avaliações; o detalhe apresenta respostas, versões e exclusão confirmada. Estados vazio, carregando, erro e indisponibilidade são explícitos. Não se exibem resultados antigos como se fossem ESB-eu.
+`/dashboard` apresenta calendário de check-ins, gráfico de evolução e rotina recente.
+O gráfico usa o último índice de cada data de cálculo. A vista diária também marca
+os check-ins na data registrada. O índice atual aparece na sidebar. `/historico`
+separa check-ins de índices e rotina em abas com paginação. O detalhe distingue
+estimativa e medição observada, com dimensões quando o questionário foi respondido.
+Métricas científicas agregadas permanecem na documentação técnica.
+Veja o [guia do acompanhamento diário](DAILY_TRACKING_LOCAL_SETUP.md).
 
 ## Implantação revisável
 

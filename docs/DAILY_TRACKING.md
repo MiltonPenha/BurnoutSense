@@ -15,7 +15,10 @@ evaluate this transformation before treating it as an established measurement.
 Keep `DAILY_CONTEXT_EVOLUTION_ENABLED=false` in the committed environment template.
 The expected TCC development and demo flow enables it explicitly in the ignored
 `backend/.env`; see the [local setup guide](DAILY_TRACKING_LOCAL_SETUP.md).
-No external generative AI receives account information, daily entries, notes, or predictions.
+The daily adapter calls the FastAPI inference service. The optional
+[Gemini integration](GEMINI_GUIDANCE.md) is separate and receives the displayed
+index percentage for general guidance. Account identifiers, daily entries and notes
+stay in the application.
 
 ## Product flow
 
@@ -94,6 +97,9 @@ The chart uses the last calculation per Sao Paulo calendar day. Weekly
 (Monday-Sunday, default) and monthly means weigh available days equally.
 Missing periods are gaps, never zero. The full series is independent of
 history pagination; dates are never backdated from a check-in reference.
+The daily chart also marks recent check-ins at their reference dates. A retroactive
+check-in can therefore have a marker on the day recorded and an index point on the
+day the calculation actually ran.
 
 Daily persistence commits before prediction. An AI failure never loses a saved day or
 fabricates an index. The response says the day was saved and the update is pending; the
@@ -125,8 +131,7 @@ avoid publishing a result from superseded observations.
   linked check-in dates without context answers or notes.
 
 The index percentage remains a presentation normalization of the original 0-4 output,
-not probability of burnout. The two recommendation dashboard placeholders remain separate;
-external generation is not enabled by this feature.
+not probability of burnout. Guidance is configured separately from the daily adapter.
 
 ## Deployment and verification
 

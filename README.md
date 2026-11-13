@@ -28,8 +28,10 @@ independente em novos participantes.
 - Check-in diário em duas etapas, com seleção de data e histórico separado dos índices.
 - Estimativa pelo Random Forest/A e identificação da versão usada.
 - Medição direta ESB-eu opcional, com média global e três dimensões.
-- Persistência de avaliações, dashboard, histórico paginado e gráfico de evolução.
-- Perfil e preferências de apresentação.
+- Painel com calendário de check-ins, gráfico diário, semanal e mensal e resumo da rotina recente.
+- Revisão de rotina por tema, disponível a qualquer momento, com sugestão após sete dias sem revisão.
+- Dicas e recomendações opcionais do Gemini, disponíveis após o primeiro índice.
+- Histórico paginado de check-ins e índices, perfil e temas claro e escuro.
 - Endpoints de saúde, prontidão, esquema e métricas agregadas do serviço Python.
 
 Novas avaliações não são incorporadas automaticamente ao treinamento.
@@ -43,6 +45,7 @@ flowchart LR
   B --> P[Prisma e PostgreSQL]
   B --> A[FastAPI: validação e inferência]
   A --> M[Pipeline RF/A privado]
+  B -. orientações opcionais .-> G[Google Gemini]
   L[Cliente local autorizado] -. comparação opcional .-> A
   A -. endpoint local separado .-> S[Ridge candidato privado]
 ```
@@ -54,7 +57,9 @@ flowchart LR
 | Prisma e PostgreSQL | Persistência de contas e avaliações |
 | Python, FastAPI e scikit-learn | Contratos, cálculo observado e inferência do pipeline |
 
-O backend envia apenas o contexto necessário à IA, sem identificador da conta.
+O backend envia ao FastAPI o contexto necessário para a estimativa, sem
+identificador da conta. Quando habilitado, o Gemini recebe o percentual do índice
+e instruções para gerar orientações gerais de autocuidado.
 O CSV de pesquisa não participa da inferência e não é distribuído pelo Git.
 
 ## Modelos e limites de uso
@@ -158,6 +163,7 @@ npm run dev
 | Backend | `DATABASE_URL`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `PORT=3001`, `FRONTEND_URL=http://localhost:3000` |
 | Backend → IA | `AI_SERVICE_URL=http://127.0.0.1:8000`, `AI_SERVICE_API_KEY` |
 | Recálculo diário no TCC | `DAILY_CONTEXT_EVOLUTION_ENABLED=true` e `ESBEU_ASSESSMENTS_ENABLED=true` no `backend/.env` local |
+| Orientações opcionais | `GEMINI_GUIDANCE_ENABLED=true`, `GEMINI_API_KEY` e `GEMINI_MODEL` no `backend/.env` local. Veja o [guia Gemini](docs/GEMINI_GUIDANCE.md). |
 | FastAPI RF/A | `BURNOUTSENSE_MODEL_DIR`, `BURNOUTSENSE_DATASET_VERSION=rf-a-candidate-v1`, `BURNOUTSENSE_TRUST_LOCAL_MODEL=true`, `BURNOUTSENSE_EXPERIMENTAL_MODEL=true`, `BURNOUTSENSE_API_KEY` |
 | Ridge opcional | `BURNOUTSENSE_SHADOW_RIDGE_ENABLED=false` por padrão; demais condições no [guia](docs/RIDGE_SHADOW.md) |
 
@@ -194,7 +200,9 @@ pnpm test --runInBand
 pnpm build
 
 # frontend
-node --test tests/esbeu-form.test.mjs
+npm run typecheck
+npm run lint
+node --test tests/*.test.mjs
 npm run build
 ```
 
@@ -208,13 +216,17 @@ da aplicação.
   privados permanecem fora do Git; a base real não é versionada.
 - `.gitignore` não protege arquivo já rastreado: revise o conteúdo e o índice.
 - Avaliações são isoladas por conta; a comunicação de serviço é autenticada.
-- Não há envio de respostas a APIs externas de geração de texto na previsão.
+- As respostas e notas dos check-ins ficam na aplicação. A integração opcional
+  com o Gemini envia o percentual do índice, sem identificadores diretos.
 - Hash confirma integridade, não confiança ou anonimização do modelo.
 - O Ridge não é habilitado automaticamente em produção nem substitui o RF/A.
 
 ## Documentação
 
 - [Desenvolvimento local](DEVELOPMENT_GUIDE.md)
+- [Acompanhamento diário](docs/DAILY_TRACKING.md)
+- [Dicas e recomendações com Gemini](docs/GEMINI_GUIDANCE.md)
+- [Convenções da interface](docs/DESIGN.md)
 - [Contrato NestJS e persistência](BACKEND_INSTRUCTIONS.md)
 - [API Python e treinamento](ai-service/README.md)
 - [Instalação e pacote RF/A](docs/RF_A_TEAM_SETUP.md)

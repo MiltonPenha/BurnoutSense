@@ -37,8 +37,7 @@ export default function HistoricoPage() {
     } catch { setError("Não foi possível carregar mais avaliações. As avaliações já carregadas continuam disponíveis."); }
     finally { inFlight.current = false; setBusy(false); }
   }
-  return <section className="page esbeu-page"><header className="page-header"><p className="overline">Seu percurso</p><h1 className="page-title">Histórico de registros</h1>
-    <p className="page-kicker">Reveja seus dias e as atualizações do seu índice.</p></header>
+  return <section className="page esbeu-page"><header className="page-header"><h1 className="page-title">Histórico de registros</h1></header>
     <div className="history-view-tabs" role="tablist" aria-label="Tipo de acompanhamento" onKeyDown={event => {
       if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
       event.preventDefault();

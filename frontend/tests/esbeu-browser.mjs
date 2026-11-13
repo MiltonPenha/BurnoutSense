@@ -52,10 +52,24 @@ try {
   await page.goto(base + "/registro");
   await page.waitForURL("**/contexto");
   await page.locator('[name="ctx-semester"]').waitFor();
+  const completeScales = {
+    sleep_quality: ["Muito ruim", "Ruim", "Regular", "Boa", "Muito boa"],
+    personal_support: ["Nenhum apoio", "Pouco apoio", "Apoio moderado", "Bastante apoio", "Muito apoio"],
+    academic_support: ["Nenhum apoio", "Pouco apoio", "Apoio moderado", "Bastante apoio", "Muito apoio"]
+  };
+  const verifiedScales = new Set();
   for (let step = 0; step < 5; step++) {
+    for (const [id, labels] of Object.entries(completeScales)) {
+      const field = page.locator(`#ctx-${id}`);
+      if (!await field.count()) continue;
+      assert.deepEqual(await field.locator("label span").allTextContents(), labels);
+      assert.deepEqual(await field.getByRole("radio").evaluateAll(options => options.map(option => option.value)), ["0", "1", "2", "3", "4"]);
+      verifiedScales.add(id);
+    }
     await fillVisible(schema.fields, example);
     await page.getByRole("button", { name: "Continuar", exact: true }).click();
   }
+  check("sleep_and_support_scales_have_labels_and_preserve_values", verifiedScales.size === Object.keys(completeScales).length);
   await page.getByRole("heading", { name: "Tudo pronto para calcular?" }).waitFor();
   check("guided_initial_context_reaches_review", true);
   await page.getByRole("button", { name: "Ver meu primeiro índice", exact: true }).click();
@@ -68,6 +82,13 @@ try {
   check("sidebar_displays_normalized_index", Number(await page.getByRole("meter", { name: "Índice de acompanhamento" }).getAttribute("aria-valuenow")) === initial.assessment.estimatedOverall * 25);
   await page.getByRole("link", { name: "Ver meu acompanhamento", exact: true }).click();
   await page.getByRole("heading", { name: "Calendário de check-ins", exact: true }).waitFor();
+  const chart = page.getByRole("region", { name: "Evolução do acompanhamento", exact: true });
+  await chart.getByRole("button", { name: "Diário", exact: true }).click();
+  await chart.getByText("Só há índice calculado em um dia.").waitFor();
+  check("single_index_is_plotted_on_its_calculation_day", await chart.locator(".index-chart-value").isVisible()
+    && await chart.locator(".index-chart-point").count() === 1
+    && await chart.locator(".index-chart-tick").count() === 7
+    && await chart.locator(".index-chart-line").count() === 0);
   const routine = page.getByRole("region", { name: "Sua rotina recente", exact: true });
   await routine.getByRole("link", { name: "Revisar minha rotina", exact: true }).waitFor();
   check("routine_review_is_optional_before_the_weekly_suggestion", (await api("/esbeu-assessments/review-topics")).suggested === null
@@ -102,6 +123,7 @@ try {
   await page.getByRole("button", { name: "Salvar meu dia", exact: true }).click();
   await page.waitForURL("**/dashboard");
   await page.getByText("Check-in salvo", { exact: true }).waitFor();
+  await page.locator(".tracking-today").getByText("Feito", { exact: true }).waitFor();
   check("saved_check_in_returns_to_dashboard_with_feedback", true);
   const firstDay = await api("/daily-check-ins/overview");
   await page.locator("main").getByRole("link", { name: "Novo registro", exact: true }).click();
@@ -158,7 +180,20 @@ try {
   check("forgotten_day_saved_without_overwriting_today", retro.today === updatedDay.today && retro.completedDays === 2 && retro.todayCheckIn.id === firstDay.todayCheckIn.id);
   const beforeReview = await api("/esbeu-assessments/current");
   check("daily_index_provenance_is_preserved", beforeReview.assessment.source === "daily_experimental" && beforeReview.assessment.evolution.recordedDays === 2);
+  await chart.getByRole("button", { name: "Diário", exact: true }).click();
+  await chart.locator(`.index-chart-checkin[data-date="${retro.today}"]`).waitFor();
+  await chart.locator(`.index-chart-checkin[data-date="${yesterday.toISOString().slice(0, 10)}"]`).waitFor();
+  await chart.getByRole("button", { name: "Período anterior" }).click();
+  await chart.getByText("Check-in registrado. Sem índice calculado nesta data.").waitFor();
+  check("retroactive_check_in_has_its_own_marker_without_a_backdated_score", await chart.locator(".index-chart-checkin").count() === 2
+    && await chart.locator(".index-chart-point").count() === 1
+    && await chart.locator(".index-chart-value").count() === 0);
+  await chart.getByRole("button", { name: "Próximo período" }).click();
   await page.screenshot({ path: path.join(output, "dashboard-experimental-mobile.png"), fullPage: true });
+  await page.goto(base + "/historico/" + beforeReview.assessment.id);
+  const result = page.getByRole("region", { name: "Indicadores do seu registro" });
+  await result.getByText("2 dias usados no cálculo", { exact: true }).waitFor();
+  check("daily_result_omits_test_badge", await result.getByText("Atualização em teste", { exact: true }).count() === 0);
   await page.goto(base + "/registro");
   await page.getByRole("link", { name: "Minha rotina mudou", exact: true }).click();
   await page.getByRole("link", { name: "Revisão completa", exact: true }).click();
@@ -197,18 +232,27 @@ try {
   const meter = page.locator(".sidebar:not(.mobile-sidebar) .sidebar-index-meter");
   await meter.locator("strong").waitFor();
   check("sidebar_index_uses_yellow_in_the_middle_band", await meter.getAttribute("data-band") === "yellow");
-  const ringOpacity = await meter.evaluate(element => getComputedStyle(element, "::before").opacity);
-  await page.waitForFunction(previous => getComputedStyle(document.querySelector(".sidebar:not(.mobile-sidebar) .sidebar-index-meter"), "::before").opacity !== previous, ringOpacity);
+  const ring = meter.locator(".sidebar-index-fill");
+  check("sidebar_ring_transitions_to_the_current_percentage", await ring.evaluate(element => {
+    const meter = element.closest('[role="meter"]');
+    return getComputedStyle(element).transitionProperty.includes("stroke-dashoffset")
+      && Math.abs(Number(meter.style.getPropertyValue("--index-offset")) + Number(meter.getAttribute("aria-valuenow")) - 100) < 0.01;
+  }));
   check("only_sidebar_ring_animates", await meter.locator("strong").evaluate(element => getComputedStyle(element).animationName === "none"));
   await page.emulateMedia({ reducedMotion: "reduce" });
-  check("sidebar_ring_respects_reduced_motion", await meter.evaluate(element => getComputedStyle(element, "::before").animationName === "none"));
+  check("sidebar_ring_respects_reduced_motion", await ring.evaluate(element => getComputedStyle(element).transitionDuration === "0s"));
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await meter.screenshot({ path: path.join(output, "sidebar-index-meter.png") });
   await page.screenshot({ path: path.join(output, "dashboard-desktop.png"), fullPage: true });
   await page.evaluate(() => document.documentElement.dataset.theme = "dark");
   await page.screenshot({ path: path.join(output, "dashboard-dark.png"), fullPage: true });
   await page.goto(base + "/historico");
-  await page.getByRole("heading", { name: "Calmo", exact: true }).waitFor();
+  const calmMood = page.locator(".daily-history-mood").filter({ hasText: "Calmo" }).first();
+  await calmMood.waitFor();
+  check("daily_history_reuses_the_checkin_mood_icon", await calmMood.locator("svg.lucide-waves").isVisible());
+  check("daily_history_actions_have_labeled_icons", await page.getByRole("link", { name: "Editar dia", exact: true }).first().locator("svg.lucide-pencil").isVisible()
+    && await page.getByRole("button", { name: /^Excluir check-in de/ }).first().locator("svg.lucide-trash-2").isVisible());
+  await page.locator(".daily-history-list").screenshot({ path: path.join(output, "historico-check-ins.png") });
   const beforeDelete = (await api("/esbeu-assessments")).items;
   const linkedIds = beforeDelete.filter(row => row.triggerCheckIn).map(row => row.id);
   for (let i = 0; i < 2; i++) {

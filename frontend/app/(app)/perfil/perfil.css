@@ -1,21 +1,4 @@
 @layer pages {
-.tab-emoji.emoji-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 17px;
-  line-height: 1;
-  text-align: center;
-  transform: none;
-}
-
-.tab-emoji.emoji-icon {
-  width: 22px;
-  height: 22px;
-  font-size: 15px;
-  transform: translateY(0);
-}
-
 .profile-card {
   padding: 34px;
   margin-bottom: 24px;

@@ -73,9 +73,9 @@ Em `frontend`, use `npm ci`, configure `NEXT_PUBLIC_API_URL` e execute
 `npm run dev`. Nunca exponha chaves da IA com `NEXT_PUBLIC_`.
 
 Gravações do contrato antigo estão retiradas (410). Dashboard, registro e
-histórico usam `esbeu_assessments`, com distinção observado/estimado. Não converta
-registros antigos. Lembretes ficam desativados por padrão; SMTP não é pré-requisito
-da inferência local.
+histórico usam `esbeu_assessments` para os resultados e `daily_check_ins` para
+os registros diários. Lembretes ficam desativados por padrão. SMTP e
+[Gemini](docs/GEMINI_GUIDANCE.md) são opcionais para a inferência local.
 
 ## Ridge opcional
 
@@ -87,7 +87,8 @@ oficial. Não é necessário retreinar para usar um pacote privado aprovado.
 ## Testes e privacidade
 
 Em `backend`: `pnpm test --runInBand` e `pnpm build`. Em `frontend`:
-`node --test tests/esbeu-form.test.mjs` e `npm run build`.
+`npm run typecheck`, `npm run lint`, `node --test tests/*.test.mjs` e
+`npm run build`.
 
 A homologação com navegador e banco usa ambiente próprio e fixtures fictícias;
 veja [Etapa 10](docs/ETAPA_10_INTEGRATION.md). Não use o banco da aplicação.

@@ -4,7 +4,7 @@ import { shiftCalendarDay } from "./daily-checkin.ts";
 export type TrendMode = "daily" | "weekly" | "monthly";
 export interface TrendPoint {
   start: string; end: string; value: number; days: number; label: string;
-  records: TrendRecord[]; connectPrevious: boolean;
+  connectPrevious: boolean;
 }
 export function calculationDay(value: string, timeZone = "America/Sao_Paulo") {
   const parts = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone }).formatToParts(new Date(value));
@@ -40,6 +40,6 @@ export function trendSeries(records: TrendRecord[], mode: TrendMode, timeZone = 
     const end = shiftCalendarDay(following(start, mode), -1);
     return { start, end, days: items.length, value: items.reduce((sum, r) => sum + r.estimatedOverall, 0) / items.length,
       label: mode === "monthly" ? `${start.slice(5, 7)}/${start.slice(0, 4)}` : mode === "daily" ? shortDate(start) : `${shortDate(start)}–${shortDate(end)}`,
-      records: items, connectPrevious: i > 0 && following(entries[i - 1][0], mode) === start };
+      connectPrevious: i > 0 && following(entries[i - 1][0], mode) === start };
   });
 }

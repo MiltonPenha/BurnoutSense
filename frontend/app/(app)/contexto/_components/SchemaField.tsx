@@ -1,4 +1,5 @@
 import type { FormField } from "@/lib/types";
+import { sleepQualityLabels } from "@/lib/daily-checkin";
 
 const hints: Record<string, string> = {
   semester: "Se o curso for anual, conte dois semestres por ano.",
@@ -7,6 +8,13 @@ const hints: Record<string, string> = {
   work_hours_week: "Se você não trabalha nem faz estágio, informe 0.",
   sleep_hours: "Conte seu período principal de sono, mesmo se for durante o dia.",
   study_work_difficulty: "Se você não trabalhou nem fez estágio no período, escolha “Não se aplica”."
+};
+
+const supportLabels = ["Nenhum apoio", "Pouco apoio", "Apoio moderado", "Bastante apoio", "Muito apoio"];
+const scaleLabels: Record<string, string[]> = {
+  sleep_quality: sleepQualityLabels,
+  personal_support: supportLabels,
+  academic_support: supportLabels
 };
 
 export function SchemaField({ field, prefix, value, onChange, error }: { field: FormField; prefix: string; value: string; onChange: (value: string) => void; error?: string }) {
@@ -19,7 +27,11 @@ export function SchemaField({ field, prefix, value, onChange, error }: { field: 
   </>;
 
   if (field.choices.length && field.choices.length <= 5) {
-    const options = field.choices.map((choice, index) => ({ value: String(index), label: field.labels[index] || String(choice) }));
+    const labels = scaleLabels[field.identifier];
+    const options = field.choices.map((choice, index) => ({
+      value: String(index),
+      label: field.labels[index] || labels?.[Number(choice)] || String(choice)
+    }));
     if (field.allows_not_applicable) options.push({ value: "na", label: "Não se aplica" });
     return (
       <fieldset className="context-choice-field" id={id} aria-invalid={Boolean(error)} aria-describedby={describedBy}>

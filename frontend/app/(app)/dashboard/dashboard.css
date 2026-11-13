@@ -1,15 +1,15 @@
 @layer pages {
   .dashboard-overview { display: grid; grid-template-columns: minmax(300px, .85fr) minmax(0, 1.15fr); align-items: start; gap: 28px; padding-block: 20px; border-block: 1px solid var(--line); }
-  .tracking-summary { display: grid; gap: 20px; min-width: 0; }
+  .tracking-summary { --tracking-calendar-width: 336px; display: grid; gap: 20px; min-width: 0; }
   .dashboard-page .tracking-summary h2 { grid-column: 1 / -1; margin: 0; font-size: 18px; }
   .tracking-summary > div { display: grid; align-content: start; gap: 10px; min-width: 0; }
-  .tracking-summary .tracking-today { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  .tracking-summary .tracking-today { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px; width: 100%; max-width: var(--tracking-calendar-width); align-self: start; }
   .tracking-today > div { display: grid; gap: 5px; }
-  .tracking-summary .tracking-review { min-height: 38px; gap: 7px; padding: 8px 12px; border-radius: 7px; border-color: var(--primary-line); font-size: 12px; }
+  .tracking-summary .tracking-review { gap: 6px; padding: 8px 10px; border-radius: 8px; border-color: var(--primary-line); color: var(--link); box-shadow: none; font-size: 12px; }
   .tracking-summary .tracking-review:hover { background: var(--primary-soft); border-color: var(--primary); }
   .tracking-summary span { color: var(--muted); line-height: 1.6; font-size: 13px; }
   .tracking-summary strong { font-size: 16px; }
-  .tracking-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; list-style: none; margin: 0; padding: 0; max-width: 336px; }
+  .tracking-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; list-style: none; margin: 0; padding: 0; max-width: var(--tracking-calendar-width); }
   .tracking-days li { min-height: 27px; display: grid; place-items: center; border-radius: 5px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
   .tracking-days li[data-recorded="true"] { background: var(--mint-soft); border-color: var(--success-line); color: var(--success-ink); font-weight: 700; }
   .tracking-days li[data-today="true"] { box-shadow: inset 0 0 0 1px var(--primary); border-color: var(--primary); }
@@ -32,8 +32,6 @@
   .feedback-heading { display: flex; align-items: center; gap: 12px; }
   .dashboard-page .feedback-heading h2 { font-size: 18px; margin: 0; }
   .feedback-icon { display: grid; place-items: center; width: 36px; height: 36px; flex: 0 0 36px; border-radius: 8px; font-size: 19px; line-height: 1; font-style: normal; }
-  .feedback-icon-blue { background: var(--primary-soft); }
-  .feedback-icon-mint { background: var(--mint-soft); }
   .feedback-placeholder { display: flex; align-items: center; min-height: 76px; padding-top: 12px; }
   .feedback-placeholder p { margin: 0; color: var(--muted); font-size: 13px; max-width: 44ch; }
   .review-invite { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; padding: 16px 0; border-bottom: 1px solid var(--line); }
@@ -42,7 +40,6 @@
   @media (max-width: 960px) {
     .dashboard-overview { grid-template-columns: 1fr; gap: 24px; }
     .tracking-summary { grid-template-columns: minmax(0, 1fr) minmax(272px, 1fr); }
-    .tracking-summary .tracking-today { align-content: start; justify-content: flex-start; }
   }
   @media (max-width: 640px) {
     .tracking-summary { grid-template-columns: 1fr; gap: 20px; }

@@ -215,7 +215,11 @@ function Sidebar({ store, className = "", onLogout, onNavigate, pathname }: Side
         </Link>
 
         {percentage !== null && <section className="risk-orb" aria-label="Último índice registrado">
-          <div className="sidebar-index-meter" data-band={indexColorBand(latestRecord?.estimatedOverall)} role="meter" aria-label="Índice de acompanhamento" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percentage} aria-valuetext={formatIndex(latestRecord?.estimatedOverall)} style={{ "--index-angle": `${percentage * 3.6}deg` } as CSSProperties}>
+          <div className="sidebar-index-meter" data-band={indexColorBand(latestRecord?.estimatedOverall)} data-empty={percentage === 0} role="meter" aria-label="Índice de acompanhamento" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percentage} aria-valuetext={formatIndex(latestRecord?.estimatedOverall)} style={{ "--index-offset": 100 - percentage } as CSSProperties}>
+            <svg viewBox="0 0 112 112" fill="none" aria-hidden="true">
+              <circle className="sidebar-index-track" cx="56" cy="56" r="47" />
+              <circle className="sidebar-index-fill" cx="56" cy="56" r="47" pathLength="100" transform="rotate(-90 56 56)" />
+            </svg>
             <strong>{formatIndex(latestRecord?.estimatedOverall)}</strong>
           </div>
           <span>Seu último índice</span>

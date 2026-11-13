@@ -1,6 +1,5 @@
 "use client";
 import Link from "next/link";
-import { BatteryLow, Cloud, CloudRain, Frown, Smile, Waves, Zap } from "lucide-react";
 import { useRef, useState } from "react";
 import { saveDailyCheckIn } from "@/lib/burnout-api";
 import { moods } from "@/lib/burnout-data";
@@ -9,10 +8,9 @@ import { formatIndex } from "@/lib/esbeu-form";
 import { getError } from "@/lib/errors";
 import { focusFormField } from "@/lib/form-focus";
 import { validateDailyAnswers } from "@/lib/daily-form-validation";
+import { CheckInMoodIcon } from "@/components/indicators/CheckInMoodIcon";
 import type { FormEvent } from "react";
 import type { Assessment, DailyCheckIn, DailyObservations, DailyOverview, DailyQuestion, ObservationDraft, ObservationKey, SavedDailyCheckIn } from "@/lib/types";
-
-const moodIcons = { happy: Smile, calm: Waves, anxious: Cloud, sad: CloudRain, angry: Zap, tired: BatteryLow, unmotivated: Frown } as const;
 
 function Rating({ question, value, onChange, error }: { question: DailyQuestion; value: number | ""; onChange: (value: number) => void; error?: string }) {
   return <fieldset className="daily-rating" id={`daily-${question.key}`} aria-invalid={Boolean(error)} aria-describedby={error ? `daily-${question.key}-error` : undefined}><legend>{question.title}</legend><div className="daily-rating-options">{question.labels.map((label, index) => <label key={label} className={value === index ? "selected" : ""}>
@@ -70,12 +68,11 @@ export function DailyCheckInForm({ overview, date, existing, assessment, onSaved
       <fieldset className="card daily-fields" disabled={saving}><legend className="sr-only">Check-in de {dailyDate(date)}</legend>
         <h2 className="daily-section-title" ref={stepTitle} tabIndex={-1}>{step === 0 ? "Humor e sono" : "Pressão, descanso e apoio"}</h2>
         {step === 0 ? <>
-          <fieldset className="daily-moods" id="daily-mood" aria-invalid={Boolean(fieldErrors.mood)} aria-describedby={fieldErrors.mood ? "daily-mood-error" : undefined}><legend>Como você se sentiu nesse dia?</legend><div>{moods.map(mood => {
-            const Icon = moodIcons[mood.icon as keyof typeof moodIcons];
-            return <label key={mood.name} className={draft.mood === mood.name ? "selected" : ""}>
-              <input type="radio" name="mood" value={mood.name} checked={draft.mood === mood.name} onChange={() => field("mood", mood.name)} /><Icon size={22} strokeWidth={1.65} aria-hidden="true" /><span>{mood.name}</span>
-            </label>;
-          })}</div>{fieldErrors.mood && <p className="field-error" id="daily-mood-error">{fieldErrors.mood}</p>}</fieldset>
+          <fieldset className="daily-moods" id="daily-mood" aria-invalid={Boolean(fieldErrors.mood)} aria-describedby={fieldErrors.mood ? "daily-mood-error" : undefined}><legend>Como você se sentiu nesse dia?</legend><div>{moods.map(mood => (
+            <label key={mood.name} className={draft.mood === mood.name ? "selected" : ""}>
+              <input type="radio" name="mood" value={mood.name} checked={draft.mood === mood.name} onChange={() => field("mood", mood.name)} /><CheckInMoodIcon mood={mood.name} /><span>{mood.name}</span>
+            </label>
+          ))}</div>{fieldErrors.mood && <p className="field-error" id="daily-mood-error">{fieldErrors.mood}</p>}</fieldset>
           <div className="daily-sleep"><label htmlFor="daily-sleep">Quantas horas você dormiu?</label><div><input id="daily-sleep" className="input" type="text" maxLength={8} inputMode="decimal" placeholder="Ex.: 7,5" value={draft.sleepHours} aria-invalid={Boolean(fieldErrors.sleepHours)} aria-describedby={`daily-sleep-hint${fieldErrors.sleepHours ? " daily-sleep-error" : ""}`} onChange={event => field("sleepHours", event.target.value)} /><span>horas</span></div><small id="daily-sleep-hint">Considere o principal período de sono associado ao dia escolhido.</small>{fieldErrors.sleepHours && <p className="field-error" id="daily-sleep-error">{fieldErrors.sleepHours}</p>}</div>
           <Rating question={dailyQuestions[0]} value={draft.observations.sleep_quality} error={fieldErrors.sleep_quality} onChange={value => observation("sleep_quality", value)} />
         </> : <>
@@ -86,6 +83,6 @@ export function DailyCheckInForm({ overview, date, existing, assessment, onSaved
       {error && <p className="form-error" role="alert">{error}</p>}
       <div className="form-actions">{step === 0 ? <Link className="button secondary" href="/dashboard">Voltar ao início</Link> : <button type="button" className="button secondary" disabled={saving} onClick={() => goToStep(0)}>Voltar</button>}<button className="button" type="submit" disabled={saving}>{saving ? "Salvando e atualizando…" : step === 0 ? "Continuar" : existing ? "Atualizar esse dia" : "Salvar meu dia"}</button></div>
     </form>
-    <section className="daily-context"><div><strong>Seu índice atual: {formatIndex(assessment.estimatedOverall)}</strong><p>Calculado em {calculationDate(assessment.createdAt, overview.timeZone)}. {overview.evolution?.enabled ? "Seus check-ins podem atualizar esse resultado. Acompanhamento diário em fase de teste." : "A atualização pelos check-ins está desativada neste ambiente."}</p></div><Link className="button secondary" href="/contexto?revisao=escolher">Minha rotina mudou</Link></section>
+    <section className="daily-context"><div><strong>Seu índice atual: {formatIndex(assessment.estimatedOverall)}</strong><p>Calculado em {calculationDate(assessment.createdAt, overview.timeZone)}. {overview.evolution?.enabled ? "Seus check-ins podem atualizar esse resultado." : "A atualização pelos check-ins está desativada neste ambiente."}</p></div><Link className="button secondary" href="/contexto?revisao=escolher">Minha rotina mudou</Link></section>
   </>;
 }

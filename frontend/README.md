@@ -8,6 +8,7 @@ hooks, contratos da API e bibliotecas sem JSX usam `.ts`.
 app/
   globals.css          Tema, fontes, reset e elementos globais
   layout.tsx           Layout raiz
+  product.css          Paleta do produto e imagem de fundo compartilhada
   (auth)/
     auth.css           Apresentacao compartilhada da autenticacao
     cadastro/          page.tsx + cadastro.css
@@ -19,7 +20,6 @@ app/
     historico/         page.tsx + historico.css
       [id]/            page.tsx + detalhe.css
     perfil/            page.tsx + perfil.css
-    status/            page.tsx + status.css
     como-funciona/     Explicacao simples para o estudante + CSS proprio
 components/
   layout/              AppShell e estilos da navegacao
@@ -52,8 +52,13 @@ A revisao reaproveita respostas e consentimento valido e requer confirmacao.
 A inferencia exige o pacote RF/A privado da equipe. Veja `docs/DAILY_TRACKING.md`
 na raiz para contratos, migracao e regras do acompanhamento.
 
-O dashboard apresenta registros, indices e dois espacos separados para dicas e
-recomendacoes. Enquanto a geracao nao estiver integrada, os espacos mostram
-estados vazios, sem sugestoes prontas ou resultados ficticios. Metricas de
-pesquisa e identificadores tecnicos ficam fora da interface do estudante;
-os contratos e metadados persistidos pelo backend permanecem inalterados.
+O painel exibe o calendário de check-ins, o gráfico de evolução e a rotina
+recente, com acesso à revisão de contexto. No gráfico diário, as bolinhas
+mostram índices na data do cálculo e os losangos marcam check-ins na data
+registrada pelo estudante. O histórico separa check-ins dos resultados calculados.
+
+As áreas de dicas e recomendações são liberadas após o primeiro índice e
+consultam o backend quando o Gemini está configurado. O serviço de geração
+recebe o percentual do índice e produz orientações gerais. Métricas de pesquisa
+e status técnico dos serviços ficam fora da navegação do estudante.
+Veja [o guia do Gemini](../docs/GEMINI_GUIDANCE.md).

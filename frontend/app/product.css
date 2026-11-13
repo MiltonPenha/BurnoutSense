@@ -10,6 +10,7 @@
   --primary-soft: #e6f2ee;
   --primary-line: #bedbd3;
   --study-photo: url("/imgs/pausa-nos-estudos.webp");
+  --study-background-opacity: .14;
 }
 
 :root[data-theme="dark"] {
@@ -23,40 +24,27 @@
   --primary-dark: #a9e2d5;
   --primary-soft: #193632;
   --primary-line: #305951;
+  --study-background-opacity: .22;
 }
 
-.app-shell .main { position: relative; isolation: isolate; }
-.app-shell .main::before {
+body { isolation: isolate; }
+
+body::before {
   content: "";
-  position: absolute;
+  position: fixed;
   inset: 0 0 auto auto;
   z-index: -1;
-  width: min(72%, 780px);
-  height: 540px;
+  width: min(100%, 920px);
+  height: min(88svh, 680px);
   background: var(--study-photo) center top / cover;
-  mask-image: radial-gradient(ellipse at top right, black, transparent 72%);
-  opacity: .09;
+  mask-image: radial-gradient(ellipse at top right, black 12%, transparent 76%);
+  opacity: var(--study-background-opacity);
   pointer-events: none;
 }
-:root[data-theme="dark"] .app-shell .main::before { opacity: .17; }
-.app-shell .main:has(.dashboard-empty)::before { display: none; }
+
+.app-shell, .app-shell .main { background: transparent; }
 .app-shell .sidebar, .app-shell .mobile-menu-dialog { background: #172b32; box-shadow: none; }
 .app-shell .sidebar .avatar, .profile-page .profile-avatar { background: #dcefe9; color: #173b36; }
-.sidebar .sidebar-index-meter {
-  background: conic-gradient(var(--index-ring) var(--index-angle), #30484e 0);
-}
-.sidebar .sidebar-index-meter[data-band="green"] { --index-ring: #8dd7c5; }
-.sidebar .sidebar-index-meter[data-band="yellow"] { --index-ring: #e5c778; }
-.sidebar .sidebar-index-meter[data-band="red"] { --index-ring: #e7a49a; }
-.sidebar .sidebar-index-meter strong { background: #172b32; }
-.sidebar .sidebar-index-meter::before {
-  background: conic-gradient(var(--index-highlight) var(--index-angle), transparent 0);
-  animation: sidebar-index-shine 3.8s ease-in-out infinite;
-}
-@keyframes sidebar-index-shine {
-  0%, 100% { opacity: 0; }
-  50% { opacity: .6; }
-}
 
 .app-shell .page { padding-top: clamp(24px, 4vw, 56px); }
 .app-shell .page-title {
@@ -80,6 +68,7 @@
   border-color: var(--primary-line);
 }
 .dashboard-empty > div { max-width: 33ch; }
+.dashboard-page .dashboard-empty .button { margin-top: 18px; }
 .dashboard-page .dashboard-empty h2 { font-size: clamp(30px, 4vw, 52px); line-height: 1.08; letter-spacing: -.045em; }
 .dashboard-empty::before {
   content: "";
@@ -120,6 +109,7 @@
 .profile-page .profile-tabs button.active { background: var(--primary-soft); border-color: var(--primary-line); color: var(--ink); }
 
 @media (max-width: 640px) {
+  body::before { background-position: 72% top; }
   .dashboard-page .dashboard-empty { min-height: 0; padding-bottom: 164px; }
   .dashboard-empty::before {
     inset: auto 0 0;
@@ -129,8 +119,4 @@
   .daily-page .daily-moods > div { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .daily-page .daily-moods label { font-size: 12px; overflow-wrap: anywhere; }
   .daily-page .daily-date-row { padding: 12px; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .sidebar .sidebar-index-meter::before { animation: none; opacity: 0; }
 }

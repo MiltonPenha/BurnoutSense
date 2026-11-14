@@ -7,7 +7,7 @@ import { X } from "lucide-react";
 import { formatIndex, indexColorBand, indexPercentage } from "@/lib/esbeu-form";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { endSession, isAuthenticated, logoutUser, sessionAccountKey, SESSION_TIMEOUT_MINUTES } from "@/lib/burnout-api";
+import { endSession, isAuthenticated, logoutUser, restoreSession, sessionAccountKey, SESSION_TIMEOUT_MINUTES } from "@/lib/burnout-api";
 import { BurnoutStoreProvider, useBurnoutStore } from "@/hooks/useBurnoutStore";
 import type { CSSProperties, ReactNode } from "react";
 import { AppToast } from "@/components/ui/AppToast";
@@ -28,16 +28,20 @@ const navItems = [
 export function AppShellClient({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const authRoute = pathname === "/login" || pathname === "/cadastro";
+  const recoveryRoute = pathname === "/esqueci-senha" || pathname === "/redefinir-senha";
+  const authRoute = pathname === "/login" || pathname === "/cadastro" || recoveryRoute;
   const [authState, setAuthState] = useState("checking");
   const [accountKey, setAccountKey] = useState("anonymous");
   const previousAccount = useRef("");
   const [sessionNotice, setSessionNotice] = useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [sessionAttempt, setSessionAttempt] = useState(0);
   const loggedIn = authState === "authenticated";
 
   useEffect(() => {
+    let active = true;
     function refreshAuthState() {
+      if (!active) return;
       const key = sessionAccountKey();
       if (!isAuthenticated() || previousAccount.current && previousAccount.current !== key) clearSessionDrafts();
       previousAccount.current = key;
@@ -45,18 +49,21 @@ export function AppShellClient({ children }: { children: ReactNode }) {
       setAuthState(isAuthenticated() ? "authenticated" : "anonymous");
     }
 
-    refreshAuthState();
-    window.addEventListener("storage", refreshAuthState);
+    const restore = () => restoreSession().then(refreshAuthState).catch(() => { if (active) setAuthState("unavailable"); });
+    const onStorage = (event: StorageEvent) => { if (event.key === "burnoutsense.auth.event") void restore(); };
+    void restore();
+    window.addEventListener("storage", onStorage);
     window.addEventListener("burnoutsense-auth-change", refreshAuthState);
 
     return () => {
-      window.removeEventListener("storage", refreshAuthState);
+      active = false;
+      window.removeEventListener("storage", onStorage);
       window.removeEventListener("burnoutsense-auth-change", refreshAuthState);
     };
-  }, []);
+  }, [sessionAttempt]);
 
   useEffect(() => {
-    if (authState === "checking") {
+    if (authState === "checking" || authState === "unavailable") {
       return;
     }
 
@@ -64,17 +71,17 @@ export function AppShellClient({ children }: { children: ReactNode }) {
       router.replace("/login");
     }
 
-    if (loggedIn && authRoute) {
+    if (loggedIn && authRoute && !recoveryRoute) {
       router.replace("/dashboard");
     }
-  }, [authRoute, authState, loggedIn, pathname, router]);
+  }, [authRoute, authState, loggedIn, pathname, recoveryRoute, router]);
 
   useEffect(() => {
     function handleSessionEnded(event: Event) {
       if (!(event instanceof CustomEvent)) return;
       const reason = event.detail?.reason;
       const message =
-        reason === "idle"
+        reason === "offline" ? "A sessão local foi encerrada. Reconecte-se para confirmar o encerramento no servidor." : reason === "idle"
           ? `Sua sessão foi encerrada após ${SESSION_TIMEOUT_MINUTES} minutos de inatividade.`
           : "Sua sessão expirou. Entre novamente para continuar.";
 
@@ -97,8 +104,7 @@ export function AppShellClient({ children }: { children: ReactNode }) {
     function resetIdleTimer() {
       window.clearTimeout(timeoutId);
       timeoutId = window.setTimeout(() => {
-        endSession("idle");
-        router.replace("/login");
+        void endSession("idle").then(() => router.replace("/login"));
       }, SESSION_TIMEOUT_MINUTES * 60 * 1000);
     }
 
@@ -122,10 +128,13 @@ export function AppShellClient({ children }: { children: ReactNode }) {
 
   async function handleLogout() {
     setIsMobileMenuOpen(false);
-    await logoutUser();
+    try { await logoutUser(); }
+    catch { setSessionNotice("Reconecte-se para confirmar o encerramento no servidor."); }
     window.dispatchEvent(new Event("burnoutsense-auth-change"));
     router.push("/login");
   }
+
+  if (authState === "unavailable") return <main className="auth-main"><section className="card"><h1>Sessão indisponível</h1><p>Não foi possível conectar ao serviço de acesso. Seus dados continuam salvos.</p><button className="button" onClick={() => { setAuthState("checking"); setSessionAttempt(value => value + 1); }}>Tentar novamente</button></section></main>;
 
   if (authState === "checking") {
     return (

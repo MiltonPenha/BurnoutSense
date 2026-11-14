@@ -1,3 +1,5 @@
 @layer pages {
   .login-page .auth-brand { margin-bottom: 28px; }
+  .login-forgot-password { display: block; width: fit-content; margin: 10px 0 0 auto; padding: 5px 0; font-size: 13px; }
+  .login-forgot-password:hover { text-decoration: underline; }
 }

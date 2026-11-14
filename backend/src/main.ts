@@ -4,11 +4,19 @@ import { NestFactory } from '@nestjs/core';
 import { json, urlencoded } from 'express';
 import type { ErrorRequestHandler } from 'express';
 import helmet from 'helmet';
+import * as cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
+import { SessionSecurityService } from './auth/session-security.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bodyParser: false });
   const configService = app.get(ConfigService);
+  const security = app.get(SessionSecurityService);
+  if (configService.get<string>('TRUST_PROXY_HOPS')) {
+    const hops = Number(configService.get<string>('TRUST_PROXY_HOPS'));
+    if (!Number.isInteger(hops) || hops < 1 || hops > 5) throw new Error('Invalid TRUST_PROXY_HOPS.');
+    app.getHttpAdapter().getInstance().set('trust proxy', hops);
+  }
 
   app.use(['/esbeu-assessments', '/daily-check-ins'], (_request: unknown, response: { setHeader: (key: string, value: string) => void }, next: () => void) => {
     response.setHeader('Cache-Control', 'no-store');
@@ -26,14 +34,15 @@ async function bootstrap() {
   };
   app.use(bodyErrors);
   app.use(helmet());
+  app.use(cookieParser());
+  app.use(['/auth', '/users'], (_req: unknown, res: { setHeader: (key: string, value: string) => void }, next: () => void) => { res.setHeader('Cache-Control', 'no-store'); next(); });
 
-  const frontendUrl = configService.get<string>('FRONTEND_URL') ?? 'http://localhost:3000';
-  const localOrigins = ['http://localhost:3000', 'http://127.0.0.1:3000'];
   app.enableCors({
-    origin: configService.get<string>('NODE_ENV') !== 'production' && localOrigins.includes(frontendUrl)
-      ? localOrigins : frontendUrl,
+    origin: security.origin,
     credentials: true,
+    allowedHeaders: ['Content-Type', 'X-CSRF-Token'],
   });
+  app.use(security.protect);
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -46,7 +55,7 @@ async function bootstrap() {
   );
 
   const port = configService.get<number>('PORT') ?? 3001;
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
 }
 
 bootstrap();

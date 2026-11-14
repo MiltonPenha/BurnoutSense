@@ -79,6 +79,7 @@ no FastAPI. Não use a chave em variáveis `NEXT_PUBLIC_*`. Confira:
 ```dotenv
 PORT=3001
 FRONTEND_URL=http://localhost:3000
+CSRF_SECRET=
 AI_SERVICE_URL=http://127.0.0.1:8000
 ESBEU_ASSESSMENTS_ENABLED=true
 DAILY_CONTEXT_EVOLUTION_ENABLED=true
@@ -111,8 +112,11 @@ npm run dev
 ```
 
 Confirme `NEXT_PUBLIC_API_URL=http://localhost:3001` em `frontend/.env.local`.
+Use `http://localhost:3000` no navegador. A sessão agora usa cookies e CSRF,
+não tokens no localStorage. Não misture localhost e 127.0.0.1 no mesmo fluxo.
 Se alterar as portas, atualize as URLs correspondentes no frontend e no backend.
 Abra [o painel local](http://localhost:3000) com os quatro serviços ativos.
+Leia [a autenticação por cookies](COOKIE_AUTH.md) para adaptar clientes de teste.
 
 ## 3. Validar sem usar dados reais
 
@@ -188,7 +192,8 @@ As dicas gerais usam uma [integração opcional com Gemini](GEMINI_GUIDANCE.md).
 
 O teste de integração abaixo exige os serviços locais e uma instalação do
 Playwright indicada em BURNOUTSENSE_PLAYWRIGHT_MODULE. Ele cria e remove
-somente contas fictícias e não aciona o teste de e-mail:
+somente contas fictícias e verifica que a antiga rota de envio manual
+retorna HTTP 404 sem disparar e-mails:
 
 ```powershell
 node backend/test/verify-dashboard-flow.cjs

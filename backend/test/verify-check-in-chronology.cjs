@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { randomBytes } = require('node:crypto');
 const { createRequire } = require('node:module');
+const { createTestTransport } = require('./cookie-api-client.cjs');
 
 async function main() {
   const root = path.resolve(__dirname, '../..');
@@ -13,11 +14,10 @@ async function main() {
   const checks = [], api = 'http://localhost:3001', output = path.join(root, '.run-logs/check-in-chronology');
   fs.mkdirSync(output, { recursive: true });
   let auth, browser;
+  const transport = createTestTransport(api);
   const check = (label, value) => { assert.ok(value, label); checks.push(label); };
   async function json(route, method = 'GET', body) {
-    const response = await fetch(api + route, { method, signal: AbortSignal.timeout(60000),
-      headers: { 'Content-Type': 'application/json', ...(auth ? { Authorization: 'Bearer ' + auth.accessToken } : {}) },
-      body: body ? JSON.stringify(body) : undefined });
+    const response = await transport.request(route, method, body, auth?.user.id);
     assert.ok(response.ok, route + ': HTTP ' + response.status);
     return response.status === 204 ? null : response.json();
   }
@@ -75,10 +75,7 @@ async function main() {
       const { chromium } = require(process.env.BURNOUTSENSE_PLAYWRIGHT_MODULE);
       browser = await chromium.launch({ channel: 'msedge', headless: true });
       const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' });
-      await context.addInitScript(tokens => {
-        localStorage.setItem('burnoutsense.auth.accessToken', tokens.accessToken);
-        localStorage.setItem('burnoutsense.auth.refreshToken', tokens.refreshToken);
-      }, auth);
+      await transport.addToBrowser(context, auth.user.id);
       const page = await context.newPage(), errors = [];
       page.on('pageerror', error => errors.push(error.message));
       await page.goto('http://localhost:3000/dashboard');

@@ -4,11 +4,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { randomBytes } = require('node:crypto');
 const { createRequire } = require('node:module');
+const { createTestTransport } = require('./cookie-api-client.cjs');
 
 async function main() {
   const root = path.resolve(__dirname, '../..');
   const cfg = createRequire(require.resolve('@nestjs/config'))('dotenv').parse(fs.readFileSync(path.join(root, 'backend/.env')));
-  const api = 'http://localhost:3001', web = 'http://127.0.0.1:3000';
+  const api = 'http://localhost:3001', web = 'http://localhost:3000';
+  const transport = createTestTransport(api, web);
   assert.ok(['localhost', '127.0.0.1'].includes(new URL(cfg.DATABASE_URL).hostname));
   assert.ok(['localhost', '127.0.0.1'].includes(new URL(cfg.AI_SERVICE_URL).hostname));
   assert.notEqual(cfg.NODE_ENV, 'production');
@@ -19,8 +21,8 @@ async function main() {
   const accounts = [], checks = [], views = [], findings = {};
   let auth, page;
   const check = (label, value) => { assert.ok(value, label); checks.push(label); };
-  async function request(route, method = 'GET', body, token = auth?.accessToken) {
-    return fetch(api + route, { method, signal: AbortSignal.timeout(35000), headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) }, body: body ? JSON.stringify(body) : undefined });
+  async function request(route, method = 'GET', body, ownerId = auth?.user.id) {
+    return transport.request(route, method, body, ownerId);
   }
   async function json(route, method, body, token) {
     let response = await request(route, method, body, token);
@@ -52,12 +54,9 @@ async function main() {
     check('repeated reads reuse the generated response', guidance.generatedAt === cached.generatedAt);
     check('unauthenticated guidance is blocked', (await request('/guidance/' + initial.id, 'GET', undefined, '')).status === 401);
     const foreign = await account();
-    check('another account cannot request guidance for this assessment', (await request('/guidance/' + current.id, 'GET', undefined, foreign.accessToken)).status === 404);
+    check('another account cannot request guidance for this assessment', (await request('/guidance/' + current.id, 'GET', undefined, foreign.user.id)).status === 404);
     const browserContext = await browser.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' });
-    await browserContext.addInitScript(value => {
-      localStorage.setItem('burnoutsense.auth.accessToken', value.accessToken);
-      localStorage.setItem('burnoutsense.auth.refreshToken', value.refreshToken);
-    }, auth);
+    await transport.addToBrowser(browserContext, auth.user.id);
     page = await browserContext.newPage(); page.setDefaultTimeout(20000);
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
@@ -127,7 +126,7 @@ async function main() {
     throw error;
   } finally {
     await browser.close();
-    for (const account of accounts) assert.ok((await request('/users/me', 'DELETE', undefined, account.accessToken)).ok, 'fictional account cleanup');
+    for (const account of accounts) assert.ok((await request('/users/me', 'DELETE', undefined, account.user.id)).ok, 'fictional account cleanup');
   }
 }
 main().catch(error => { console.error(error.message); process.exitCode = 1; });

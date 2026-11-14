@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+.venv
+venv
+__pycache__
+saved_models
+*.joblib
+*.pkl
+*.private.*
+*.csv
+tests

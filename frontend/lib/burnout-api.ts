@@ -3,7 +3,7 @@ import { ApiError } from "./errors";
 import type { GuidanceResult } from "./types";
 import { createSessionReadCache } from "./session-read-cache";
 import { clearSessionDrafts } from "./session-draft";
-import type { AccountProfile, Assessment, AssessmentDetail, AuthResponse, CreateAssessment, CurrentContext, DailyCheckIn, DailyDay, DailyOverview, FormSchema, IndexUpdate, NotificationResult, PageResult, Profile, ReviewContext, ReviewPlan, ReviewTopicId, SaveDailyCheckIn, SavedDailyCheckIn, SystemStatus, TrendRecord } from "./types";
+import type { AccountProfile, Assessment, AssessmentDetail, AuthResponse, CreateAssessment, CurrentContext, DailyCheckIn, DailyDay, DailyOverview, FormSchema, IndexUpdate, PageResult, Profile, ReviewContext, ReviewPlan, ReviewTopicId, SaveDailyCheckIn, SavedDailyCheckIn, SystemStatus, TrendRecord } from "./types";
 
 type LoadOptions = { silentUnauthorized?: boolean };
 
@@ -15,11 +15,12 @@ type RequestOptions = Omit<RequestInit, "headers"> & { auth?: boolean; sessionEx
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 const readCache = createSessionReadCache();
 
-const AUTH_KEYS = {
-  accessToken: "burnoutsense.auth.accessToken",
-  refreshToken: "burnoutsense.auth.refreshToken",
-  activeSession: "burnoutsense.auth.activeSession"
-};
+const AUTH_KEYS = { activeSession: "burnoutsense.auth.activeSession", event: "burnoutsense.auth.event", pendingLogout: "burnoutsense.auth.pendingLogout" };
+let sessionUser: AccountProfile | null = null;
+let sessionGeneration = 0;
+let csrfToken: string | null = null;
+let csrfRequest: Promise<string> | null = null;
+let sessionRequest: Promise<boolean> | null = null;
 
 export const SESSION_TIMEOUT_MINUTES = 30;
 
@@ -50,18 +51,14 @@ function writeJson(key: string, value: unknown) {
   }
 }
 
-function readToken(key: string) {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  return window.localStorage.getItem(key);
+function purgeLegacyTokens() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem("burnoutsense.auth.accessToken");
+  window.localStorage.removeItem("burnoutsense.auth.refreshToken");
 }
 
-function writeToken(key: string, value: string) {
-  if (typeof window !== "undefined" && value) {
-    window.localStorage.setItem(key, value);
-  }
+function broadcastSessionChange() {
+  if (typeof window !== "undefined") window.localStorage.setItem(AUTH_KEYS.event, String(Date.now()) + Math.random());
 }
 
 function markActiveBrowserSession() {
@@ -98,11 +95,11 @@ function notifySessionExpired(reason = "expired") {
 
 function clearAuthTokens(reason?: string, options: { showMessage?: boolean } = {}) {
   readCache.clear(); clearSessionDrafts();
+  sessionUser = null; csrfToken = null; sessionGeneration++;
   const shouldShowMessage = options.showMessage ?? Boolean(reason);
 
   if (typeof window !== "undefined") {
-    window.localStorage.removeItem(AUTH_KEYS.accessToken);
-    window.localStorage.removeItem(AUTH_KEYS.refreshToken);
+    purgeLegacyTokens();
     clearActiveBrowserSession();
     if (reason && shouldShowMessage) {
       notifySessionExpired(reason);
@@ -113,8 +110,13 @@ function clearAuthTokens(reason?: string, options: { showMessage?: boolean } = {
 
 function persistAuthResponse(authResponse: AuthResponse) {
   readCache.clear();
-  writeToken(AUTH_KEYS.accessToken, authResponse.accessToken);
-  writeToken(AUTH_KEYS.refreshToken, authResponse.refreshToken);
+  if (sessionUser?.id !== authResponse.user.id) {
+    if (sessionUser) clearSessionDrafts();
+    sessionGeneration++;
+  }
+  sessionUser = authResponse.user;
+  if (authResponse.csrfToken) csrfToken = authResponse.csrfToken;
+  purgeLegacyTokens();
   markActiveBrowserSession();
 
   if (authResponse.user) {
@@ -126,34 +128,60 @@ function persistAuthResponse(authResponse: AuthResponse) {
   return authResponse;
 }
 
-function authHeaders(): Record<string, string> {
-  const accessToken = readToken(AUTH_KEYS.accessToken);
-
-  if (!accessToken) {
-    return {};
-  }
-
-  return {
-    Authorization: `Bearer ${accessToken}`
-  };
-}
-
 export function isAuthenticated() {
-  if (!hasBackend()) {
-    return false;
-  }
-
-  return Boolean(readToken(AUTH_KEYS.accessToken));
+  return hasBackend() && Boolean(sessionUser);
 }
 
 // UI state isolation only. Authorization is always checked by the backend.
 export function sessionAccountKey() {
-  try {
-    const payload = readToken(AUTH_KEYS.accessToken)?.split(".")[1];
-    if (!payload) return "anonymous";
-    const claims: unknown = JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
-    return claims && typeof claims === "object" && "sub" in claims && typeof claims.sub === "string" ? claims.sub : "anonymous";
-  } catch { return "anonymous"; }
+  return sessionUser?.id ?? "anonymous";
+}
+
+async function getCsrfToken(): Promise<string> {
+  if (csrfToken) return csrfToken;
+  csrfRequest ??= fetch(endpoint("/auth/csrf"), { credentials: "include", cache: "no-store" })
+    .then(async response => {
+      if (!response.ok) throw new ApiError("Não foi possível preparar sua sessão.", response.status);
+      const body: { csrfToken: string } = await response.json();
+      csrfToken = body.csrfToken; return body.csrfToken;
+    }).finally(() => { csrfRequest = null; });
+  return csrfRequest;
+}
+
+async function sessionFetch(path: string, options: RequestInit = {}) {
+  const mutation = !["GET", "HEAD", "OPTIONS"].includes((options.method ?? "GET").toUpperCase());
+  const send = async () => fetch(endpoint(path), { ...options, credentials: "include", cache: "no-store",
+    headers: { "Content-Type": "application/json", ...options.headers, ...(mutation ? { "X-CSRF-Token": await getCsrfToken() } : {}) } });
+  let response = await send();
+  if (mutation && response.status === 403 && (await response.clone().json().catch(() => null))?.code === "CSRF_INVALID") {
+    csrfToken = null; response = await send();
+  }
+  return response;
+}
+
+async function restoreAuthResponse(response: Response, generation: number) {
+  const body: AuthResponse = await response.json();
+  if (generation !== sessionGeneration) return isAuthenticated();
+  persistAuthResponse(body);
+  return true;
+}
+
+export function restoreSession(): Promise<boolean> {
+  requireBackend(); purgeLegacyTokens();
+  sessionRequest ??= (async () => {
+    if (typeof window !== "undefined" && window.localStorage.getItem(AUTH_KEYS.pendingLogout)) await logoutUser();
+    const generation = sessionGeneration;
+    const response = await sessionFetch("/auth/session");
+    if (generation !== sessionGeneration) return isAuthenticated();
+    if (response.ok) return restoreAuthResponse(response, generation);
+    if (response.status === 401) {
+      const restored = await refreshAuthToken();
+      if (!restored) clearAuthTokens();
+      return restored;
+    }
+    throw new ApiError("Não foi possível verificar sua sessão. Tente novamente.", response.status);
+  })().finally(() => { sessionRequest = null; });
+  return sessionRequest;
 }
 
 let refreshing: Promise<boolean> | null = null;
@@ -163,27 +191,26 @@ function refreshAuthToken() {
 }
 
 async function performRefresh() {
-  const refreshToken = readToken(AUTH_KEYS.refreshToken);
-
-  if (!refreshToken) {
-    return false;
-  }
-
-  const response = await fetch(endpoint("/auth/refresh"), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ refreshToken })
-  }).catch(() => null);
-
-  if (!response?.ok) {
-    return false;
-  }
-
-  const authResponse = await response.json();
-  persistAuthResponse(authResponse);
-  return true;
+  const renew = async () => {
+    const generation = sessionGeneration;
+    // A different tab may already have renewed the shared cookie while we waited.
+    const active = await sessionFetch("/auth/session");
+    if (generation !== sessionGeneration) return isAuthenticated();
+    if (active.ok) return restoreAuthResponse(active, generation);
+    if (active.status !== 401) throw new ApiError("Não foi possível renovar sua sessão.", active.status);
+    const response = await sessionFetch("/auth/refresh", { method: "POST" });
+    if (generation !== sessionGeneration) return isAuthenticated();
+    if (response.status === 401) return false;
+    if (response.status === 409) {
+      const retry = await sessionFetch("/auth/session");
+      if (!retry.ok) return false;
+      return restoreAuthResponse(retry, generation);
+    }
+    if (!response.ok) throw new ApiError("Não foi possível renovar sua sessão.", response.status);
+    return restoreAuthResponse(response, generation);
+  };
+  return typeof navigator !== "undefined" && navigator.locks
+    ? navigator.locks.request("burnoutsense-session-refresh", renew) : renew();
 }
 
 function requireBackend() {
@@ -192,9 +219,8 @@ function requireBackend() {
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const method = (options.method ?? "GET").toUpperCase();
-  const token = readToken(AUTH_KEYS.accessToken);
-  if (method === "GET" && options.auth !== false && token) {
-    return readCache.read(`${token}:${path}:${options.sessionExpiredOnUnauthorized !== false}`, () => performApiRequest<T>(path, options));
+  if (method === "GET" && options.auth !== false && sessionUser) {
+    return readCache.read(`${sessionUser.id}:${sessionGeneration}:${path}:${options.sessionExpiredOnUnauthorized !== false}`, () => performApiRequest<T>(path, options));
   }
   if (method !== "GET") readCache.clear();
   try { return await performApiRequest<T>(path, options); }
@@ -209,12 +235,11 @@ async function performApiRequest<T>(path: string, options: RequestOptions = {}):
   const shouldRetryAuth = retryAuthOnUnauthorized;
 
   const performRequest = () =>
-    fetch(endpoint(path), {
+    sessionFetch(path, {
       ...fetchOptions,
       cache: "no-store",
       headers: {
         "Content-Type": "application/json",
-        ...(shouldAttachAuth ? authHeaders() : {}),
         ...headers
       }
     });
@@ -330,16 +355,28 @@ export async function updateProfile(profile: Profile) {
   return normalized;
 }
 
-export async function sendTestNotification(preferences: Record<string, boolean>) {
-  return request<NotificationResult>("/notifications/test", { method: "POST", body: JSON.stringify(preferences) });
-}
-
 export async function loginUser(credentials: { email: string; password: string }) {
   const response = await request<AuthResponse>("/auth/login", {
     method: "POST", auth: false, sessionExpiredOnUnauthorized: false,
     body: JSON.stringify({ email: credentials.email.trim().toLowerCase(), password: credentials.password })
   });
-  return persistAuthResponse(response);
+  clearSessionDrafts(); const result = persistAuthResponse(response); broadcastSessionChange(); return result;
+}
+
+export function requestPasswordReset(email: string) {
+  return request<{ message: string }>("/auth/forgot-password", {
+    method: "POST", auth: false, sessionExpiredOnUnauthorized: false, retryAuthOnUnauthorized: false,
+    body: JSON.stringify({ email: email.trim().toLowerCase() })
+  });
+}
+
+export async function resetPassword(token: string, password: string) {
+  const result = await request<{ message: string }>("/auth/reset-password", {
+    method: "POST", auth: false, sessionExpiredOnUnauthorized: false, retryAuthOnUnauthorized: false,
+    body: JSON.stringify({ token, password })
+  });
+  clearAuthTokens(); broadcastSessionChange();
+  return result;
 }
 
 export async function registerUser(payload: { name: string; email: string; password: string }) {
@@ -347,41 +384,33 @@ export async function registerUser(payload: { name: string; email: string; passw
     method: "POST", auth: false, sessionExpiredOnUnauthorized: false,
     body: JSON.stringify({ name: payload.name.trim(), email: payload.email.trim().toLowerCase(), password: payload.password })
   });
-  return persistAuthResponse(response);
+  clearSessionDrafts(); const result = persistAuthResponse(response); broadcastSessionChange(); return result;
 }
 
-export async function logoutUser() {
+export async function logoutUser(reason?: string) {
+  if (typeof window !== "undefined") window.localStorage.setItem(AUTH_KEYS.pendingLogout, "true");
   try {
     if (hasBackend()) {
-      const refreshToken = readToken(AUTH_KEYS.refreshToken);
-      const body = refreshToken ? { refreshToken } : {};
-
       await request("/auth/logout", {
         method: "POST",
+        auth: false,
         retryAuthOnUnauthorized: false,
         sessionExpiredOnUnauthorized: false,
-        body: JSON.stringify(body)
       });
     }
+    if (typeof window !== "undefined") window.localStorage.removeItem(AUTH_KEYS.pendingLogout);
   } finally {
-    clearAuthTokens();
+    clearAuthTokens(reason); broadcastSessionChange();
   }
 }
 
 export async function deleteCurrentUser() {
-  try {
-    if (hasBackend()) {
-      await request("/users/me", {
-        method: "DELETE"
-      });
-    }
-  } finally {
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem(STORAGE_KEYS.profile);
-      window.localStorage.removeItem(STORAGE_KEYS.records);
-    }
-    clearAuthTokens();
+  await request("/users/me", { method: "DELETE" });
+  if (typeof window !== "undefined") {
+    window.localStorage.removeItem(STORAGE_KEYS.profile);
+    window.localStorage.removeItem(STORAGE_KEYS.records);
   }
+  clearAuthTokens(); broadcastSessionChange();
 }
 
 export async function getSystemStatus(): Promise<SystemStatus> {
@@ -400,6 +429,7 @@ export async function getSystemStatus(): Promise<SystemStatus> {
   });
 }
 
-export function endSession(reason = "expired") {
-  clearAuthTokens(reason);
+export async function endSession(reason = "expired") {
+  try { await logoutUser(reason); }
+  catch { notifySessionExpired("offline"); }
 }

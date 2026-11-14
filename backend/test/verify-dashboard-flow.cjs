@@ -4,12 +4,14 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { randomBytes } = require('node:crypto');
 const { createRequire } = require('node:module');
+const { createTestTransport } = require('./cookie-api-client.cjs');
 
 async function main() {
   const root = path.resolve(__dirname, '../..');
   const cfg = createRequire(require.resolve('@nestjs/config'))('dotenv').parse(fs.readFileSync(path.join(root, 'backend/.env')));
   const api = process.env.BURNOUTSENSE_E2E_API_URL || 'http://localhost:3001';
-  const web = process.env.BURNOUTSENSE_E2E_BASE_URL || 'http://127.0.0.1:3000';
+  const web = process.env.BURNOUTSENSE_E2E_BASE_URL || 'http://localhost:3000';
+  const transport = createTestTransport(api, web);
   const ai = cfg.AI_SERVICE_URL;
   for (const url of [api, web, ai, cfg.DATABASE_URL]) assert.ok(['127.0.0.1', 'localhost', '[::1]'].includes(new URL(url).hostname));
   assert.notEqual(cfg.NODE_ENV, 'production');
@@ -21,9 +23,10 @@ async function main() {
   const checks = [];
   let auth, page;
   const check = (name, value) => { assert.ok(value, name); checks.push(name); };
-  async function request(base, route, method = 'GET', body, token = auth?.accessToken) {
+  async function request(base, route, method = 'GET', body, ownerId = auth?.user.id) {
+    if (base === api) return transport.request(route, method, body, ownerId);
     return fetch(new URL(route, base), { method, signal: AbortSignal.timeout(20000),
-      headers: { 'Content-Type': 'application/json', ...(base === ai ? { 'X-API-Key': cfg.AI_SERVICE_API_KEY } : token ? { Authorization: 'Bearer ' + token } : {}) },
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': cfg.AI_SERVICE_API_KEY },
       body: body ? JSON.stringify(body) : undefined });
   }
   async function json(base, route, method, body, token) {
@@ -57,10 +60,7 @@ async function main() {
     const priorIndex = (await apiCall('/esbeu-assessments/current')).assessment;
     const guided = await apiCall('/esbeu-assessments/guided-review', 'POST', { topic: 'apoio', sourceAssessmentId: priorIndex.id, confirmed: true, changes: { academic_support: 3 } });
     const ctx = await browser.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' });
-    await ctx.addInitScript(({ accessToken, refreshToken }) => {
-      localStorage.setItem('burnoutsense.auth.accessToken', accessToken);
-      localStorage.setItem('burnoutsense.auth.refreshToken', refreshToken);
-    }, { accessToken: auth.accessToken, refreshToken: auth.refreshToken });
+    await transport.addToBrowser(ctx, auth.user.id);
     page = await ctx.newPage();
     page.setDefaultTimeout(15000);
     const errors = [];
@@ -143,7 +143,7 @@ async function main() {
     const survivor = list.find((r) => r.triggerCheckIn?.id === days[1].id);
     assert.ok(survivor);
     const foreign = await account();
-    check('another owner cannot delete a check-in', (await request(api, '/daily-check-ins/' + days[1].id, 'DELETE', undefined, foreign.accessToken)).status === 404);
+    check('another owner cannot delete a check-in', (await request(api, '/daily-check-ins/' + days[1].id, 'DELETE', undefined, foreign.user.id)).status === 404);
     await page.goto(web + '/historico');
     await page.getByRole('tab', { name: 'Índices e rotina' }).click();
     await page.getByText('Dia do check-in:', { exact: false }).first().waitFor();
@@ -170,10 +170,10 @@ async function main() {
     check('remaining evidence uses unchanged RF/A', Math.abs(current.estimatedOverall - predicted.esbeu_overall) < 1e-10);
     await page.goto(web + '/perfil');
     await page.getByRole('tab', { name: 'Notificações', exact: false }).click();
-    await page.route('**/notifications/test', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ message: 'Teste visual de lembrete concluído.', dailyReminder: { status: 'sent' } }) }));
-    await page.getByRole('button', { name: 'Testar lembrete', exact: true }).click();
-    await page.locator('.toast').getByText('Teste visual de lembrete concluído.', { exact: true }).waitFor();
-    check('reminder test result only appears in one toast', await page.getByText('Teste visual de lembrete concluído.', { exact: true }).count() === 1 && await page.locator('.notification-test-result').count() === 0);
+    const notifications = page.getByRole('tabpanel', { name: 'Notificações' });
+    check('manual reminder actions are absent', await notifications.getByRole('button').count() === 0 &&
+      await notifications.getByText('Teste de envio', { exact: true }).count() === 0);
+    check('authenticated manual reminder route is gone', (await request(api, '/notifications/test', 'POST', {})).status === 404);
     const reminder = page.locator('.switch input');
     await page.locator('.switch').click();
     check('reminder switch can be enabled', await reminder.isChecked());
@@ -215,7 +215,7 @@ async function main() {
   } finally {
     await browser.close();
     for (const account of accounts) {
-      const response = await request(api, '/users/me', 'DELETE', undefined, account.accessToken);
+      const response = await request(api, '/users/me', 'DELETE', undefined, account.user.id);
       assert.ok(response.ok, 'Failed to clean up fictional account');
     }
   }

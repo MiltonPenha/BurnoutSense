@@ -78,25 +78,6 @@
   transform: translateX(16px);
 }
 
-.notification-test-panel {
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  padding: 16px;
-  margin-top: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  background: var(--surface-soft);
-}
-
-.notification-test-panel span {
-  display: block;
-  color: var(--muted);
-  font-size: 14px;
-  line-height: 1.6;
-}
-
 .settings-row + .settings-row {
   margin-top: 18px;
 }
@@ -295,10 +276,6 @@
   color: var(--ink);
 }
 
-:root[data-theme="dark"] .notification-test-panel {
-  background: var(--surface-soft);
-}
-
 :root[data-theme="dark"] .profile-tabs {
   background: var(--surface-soft);
 }
@@ -403,11 +380,6 @@
   .profile-tabs,
 .theme-options {
     grid-template-columns: 1fr;
-  }
-
-  .notification-test-panel {
-    align-items: stretch;
-    flex-direction: column;
   }
 
   .privacy-danger-zone {

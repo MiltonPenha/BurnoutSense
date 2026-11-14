@@ -18,7 +18,7 @@ const checks = [];
 function check(name, condition) { assert.ok(condition, name); checks.push(name); }
 async function api(route) {
   return page.evaluate(async ({ route, apiBase }) => {
-    const result = await fetch(apiBase + route, { headers: { Authorization: "Bearer " + localStorage.getItem("burnoutsense.auth.accessToken") } });
+    const result = await fetch(apiBase + route, { credentials: "include" });
     if (!result.ok) throw new Error("QA API status " + result.status);
     return result.json();
   }, { route, apiBase });

@@ -98,6 +98,7 @@ export default function LoginPage() {
             onChange={(event) => updateField("password", event.target.value)}
           />
           {fieldErrors.password && <p className="field-error" id="login-password-error">{fieldErrors.password}</p>}
+          <Link className="auth-link login-forgot-password" href="/esqueci-senha">Esqueci minha senha</Link>
         </div>
 
         <div className="auth-actions">

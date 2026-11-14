@@ -1,0 +1,9 @@
+@layer pages {
+  .forgot-password-page .recovery-sent { display: grid; gap: 16px; text-align: center; }
+  .forgot-password-page .recovery-sent p { margin: 0; line-height: 1.6; }
+  .forgot-password-page .recovery-status-icon { display: grid; place-items: center; width: 56px; height: 56px; margin: 0 auto; border-radius: 50%; color: var(--success-ink); background: rgba(52, 211, 153, 0.15); }
+  .forgot-password-page .recovery-back { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; font-size: 14px; }
+  .forgot-password-page .recovery-text-button { border: 0; background: none; padding: 10px; cursor: pointer; font: inherit; font-weight: 700; }
+  .forgot-password-page .recovery-text-button:hover { text-decoration: underline; }
+  @media (max-width: 480px) { .forgot-password-page .auth-card { padding: 24px; } }
+}

@@ -1,0 +1,8 @@
+@layer pages {
+  .reset-password-page .reset-status { display: grid; gap: 16px; text-align: center; }
+  .reset-password-page .reset-status p { margin: 0; line-height: 1.6; }
+  .reset-password-page .reset-status-icon { display: grid; place-items: center; width: 56px; height: 56px; margin: 0 auto; border-radius: 50%; color: var(--link); background: rgba(96, 165, 250, 0.15); }
+  .reset-password-page .reset-back { display: grid; place-items: center; min-height: 44px; font-size: 14px; }
+  .reset-password-page .password-rules { margin-top: 12px; }
+  @media (max-width: 480px) { .reset-password-page .auth-card { padding: 24px; } }
+}

@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { randomBytes } = require('node:crypto');
 const { createRequire } = require('node:module');
+const { createTestTransport } = require('./cookie-api-client.cjs');
 
 async function main() {
   const root = path.resolve(__dirname, '../..');
@@ -13,12 +14,13 @@ async function main() {
   const { chromium } = require(process.env.BURNOUTSENSE_PLAYWRIGHT_MODULE);
   const browser = await chromium.launch({ channel: 'msedge', headless: true });
   const output = path.join(root, '.run-logs/ux-improvements'); fs.mkdirSync(output, { recursive: true });
-  const api = 'http://localhost:3001', web = 'http://127.0.0.1:3000';
+  const api = 'http://localhost:3001', web = 'http://localhost:3000';
+  const transport = createTestTransport(api, web);
   const accounts = [], checks = [], runtimeErrors = [];
   let page;
   const check = (label, value) => { assert.ok(value, label); checks.push(label); };
   async function json(route, token, method = 'GET', body) {
-    const send = () => fetch(api + route, { method, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) }, body: body ? JSON.stringify(body) : undefined });
+    const send = () => transport.request(route, method, body, token);
     let response = await send();
     if (route === '/auth/register' && response.status === 429) { await new Promise(resolve => setTimeout(resolve, 65000)); response = await send(); }
     assert.ok(response.ok, route + ': HTTP ' + response.status);
@@ -27,7 +29,7 @@ async function main() {
   async function account() {
     const tag = randomBytes(5).toString('hex'), password = 'Teste1' + tag, email = 'qa-ux-' + tag + '@example.invalid';
     const auth = await json('/auth/register', null, 'POST', { name: 'Teste fictício de usabilidade', email, password });
-    accounts.push(auth); await json('/users/me', auth.accessToken, 'PATCH', { dailyReminder: false });
+    accounts.push({ ...auth, email, password }); await json('/users/me', auth.user.id, 'PATCH', { dailyReminder: false });
     return { ...auth, email, password };
   }
   const fit = () => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1);
@@ -47,16 +49,13 @@ async function main() {
     check('registration links each invalid field to its message', await page.locator('#name').getAttribute('aria-describedby') === 'signup-name-error' && await page.locator('#name').evaluate(el => el === document.activeElement));
 
     const first = await account(), second = await account();
-    await page.evaluate(auth => {
-      localStorage.setItem('burnoutsense.auth.accessToken', auth.accessToken);
-      localStorage.setItem('burnoutsense.auth.refreshToken', auth.refreshToken);
-    }, first);
+    await transport.addToBrowser(context, first.user.id);
     await page.goto(web + '/contexto');
     await page.locator('[name="ctx-semester"]').waitFor();
     await page.getByRole('button', { name: 'Continuar', exact: true }).click();
     await page.waitForFunction(() => document.activeElement.name?.startsWith('ctx-'));
     check('initial context identifies and focuses the unanswered field', await page.locator('[aria-invalid="true"]').count() > 0 && await page.evaluate(() => document.activeElement.name?.startsWith('ctx-')));
-    const form = await json('/esbeu-assessments/form', first.accessToken);
+    const form = await json('/esbeu-assessments/form', first.user.id);
     const response = await fetch(cfg.AI_SERVICE_URL + '/v1/examples', { headers: { 'X-API-Key': cfg.AI_SERVICE_API_KEY } });
     const fixture = (await response.json()).prediction_request.context;
     async function fillField(field) {
@@ -88,7 +87,7 @@ async function main() {
     for (const key of ['adult', 'enrolled', 'consent', 'reviewed']) await page.locator('#confirmation-' + key).check();
     await page.getByRole('button', { name: 'Ver meu primeiro índice', exact: true }).click();
     await page.getByText('Seu primeiro índice está pronto.', { exact: true }).waitFor();
-    const initialContext = (await json('/esbeu-assessments/current', first.accessToken)).assessment;
+    const initialContext = (await json('/esbeu-assessments/current', first.user.id)).assessment;
     check('the full context still saves exactly 22 model fields', Object.keys(initialContext.context).length === 22);
     check('successful context completion erases its draft', await page.evaluate(() => !Object.keys(sessionStorage).some(key => key.startsWith('burnoutsense.context-draft:'))));
     await page.goto(web + '/contexto');
@@ -101,7 +100,7 @@ async function main() {
     await page.getByRole('button', { name: 'Entrar', exact: true }).click(); await page.waitForURL('**/dashboard');
     await page.goto(web + '/contexto'); await page.locator('[name="ctx-semester"]').waitFor();
     check('a different account starts with blank answers', await page.locator('#ctx-semester').inputValue() === '' && await page.getByText('Seu rascunho desta sessão foi recuperado.', { exact: true }).count() === 0);
-    await json('/esbeu-assessments', second.accessToken, 'POST', { context: fixture, adult: true, enrolled: true, consent: true, consentVersion: form.consent.version });
+    await json('/esbeu-assessments', second.user.id, 'POST', { context: fixture, adult: true, enrolled: true, consent: true, consentVersion: form.consent.version });
     await page.goto(web + '/registro');
     await page.getByRole('button', { name: 'Continuar', exact: true }).click();
     await page.waitForFunction(() => document.activeElement.closest('#daily-mood'));
@@ -118,11 +117,11 @@ async function main() {
     await page.getByRole('button', { name: 'Salvar meu dia', exact: true }).click(); await page.waitForURL('**/dashboard');
     await page.locator('.app-notice').getByText('Check-in salvo', { exact: true }).waitFor();
     check('decimal daily check-in saves and returns to dashboard', true);
-    const saved = await json('/daily-check-ins/overview', second.accessToken);
+    const saved = await json('/daily-check-ins/overview', second.user.id);
     check('backend receives the actual decimal value', saved.todayCheckIn.sleepHours === 7.5);
     const help = page.locator('.app-shell > .sidebar .index-help');
     check('index explanation is optional, not permanently expanded', !await help.getAttribute('open'));
-    await help.locator('summary').click(); check('index help explains non-diagnostic meaning', await help.getByText(/não a chance/).isVisible());
+    await help.locator('summary').click(); check('index help explains non-diagnostic meaning', await help.getByText(/não indica chance/).isVisible());
     await help.locator('summary').click();
     await page.goto(web + '/perfil');
     await page.locator('.profile-tabs').waitFor();
@@ -194,7 +193,13 @@ async function main() {
     throw error;
   } finally {
     await browser.close();
-    for (const account of accounts) await json('/users/me', account.accessToken, 'DELETE');
+    for (const account of accounts) {
+      const response = await transport.request('/users/me', 'DELETE', undefined, account.user.id);
+      if (response.status === 401) {
+        await transport.request('/auth/login', 'POST', { email: account.email, password: account.password });
+        assert.ok((await transport.request('/users/me', 'DELETE', undefined, account.user.id)).ok);
+      } else assert.ok(response.ok);
+    }
   }
 }
 main().catch(error => { console.error(error.message); process.exitCode = 1; });

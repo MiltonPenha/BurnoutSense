@@ -93,7 +93,7 @@ O exemplo é fictício e não salva avaliação. Esperado: `experimental=true`,
 
 PostgreSQL deve ser exclusivamente de desenvolvimento. Configurar as variáveis
 reais de `backend/.env.example` em ambiente privado: DATABASE_URL, PORT=3001,
-FRONTEND_URL=http://localhost:3000, JWT_ACCESS_SECRET, JWT_REFRESH_SECRET,
+FRONTEND_URL=http://localhost:3000, JWT_ACCESS_SECRET, CSRF_SECRET,
 AI_SERVICE_URL=http://127.0.0.1:8000 e AI_SERVICE_API_KEY igual ao segredo do
 FastAPI. Manter DAILY_REMINDER_ENABLED=false para teste. Não reutilizar os
 segredos ilustrativos do exemplo. Não executar migrações em produção.

@@ -148,9 +148,13 @@ def main():
         password = "Aa9-" + secrets.token_urlsafe(24)
         with httpx.Client(base_url=url, timeout=40, trust_env=False) as client:
             def register(email):
-                response = client.post("/auth/register", json={"name": "Synthetic test", "email": email, "password": password})
+                csrf = client.get("/auth/csrf").json()["csrfToken"]
+                response = client.post("/auth/register", headers={"Origin": web_url, "X-CSRF-Token": csrf}, json={"name": "Synthetic test", "email": email, "password": password})
                 check("synthetic_account_registered", response.status_code == 201)
-                return {"Authorization": "Bearer " + response.json()["accessToken"]}
+                headers = {"Cookie": "; ".join(f"{key}={value}" for key, value in client.cookies.items()),
+                           "Origin": web_url, "X-CSRF-Token": response.json()["csrfToken"]}
+                client.cookies.clear()
+                return headers
             owner = register("owner@example.invalid")
             if private.get("BURNOUTSENSE_EXPERIMENTAL_MODEL") == "true":
                 candidate = client.post("/ai/predict", headers=owner, json={"context": synthetic_context()})

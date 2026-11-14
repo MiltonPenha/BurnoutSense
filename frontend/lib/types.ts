@@ -15,7 +15,7 @@ export interface AccountProfile extends Omit<Profile, "theme" | "course" | "seme
   semester: string | null;
   avatarUrl: string | null;
 }
-export interface AuthResponse { accessToken: string; refreshToken: string; user?: AccountProfile }
+export interface AuthResponse { user: AccountProfile; csrfToken?: string }
 export type ContextValues = Record<string, string | number>;
 export interface FormField {
   identifier: string; name: string; question: string; group: string;
@@ -84,9 +84,6 @@ export interface SystemStatus {
   backend: { status: string }; database: { status: string }; aiService: { status: string };
   model: { loaded: boolean; status: string; modelName?: string; datasetVersion?: string };
   checkedAt: string;
-}
-export interface NotificationResult {
-  dailyReminder: { status: string; reason?: string }; message: string;
 }
 export interface Notice { tone: "success" | "error" | "warning"; message: string }
 export interface GuidanceItem { title: string; text: string }

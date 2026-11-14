@@ -10,29 +10,7 @@ import { getError } from "@/lib/errors";
 import type { FormEvent } from "react";
 import { PasswordInput } from "../_components/PasswordInput";
 import { focusFormField } from "@/lib/form-focus";
-
-const passwordRules: { id: string; label: string; test: (password: string) => boolean }[] = [
-  {
-    id: "minLength",
-    label: "Mínimo de 8 caracteres",
-    test: (password) => password.length >= 8
-  },
-  {
-    id: "uppercase",
-    label: "Pelo menos 1 letra maiúscula",
-    test: (password) => /[A-Z]/.test(password)
-  },
-  {
-    id: "lowercase",
-    label: "Pelo menos 1 letra minúscula",
-    test: (password) => /[a-z]/.test(password)
-  },
-  {
-    id: "number",
-    label: "Pelo menos 1 número",
-    test: (password) => /\d/.test(password)
-  }
-];
+import { passwordRules } from "@/lib/password-policy";
 
 export default function CadastroPage() {
   const router = useRouter();

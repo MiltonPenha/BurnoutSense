@@ -2,63 +2,27 @@ import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
-import { UsersService } from '../../users/users.service';
+import { PrismaService } from '../../prisma/prisma.service';
+import { SessionSecurityService } from '../session-security.service';
 import { AuthenticatedUser } from '../types/authenticated-user';
 import { JwtPayload } from '../types/jwt-payload';
 
-type RequestWithUser = Request & { user?: AuthenticatedUser };
-
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
-  constructor(
-    private readonly jwtService: JwtService,
-    private readonly configService: ConfigService,
-    private readonly usersService: UsersService,
-  ) {}
+  constructor(private readonly jwt: JwtService, private readonly config: ConfigService,
+    private readonly prisma: PrismaService, private readonly security: SessionSecurityService) {}
 
-  async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest<RequestWithUser>();
-    const token = this.extractBearerToken(request);
-
-    if (!token) {
-      throw new UnauthorizedException('Missing bearer token.');
-    }
-
+  async canActivate(context: ExecutionContext) {
+    const request = context.switchToHttp().getRequest<Request & { user: AuthenticatedUser }>();
+    const token = this.security.read(request, this.security.accessName);
+    if (!token) throw new UnauthorizedException('Missing session.');
     try {
-      const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
-        secret: this.configService.getOrThrow<string>('JWT_ACCESS_SECRET'),
-      });
-
-      const user = await this.usersService.findById(payload.sub);
-
-      if (!user) {
-        throw new UnauthorizedException('Invalid bearer token.');
-      }
-
-      request.user = {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-      };
-
+      const payload = await this.jwt.verifyAsync<JwtPayload>(token, { secret: this.config.getOrThrow<string>('JWT_ACCESS_SECRET'), algorithms: ['HS256'] });
+      if (typeof payload.sid !== 'string' || typeof payload.sub !== 'string') throw new Error('Invalid session claims.');
+      const session = await this.prisma.authSession.findFirst({ where: { id: payload.sid, userId: payload.sub, revokedAt: null, expiresAt: { gt: new Date() } }, include: { user: true } });
+      if (!session) throw new Error('Revoked session.');
+      request.user = { id: session.user.id, email: session.user.email, role: session.user.role };
       return true;
-    } catch (error) {
-      if (error instanceof UnauthorizedException) {
-        throw error;
-      }
-
-      throw new UnauthorizedException('Invalid or expired bearer token.');
-    }
-  }
-
-  private extractBearerToken(request: Request): string | null {
-    const authorization = request.headers.authorization;
-
-    if (!authorization) {
-      return null;
-    }
-
-    const [type, token] = authorization.split(' ');
-    return type === 'Bearer' && token ? token : null;
+    } catch { throw new UnauthorizedException('Invalid or expired session.'); }
   }
 }

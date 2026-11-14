@@ -178,7 +178,8 @@ As dicas gerais usam uma [integração opcional com Gemini](GEMINI_GUIDANCE.md).
 
 O teste de integração abaixo exige os serviços locais e uma instalação do
 Playwright indicada em BURNOUTSENSE_PLAYWRIGHT_MODULE. Ele cria e remove
-somente contas fictícias e não aciona o teste de e-mail:
+somente contas fictícias e verifica que a antiga rota de envio manual
+retorna HTTP 404 sem disparar e-mails:
 
 ```powershell
 node backend/test/verify-dashboard-flow.cjs

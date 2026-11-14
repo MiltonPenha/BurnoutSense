@@ -170,10 +170,10 @@ async function main() {
     check('remaining evidence uses unchanged RF/A', Math.abs(current.estimatedOverall - predicted.esbeu_overall) < 1e-10);
     await page.goto(web + '/perfil');
     await page.getByRole('tab', { name: 'Notificações', exact: false }).click();
-    await page.route('**/notifications/test', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ message: 'Teste visual de lembrete concluído.', dailyReminder: { status: 'sent' } }) }));
-    await page.getByRole('button', { name: 'Testar lembrete', exact: true }).click();
-    await page.locator('.toast').getByText('Teste visual de lembrete concluído.', { exact: true }).waitFor();
-    check('reminder test result only appears in one toast', await page.getByText('Teste visual de lembrete concluído.', { exact: true }).count() === 1 && await page.locator('.notification-test-result').count() === 0);
+    const notifications = page.getByRole('tabpanel', { name: 'Notificações' });
+    check('manual reminder actions are absent', await notifications.getByRole('button').count() === 0 &&
+      await notifications.getByText('Teste de envio', { exact: true }).count() === 0);
+    check('authenticated manual reminder route is gone', (await request(api, '/notifications/test', 'POST', {})).status === 404);
     const reminder = page.locator('.switch input');
     await page.locator('.switch').click();
     check('reminder switch can be enabled', await reminder.isChecked());

@@ -3,7 +3,7 @@ import { ApiError } from "./errors";
 import type { GuidanceResult } from "./types";
 import { createSessionReadCache } from "./session-read-cache";
 import { clearSessionDrafts } from "./session-draft";
-import type { AccountProfile, Assessment, AssessmentDetail, AuthResponse, CreateAssessment, CurrentContext, DailyCheckIn, DailyDay, DailyOverview, FormSchema, IndexUpdate, NotificationResult, PageResult, Profile, ReviewContext, ReviewPlan, ReviewTopicId, SaveDailyCheckIn, SavedDailyCheckIn, SystemStatus, TrendRecord } from "./types";
+import type { AccountProfile, Assessment, AssessmentDetail, AuthResponse, CreateAssessment, CurrentContext, DailyCheckIn, DailyDay, DailyOverview, FormSchema, IndexUpdate, PageResult, Profile, ReviewContext, ReviewPlan, ReviewTopicId, SaveDailyCheckIn, SavedDailyCheckIn, SystemStatus, TrendRecord } from "./types";
 
 type LoadOptions = { silentUnauthorized?: boolean };
 
@@ -328,10 +328,6 @@ export async function updateProfile(profile: Profile) {
   const normalized = { ...normalizeProfile(user), theme: profile.theme ?? "light" };
   writeJson(STORAGE_KEYS.profile, normalized);
   return normalized;
-}
-
-export async function sendTestNotification(preferences: Record<string, boolean>) {
-  return request<NotificationResult>("/notifications/test", { method: "POST", body: JSON.stringify(preferences) });
 }
 
 export async function loginUser(credentials: { email: string; password: string }) {

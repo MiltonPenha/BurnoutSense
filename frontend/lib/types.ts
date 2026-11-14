@@ -85,9 +85,6 @@ export interface SystemStatus {
   model: { loaded: boolean; status: string; modelName?: string; datasetVersion?: string };
   checkedAt: string;
 }
-export interface NotificationResult {
-  dailyReminder: { status: string; reason?: string }; message: string;
-}
 export interface Notice { tone: "success" | "error" | "warning"; message: string }
 export interface GuidanceItem { title: string; text: string }
 export type GuidanceResult = { assessmentId: string } & (

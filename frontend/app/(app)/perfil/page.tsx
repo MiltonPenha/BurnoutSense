@@ -6,7 +6,7 @@ import Image from "next/image";
 import { Bell, LockKeyhole, Moon, SlidersHorizontal, Sun, UserRound } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { deleteCurrentUser, sendTestNotification } from "@/lib/burnout-api";
+import { deleteCurrentUser } from "@/lib/burnout-api";
 import { useBurnoutStore } from "@/hooks/useBurnoutStore";
 import { AccessibleDialog } from "@/components/ui/AccessibleDialog";
 import type { ChangeEvent, FormEvent } from "react";
@@ -44,7 +44,6 @@ export default function PerfilPage() {
   const [removePhotoDialogOpen, setRemovePhotoDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
-  const [savingPreference, setSavingPreference] = useState<string | null>(null);
   const noticeTimeout = useRef<number | undefined>(undefined);
   const tabButtons = useRef<Record<string, HTMLButtonElement>>({});
   const photoInput = useRef<HTMLInputElement>(null);
@@ -133,20 +132,6 @@ export default function PerfilPage() {
       setDeleting(false);
       setDeleteDialogOpen(false);
       showNotice({ tone: "error", message: "Não foi possível excluir a conta. Tente novamente." });
-    }
-  }
-
-  async function handleTestNotification() {
-    setSavingPreference("notification-test");
-
-    try {
-      const result = await sendTestNotification({});
-
-      showNotice({ tone: result.dailyReminder.status === "sent" ? "success" : "error", message: result.message }, 5000);
-    } catch {
-      showNotice({ tone: "error", message: "Não foi possível testar as notificações agora." });
-    } finally {
-      setSavingPreference(null);
     }
   }
 
@@ -266,15 +251,6 @@ export default function PerfilPage() {
               label="Lembrete diário"
               onChange={(value) => updateField("dailyReminder", value)}
             />
-            <div className="notification-test-panel">
-              <div>
-                <strong>Teste de envio</strong>
-                <span>Envia um e-mail real usando sua preferência salva. Salve as alterações antes de testar.</span>
-              </div>
-              <button className="button secondary" disabled={savingPreference === "notification-test"} type="button" onClick={handleTestNotification}>
-                {savingPreference === "notification-test" ? "Testando..." : "Testar lembrete"}
-              </button>
-            </div>
           </section>
           <section hidden={activeTab !== "preferences"} className="card profile-card" role="tabpanel" id="profile-preferences-panel" aria-labelledby="profile-preferences-tab" tabIndex={0}>
             <h2 className="section-title">Preferências de uso</h2>
@@ -288,7 +264,6 @@ export default function PerfilPage() {
                   <button
                     aria-pressed={(draft.theme ?? "light") === option.id}
                     className={(draft.theme ?? "light") === option.id ? "active" : ""}
-                    disabled={savingPreference === "theme"}
                     key={option.id}
                     type="button"
                     onClick={() => handleThemeChange(option.id)}

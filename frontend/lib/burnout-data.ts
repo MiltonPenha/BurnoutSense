@@ -10,7 +10,7 @@ export const defaultProfile: Profile = {
   email: "",
   course: "",
   semester: "",
-  dailyReminder: true,
+  dailyReminder: false,
   avatarUrl: "",
   theme: "light"
 };

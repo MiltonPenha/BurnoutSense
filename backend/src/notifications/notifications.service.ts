@@ -1,23 +1,18 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
-import { AuthenticatedUser } from '../auth/types/authenticated-user';
 import { PrismaService } from '../prisma/prisma.service';
-import { UsersService } from '../users/users.service';
-import { TestNotificationDto } from './dto/test-notification.dto';
 import { utcDay } from '../daily-check-ins/calendar-day';
 
 @Injectable()
 export class NotificationsService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(NotificationsService.name);
-  private readonly sentDailyReminderKeys = new Set<string>();
   private dailyReminderInterval?: NodeJS.Timeout;
   private processingReminders = false;
 
   constructor(
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
-    private readonly usersService: UsersService,
   ) {}
 
   onModuleInit() {
@@ -42,135 +37,100 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async sendTestNotification(user: AuthenticatedUser, _preferences: TestNotificationDto) {
-    const profile = await this.usersService.findSafeById(user.id);
-    const dailyReminder = profile.dailyReminder;
-    const reminder = await this.deliverEmail(
-      dailyReminder,
-      profile.email,
-      'Seu check-in de bem-estar no BurnoutSense',
-      this.buildDailyReminderText(profile.name),
-      this.buildDailyReminderHtml(profile.name),
-    );
-
-    this.logger.log(
-      JSON.stringify({
-        type: 'notification-test',
-        dailyReminder: reminder.status,
-      }),
-    );
-
-    return {
-      deliveryMode: this.isSmtpConfigured() ? 'smtp' : 'not-configured',
-      dailyReminder: reminder,
-      message: this.buildResultMessage(dailyReminder, reminder.status),
-    };
-  }
-
   private async processDailyReminderTick() {
     if (this.processingReminders) return;
-    const now = new Date();
-    const localParts = getDateTimeParts(now, this.getDailyReminderTimezone());
+    const reminderKey = this.activeReminderDate(new Date());
+    if (!reminderKey) return;
 
-    const elapsed = localParts.hour * 60 + localParts.minute - (this.getDailyReminderHour() * 60 + this.getDailyReminderMinute());
-    if (elapsed < 0 || elapsed > 10) {
-      return;
-    }
-
-    const reminderKey = localParts.dateKey;
     this.processingReminders = true;
-
     try {
+      const date = utcDay(reminderKey);
+      const eligible = { dailyReminder: true, dailyCheckIns: { none: { date } } };
       const users = await this.prisma.user.findMany({
-        where: {
-          dailyReminder: true,
-        },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-        },
+        where: eligible,
+        select: { id: true, name: true, email: true },
       });
 
       for (const user of users) {
-        const userReminderKey = `${reminderKey}:${user.id}`;
+        const now = new Date();
+        if (this.activeReminderDate(now) !== reminderKey) break;
+        try {
+          const where = { userId: user.id, date };
+          await this.prisma.dailyReminderDelivery.createMany({ data: where, skipDuplicates: true });
 
-        if (this.sentDailyReminderKeys.has(userReminderKey)) {
-          continue;
-        }
+          // The guarded write is the last eligibility read before SMTP. Once
+          // recorded, a crash or ambiguous response cannot authorize a resend.
+          const startedAt = new Date();
+          if (this.activeReminderDate(startedAt) !== reminderKey) break;
+          const claim = await this.prisma.dailyReminderDelivery.updateMany({
+            where: {
+              ...where,
+              user: { ...eligible, email: user.email },
+              sentAt: null,
+              submissionStartedAt: null,
+              attempts: { lt: 3 },
+              OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: startedAt } }],
+            },
+            data: {
+              submissionStartedAt: startedAt,
+              nextAttemptAt: new Date(startedAt.getTime() + 60_000),
+              attempts: { increment: 1 },
+            },
+          });
+          if (!claim.count) continue;
 
-        const alreadyRegistered = await this.hasAssessmentOnDate(user.id, localParts.dateKey);
+          const result = await this.deliverEmail(
+            user.email,
+            'Seu check-in de bem-estar no BurnoutSense',
+            this.buildDailyReminderText(user.name),
+            this.buildDailyReminderHtml(user.name),
+          );
 
-        if (alreadyRegistered) {
-          this.sentDailyReminderKeys.add(userReminderKey);
-          continue;
-        }
-
-        const date = utcDay(reminderKey);
-        const where = { userId_date: { userId: user.id, date } };
-        await this.prisma.dailyReminderDelivery.upsert({ where, create: { userId: user.id, date }, update: {} });
-        const claim = await this.prisma.dailyReminderDelivery.updateMany({
-          where: { userId: user.id, date, sentAt: null, attempts: { lt: 3 },
-            AND: [{ OR: [{ claimedAt: null }, { claimedAt: { lt: new Date(now.getTime() - 5 * 60_000) } }] },
-              { OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: now } }] }] },
-          data: { claimedAt: now, nextAttemptAt: new Date(now.getTime() + 60_000), attempts: { increment: 1 } },
-        });
-        if (!claim.count) continue;
-        const preference = await this.prisma.user.findUnique({ where: { id: user.id }, select: { dailyReminder: true } });
-        if (!preference?.dailyReminder || await this.hasAssessmentOnDate(user.id, reminderKey)) {
-          await this.prisma.dailyReminderDelivery.update({ where, data: { claimedAt: null } });
-          continue;
-        }
-        const result = await this.deliverEmail(
-          true,
-          user.email,
-          'Seu check-in de bem-estar no BurnoutSense',
-          this.buildDailyReminderText(user.name),
-          this.buildDailyReminderHtml(user.name),
-        );
-
-        await this.prisma.dailyReminderDelivery.update({ where, data: { claimedAt: null, ...(result.status === 'sent' ? { sentAt: new Date() } : {}) } });
-        if (result.status === 'sent') this.sentDailyReminderKeys.add(userReminderKey);
-        this.logger.log(
-          JSON.stringify({
+          if (result.status === 'sent') {
+            await this.prisma.dailyReminderDelivery.update({
+              where: { userId_date: where },
+              data: { sentAt: new Date() },
+            });
+          } else if (result.safeToRetry) {
+            await this.prisma.dailyReminderDelivery.update({
+              where: { userId_date: where },
+              data: { submissionStartedAt: null },
+            });
+          }
+          this.logger.log(JSON.stringify({
             type: 'daily-reminder',
-            status: result.status,
-            date: localParts.dateKey,
-          }),
-        );
+            status: result.status === 'failed' && !result.safeToRetry ? 'unknown' : result.status,
+            date: reminderKey,
+          }));
+        } catch {
+          this.logReminderFailure();
+        }
       }
-
-      this.pruneSentReminderKeys(reminderKey);
     } catch {
-      this.logger.warn(
-        JSON.stringify({
-          type: 'daily-reminder-failed',
-          reason: 'Falha ao processar os lembretes.',
-        }),
-      );
+      this.logReminderFailure();
     } finally {
       this.processingReminders = false;
     }
   }
 
-  private async hasAssessmentOnDate(userId: string, dateKey: string) {
-    return Boolean(await this.prisma.dailyCheckIn.findUnique({ where: { userId_date: { userId, date: utcDay(dateKey) } }, select: { id: true } }));
+  private activeReminderDate(now: Date) {
+    const local = getDateTimeParts(now, this.getDailyReminderTimezone());
+    const elapsed = local.hour * 60 + local.minute - (this.getDailyReminderHour() * 60 + this.getDailyReminderMinute());
+    return elapsed >= 0 && elapsed <= 10 ? local.dateKey : null;
   }
 
-  private async deliverEmail(enabled: boolean, recipient: string, subject: string, text: string, html?: string) {
-    if (!enabled) {
-      return {
-        status: 'skipped',
-        reason: 'Preference disabled',
-      };
-    }
+  private logReminderFailure() {
+    this.logger.warn(JSON.stringify({
+      type: 'daily-reminder-failed',
+      reason: 'Falha no processamento ou na confirmação do lembrete.',
+    }));
+  }
 
+  private async deliverEmail(recipient: string, subject: string, text: string, html?: string) {
     if (!this.isSmtpConfigured()) {
       return {
         status: 'not_configured',
-        recipient,
-        subject,
-        reason: 'SMTP settings are missing.',
+        safeToRetry: true,
       };
     }
 
@@ -179,13 +139,16 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
         host: this.configService.getOrThrow<string>('SMTP_HOST'),
         port: Number(this.configService.get<string>('SMTP_PORT') ?? 587),
         secure: this.configService.get<string>('SMTP_SECURE') === 'true',
+        connectionTimeout: 15_000,
+        greetingTimeout: 15_000,
+        socketTimeout: 30_000,
         auth: {
           user: this.configService.getOrThrow<string>('SMTP_USER'),
           pass: this.configService.getOrThrow<string>('SMTP_PASS'),
         },
       });
 
-      const result = await transporter.sendMail({
+      await transporter.sendMail({
         from: this.configService.get<string>('SMTP_FROM') ?? this.configService.getOrThrow<string>('SMTP_USER'),
         to: recipient,
         subject,
@@ -195,9 +158,7 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
 
       return {
         status: 'sent',
-        recipient,
-        subject,
-        messageId: result.messageId,
+        safeToRetry: false,
       };
     } catch (error) {
       const reason = this.describeSmtpError(error);
@@ -210,9 +171,7 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
 
       return {
         status: 'failed',
-        recipient,
-        subject,
-        reason,
+        safeToRetry: isTemporarySmtpRejection(error),
       };
     }
   }
@@ -223,26 +182,6 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
         this.configService.get<string>('SMTP_USER') &&
         this.configService.get<string>('SMTP_PASS'),
     );
-  }
-
-  private buildResultMessage(dailyReminder: boolean, reminderStatus: string) {
-    if (!dailyReminder) {
-      return 'Ative e salve o lembrete diário antes de testar.';
-    }
-
-    if (reminderStatus === 'sent') {
-      return 'E-mail de teste enviado. Verifique a caixa de entrada e o spam.';
-    }
-
-    if (reminderStatus === 'not_configured') {
-      return 'SMTP não configurado. Confira as variáveis SMTP no backend.';
-    }
-
-    if (reminderStatus === 'failed') {
-      return 'Não foi possível enviar o lembrete de teste. Confira a conexão SMTP e as credenciais.';
-    }
-
-    return 'Teste processado.';
   }
 
   private buildDailyReminderText(name: string) {
@@ -302,14 +241,6 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
 
   private getDailyReminderTimezone() {
     return this.configService.get<string>('DAILY_REMINDER_TIMEZONE') ?? 'America/Sao_Paulo';
-  }
-
-  private pruneSentReminderKeys(currentDateKey: string) {
-    for (const key of this.sentDailyReminderKeys) {
-      if (!key.startsWith(`${currentDateKey}:`)) {
-        this.sentDailyReminderKeys.delete(key);
-      }
-    }
   }
 
   private describeSmtpError(error: unknown) {
@@ -414,6 +345,13 @@ function baseEmailTemplate({ badge, title, intro, tone, metrics = [], sections, 
       </table>
     </div>
   `;
+}
+
+function isTemporarySmtpRejection(error: unknown) {
+  if (!(error instanceof Error)) return false;
+  const { responseCode, command } = error as Error & { responseCode?: number; command?: string };
+  return typeof responseCode === 'number' && responseCode >= 400 && responseCode < 500 &&
+    (command === 'DATA' || command === 'MAIL FROM' || command === 'RCPT TO');
 }
 
 function escapeHtml(value: string) {

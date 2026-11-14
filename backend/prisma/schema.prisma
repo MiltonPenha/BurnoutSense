@@ -32,7 +32,7 @@ model User {
   passwordHash  String
   role          UserRole      @default(STUDENT)
   emailAlerts   Boolean       @default(true)
-  dailyReminder Boolean       @default(true)
+  dailyReminder Boolean       @default(false)
   course        String?
   semester      String?
   avatarUrl     String?
@@ -170,7 +170,7 @@ model DailyReminderDelivery {
   userId        String
   user          User @relation(fields: [userId], references: [id], onDelete: Cascade)
   date          DateTime @db.Date
-  claimedAt     DateTime?
+  submissionStartedAt DateTime?
   sentAt        DateTime?
   nextAttemptAt DateTime?
   attempts      Int @default(0)

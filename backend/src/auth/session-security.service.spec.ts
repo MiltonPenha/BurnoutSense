@@ -8,6 +8,18 @@ import { SessionSecurityService, durationMs } from './session-security.service';
 const config = { FRONTEND_URL: 'http://localhost:3000', CSRF_SECRET: 'test-only-csrf-secret-with-over-32-characters' };
 const settings = (values: Record<string, string>) => ({ get: (key: string) => values[key] }) as ConfigService;
 describe('Cookie and CSRF boundary', () => {
+  it('rejects direct tunnel access while retaining CSRF for a trusted gateway', async () => {
+    const secret = 'test-only-demo-gateway-with-over-32-characters';
+    const security = new SessionSecurityService(settings({ ...config, DEMO_GATEWAY_SECRET: secret }));
+    const app = express(); app.use(cookieParser()); app.use(security.protect);
+    app.get('/csrf', (req, res) => res.json({ csrfToken: security.csrfToken(req, res) }));
+    app.post('/change', (_req, res) => res.json({ ok: true }));
+    await request(app).get('/csrf').expect(403);
+    await request(app).get('/csrf').set('X-Demo-Gateway', 'wrong').expect(403);
+    const agent = request.agent(app), token = (await agent.get('/csrf').set('X-Demo-Gateway', secret).expect(200)).body.csrfToken;
+    await agent.post('/change').set('Origin', config.FRONTEND_URL).set('X-Demo-Gateway', secret).expect(403);
+    await agent.post('/change').set('Origin', config.FRONTEND_URL).set('X-Demo-Gateway', secret).set('X-CSRF-Token', token).expect(200);
+  });
   it('requires an exact HTTPS origin and independent secrets in production', () => {
     expect(() => new SessionSecurityService(settings({ NODE_ENV: 'production', ...config }))).toThrow();
     expect(() => new SessionSecurityService(settings({ NODE_ENV: 'production', FRONTEND_URL: 'https://burnoutsense.online', CSRF_SECRET: 'short' }))).toThrow();

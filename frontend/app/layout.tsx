@@ -17,7 +17,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://burnoutsense.local"),
+  metadataBase: new URL("https://burnoutsense.online"),
   applicationName: "BurnoutSense",
   title: {
     default: "BurnoutSense | Apoio preventivo ao estudante",

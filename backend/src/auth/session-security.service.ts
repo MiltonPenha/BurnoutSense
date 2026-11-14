@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { CookieOptions, Request, Response, NextFunction } from 'express';
 import { doubleCsrf } from 'csrf-csrf';
 
@@ -22,13 +22,18 @@ export class SessionSecurityService {
   private readonly bootstrapName: string;
   private readonly options: CookieOptions;
   private readonly csrf: ReturnType<typeof doubleCsrf>;
+  private readonly gatewayHash?: Buffer;
 
   constructor(config: ConfigService) {
     this.production = config.get<string>('NODE_ENV') === 'production';
+    const gatewaySecret = config.get<string>('DEMO_GATEWAY_SECRET');
+    if (gatewaySecret && gatewaySecret.length < 32) throw new Error('DEMO_GATEWAY_SECRET must contain at least 32 random characters.');
+    if (gatewaySecret) this.gatewayHash = createHash('sha256').update(gatewaySecret).digest();
     this.origin = config.get<string>('FRONTEND_URL') ?? 'http://localhost:3000';
     const url = new URL(this.origin);
     if (url.origin !== this.origin || this.production && url.protocol !== 'https:') throw new Error('FRONTEND_URL must be an exact origin, using HTTPS in production.');
     const secret = config.get<string>('CSRF_SECRET');
+    if (gatewaySecret && [secret, config.get<string>('JWT_ACCESS_SECRET')].includes(gatewaySecret)) throw new Error('The demo gateway must use an independent secret.');
     if (this.production && (!secret || secret.length < 32)) throw new Error('Configure CSRF_SECRET with at least 32 random characters.');
     if (this.production && (config.get<string>('JWT_ACCESS_SECRET')?.length ?? 0) < 32) throw new Error('Configure a strong JWT_ACCESS_SECRET.');
     if (this.production && secret === config.get<string>('JWT_ACCESS_SECRET')) throw new Error('JWT_ACCESS_SECRET and CSRF_SECRET must be independent.');
@@ -62,6 +67,12 @@ export class SessionSecurityService {
   }
 
   protect = (request: Request, response: Response, next: NextFunction) => {
+    if (this.gatewayHash) {
+      const supplied = request.get('X-Demo-Gateway') ?? '';
+      if (supplied.length > 512 || !timingSafeEqual(this.gatewayHash, createHash('sha256').update(supplied).digest())) {
+        return response.status(403).json({ message: 'Acesso não permitido.' });
+      }
+    }
     if (['GET', 'HEAD', 'OPTIONS'].includes(request.method)) return next();
     if (request.get('Origin') !== this.origin) return response.status(403).json({ code: 'ORIGIN_INVALID', message: 'Origem da requisição não permitida.' });
     this.csrf.doubleCsrfProtection(request, response, error => error

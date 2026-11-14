@@ -182,6 +182,8 @@ vite.config.ts.timestamp-*
 # Local command caches/logs created during development
 .npm-cache/
 .run-logs/
+.demo/
+.tools/
 .tmp-eslint-utils/
 frontend/.tmp-*/
 frontend/*.tgz

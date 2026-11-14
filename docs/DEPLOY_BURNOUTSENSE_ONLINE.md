@@ -1,5 +1,9 @@
 # Publicar o BurnoutSense: Vercel, Render e domínio próprio
 
+Para a banca do TCC, a equipe escolheu a [demonstração híbrida sem instâncias
+pagas de backend/IA](DEMO_BANCA.md). Siga esse outro roteiro. Este documento
+continua como referência de hospedagem permanente, não como requisito da banca.
+
 Guia para publicar a branch `main` em `burnoutsense.online`. As configurações
 abaixo precisam ser realizadas nas contas dos provedores; alterações locais e
 um commit não configuram Vercel, Render, SMTP nem DNS automaticamente.

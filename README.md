@@ -1,5 +1,7 @@
 # BurnoutSense
 
+Demonstração do TCC sem servidores pagos: [guia híbrido da banca](docs/DEMO_BANCA.md).
+
 Publicação: [Vercel, Render e burnoutsense.online](docs/DEPLOY_BURNOUTSENSE_ONLINE.md).
 Autenticação: [cookies HttpOnly, sessão e CSRF](docs/COOKIE_AUTH.md).
 Recuperação de senha: [fluxo, SMTP e validação](docs/PASSWORD_RECOVERY.md).

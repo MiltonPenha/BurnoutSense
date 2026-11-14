@@ -30,13 +30,17 @@
 
 .switch {
   position: relative;
-  width: 38px;
-  height: 22px;
+  flex: 0 0 44px;
+  height: 44px;
   cursor: pointer;
 }
 
 .switch input {
   position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
   opacity: 0;
   cursor: pointer;
 }
@@ -50,10 +54,10 @@
 
 .switch-track {
   position: absolute;
-  inset: 0;
+  inset: 11px 3px;
   border-radius: 999px;
   background: #dbe6eb;
-  cursor: pointer;
+  pointer-events: none;
   transition: background 0.2s ease;
 }
 
@@ -76,6 +80,18 @@
 
 .switch input:checked + .switch-track::after {
   transform: translateX(16px);
+}
+
+.switch input:focus-visible + .switch-track {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .switch-track,
+  .switch-track::after {
+    transition: none;
+  }
 }
 
 .settings-row + .settings-row {

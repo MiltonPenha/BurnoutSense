@@ -65,14 +65,18 @@ export class EsbeuAssessmentsService {
       where: { userId, source: 'context' }, orderBy, select: { createdAt: true },
     });
     if (!full) return { topics, suggested: null };
-    const dates = await Promise.all(reviewTopicIds.map(async (id) => {
-      const latest = await this.prisma.esbeuAssessment.findFirst({
-        where: { userId, source: 'guided_review', createdAt: { gte: full.createdAt }, evolution: { path: ['topic'], equals: id } },
-        orderBy, select: { createdAt: true },
-      });
-      return [id, latest?.createdAt] as const;
-    }));
-    const confirmed = Object.fromEntries(dates.filter(([, date]) => date !== undefined));
+    const reviews = await this.prisma.esbeuAssessment.findMany({
+      where: { userId, source: 'guided_review', createdAt: { gte: full.createdAt } },
+      orderBy, select: { createdAt: true, evolution: true },
+    });
+    const confirmed: Partial<Record<(typeof reviewTopicIds)[number], Date>> = {};
+    for (const review of reviews) {
+      const topic = (review.evolution as Prisma.JsonObject | null)?.topic;
+      if (typeof topic === 'string' && reviewTopicIds.includes(topic as (typeof reviewTopicIds)[number])) {
+        const id = topic as (typeof reviewTopicIds)[number];
+        confirmed[id] ??= review.createdAt;
+      }
+    }
     const employment = (assessment.context as Prisma.JsonObject).employment;
     return { topics, suggested: suggestReviewTopic(full.createdAt, confirmed, employment, new Date()) };
   }

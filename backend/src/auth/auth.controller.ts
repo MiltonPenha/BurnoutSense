@@ -11,6 +11,7 @@ import { SessionSecurityService } from './session-security.service';
 import { PasswordResetService } from './password-reset.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { WithSessionProfile } from './decorators/session-profile.decorator';
 
 @Controller('auth')
 export class AuthController {
@@ -36,9 +37,12 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @WithSessionProfile()
   @Get('session')
   @Header('Cache-Control', 'no-store')
-  async session(@CurrentUser() user: AuthenticatedUser) { return { user: await this.auth.sessionUser(user.id) }; }
+  async session(@CurrentUser() user: AuthenticatedUser, @Req() request: Request, @Res({ passthrough: true }) response: Response) {
+    return { user: user.profile ?? await this.auth.sessionUser(user.id), csrfToken: this.security.csrfToken(request, response) };
+  }
 
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('register')

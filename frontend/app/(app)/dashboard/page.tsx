@@ -4,7 +4,7 @@ import "./dashboard.css";
 import Link from "next/link";
 import { Pencil, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
-import { getDailyOverview } from "@/lib/burnout-api";
+import { getAssessmentTrend, getDailyOverview } from "@/lib/burnout-api";
 import { useBurnoutStore } from "@/hooks/useBurnoutStore";
 import { dailyDate, shiftCalendarDay } from "@/lib/daily-checkin";
 import { EsbeuTrend } from "@/components/indicators/EsbeuTrend";
@@ -41,6 +41,8 @@ export default function DashboardPage() {
   const accountId = store.profile.id;
   useEffect(() => {
     let active = true;
+    // Share this in-flight read with the chart instead of waiting for the records list.
+    void getAssessmentTrend().catch(() => {});
     const loadDaily = () => getDailyOverview().then((value) => { if (active) { setDaily(value); setDailyError(""); } }).catch(() => { if (active) setDailyError("Não foi possível carregar seus check-ins."); });
     loadDaily(); window.addEventListener("burnoutsense-checkin-change", loadDaily);
     return () => { active = false; window.removeEventListener("burnoutsense-checkin-change", loadDaily); };

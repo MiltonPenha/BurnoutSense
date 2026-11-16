@@ -3,6 +3,7 @@ import { ApiError } from "./errors";
 import type { GuidanceResult } from "./types";
 import { createSessionReadCache } from "./session-read-cache";
 import { clearSessionDrafts } from "./session-draft";
+import { isCalendarDay } from "./daily-checkin";
 import type { AccountProfile, Assessment, AssessmentDetail, AuthResponse, CreateAssessment, CurrentContext, DailyCheckIn, DailyDay, DailyOverview, FormSchema, IndexUpdate, PageResult, Profile, ReviewContext, ReviewPlan, ReviewTopicId, SaveDailyCheckIn, SavedDailyCheckIn, SystemStatus, TrendRecord } from "./types";
 
 type LoadOptions = { silentUnauthorized?: boolean };
@@ -121,6 +122,8 @@ function persistAuthResponse(authResponse: AuthResponse) {
 
   if (authResponse.user) {
     writeJson(STORAGE_KEYS.profile, normalizeProfile(authResponse.user));
+    // Login and session restoration already return the server-validated profile.
+    for (const notify of [true, false]) readCache.seed(`${sessionUser.id}:${sessionGeneration}:/users/me:${notify}`, sessionUser);
   }
 
   notifyAuthChange();
@@ -175,6 +178,12 @@ export function restoreSession(): Promise<boolean> {
     if (generation !== sessionGeneration) return isAuthenticated();
     if (response.ok) return restoreAuthResponse(response, generation);
     if (response.status === 401) {
+      const failure = await response.json().catch(() => null);
+      if (generation !== sessionGeneration) return isAuthenticated();
+      if (failure?.code === "SESSION_ABSENT") {
+        clearAuthTokens();
+        return false;
+      }
       const restored = await refreshAuthToken();
       if (!restored) clearAuthTokens();
       return restored;
@@ -313,7 +322,18 @@ function normalizeSemester(semester?: string | null) {
 // Authenticated application records; no research CSV or browser data storage.
 export async function getEsbeuForm() { return request<FormSchema>("/esbeu-assessments/form"); }
 export async function getCurrentContext() { return request<CurrentContext>("/esbeu-assessments/current"); }
-export async function getDailyDay(date: string) { return request<DailyDay>(`/daily-check-ins/day/${encodeURIComponent(date)}`); }
+export async function getDailyDay(date: string) {
+  const generation = sessionGeneration;
+  const key = `${sessionUser?.id}:${generation}:/daily-check-ins/overview:true`;
+  const cached = sessionUser && readCache.peek<DailyOverview>(key);
+  if (cached) {
+    const overview = await cached;
+    if (generation === sessionGeneration && readCache.peek(key) === cached && isCalendarDay(date) && date >= overview.windowStart && date <= overview.today) {
+      return { date, checkIn: overview.recentCheckIns.find(item => item.date.slice(0, 10) === date) ?? null };
+    }
+  }
+  return request<DailyDay>(`/daily-check-ins/day/${encodeURIComponent(date)}`);
+}
 export async function saveDailyCheckIn(payload: SaveDailyCheckIn) { return request<SavedDailyCheckIn>("/daily-check-ins", { method: "PUT", body: JSON.stringify(payload) }); }
 export async function recalculateDailyIndex() { return request<IndexUpdate>("/daily-check-ins/recalculate", { method: "POST" }); }
 export async function reviewContext(payload: ReviewContext) { return request<Assessment>("/esbeu-assessments/review", { method: "POST", body: JSON.stringify(payload) }); }

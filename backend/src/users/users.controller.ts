@@ -6,15 +6,17 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AuthenticatedUser } from '../auth/types/authenticated-user';
 import { UpdateCurrentUserDto } from './dto/update-current-user.dto';
 import { UsersService } from './users.service';
+import { WithSessionProfile } from '../auth/decorators/session-profile.decorator';
 
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService, private readonly security: SessionSecurityService) {}
 
   @UseGuards(JwtAuthGuard)
+  @WithSessionProfile()
   @Get('me')
   me(@CurrentUser() user: AuthenticatedUser) {
-    return this.usersService.findSafeById(user.id);
+    return user.profile ?? this.usersService.findSafeById(user.id);
   }
 
   @UseGuards(JwtAuthGuard)

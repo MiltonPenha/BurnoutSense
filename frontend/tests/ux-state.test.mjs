@@ -30,6 +30,32 @@ test("read failures can be retried and never enter the cache", async () => {
   await assert.rejects(cache.read("a", async () => { throw new Error("fictional failure"); }));
   assert.equal(await cache.read("a", async () => "recovered"), "recovered");
 });
+test("validated session data seeds one account only and still expires or invalidates", async () => {
+  let now = 0;
+  const cache = createSessionReadCache(5000, () => now);
+  cache.seed("owner-a:profile", "validated");
+  assert.equal(await cache.read("owner-a:profile", async () => "unexpected"), "validated");
+  assert.equal(await cache.read("owner-b:profile", async () => "other account"), "other account");
+  now = 5001;
+  assert.equal(await cache.read("owner-a:profile", async () => "expired"), "expired");
+  cache.seed("owner-a:profile", "validated again");
+  cache.clear();
+  assert.equal(await cache.read("owner-a:profile", async () => "after logout"), "after logout");
+});
+test("related reads reuse only fresh in-memory data and never extend its lifetime", async () => {
+  let now = 0;
+  const cache = createSessionReadCache(5000, () => now);
+  assert.equal(cache.peek("a:overview"), null);
+  const initial = cache.read("a:overview", async () => ({ days: [] }));
+  assert.equal(cache.peek("a:overview"), initial);
+  await initial;
+  now = 4999;
+  assert.deepEqual(await cache.peek("a:overview"), { days: [] });
+  now = 5000;
+  assert.equal(cache.peek("a:overview"), null);
+  cache.clear();
+  assert.equal(cache.peek("a:overview"), null);
+});
 const storage = () => {
   const values = new Map();
   return { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key) };

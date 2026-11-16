@@ -19,17 +19,18 @@ function useStoreState() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const loadSequence = useRef(0);
+  const profileLoaded = useRef(false);
 
   useEffect(() => {
     let active = true;
 
-    async function loadInitialData() {
+    async function loadInitialData(event?: Event) {
       const sequence = ++loadSequence.current;
       try {
         const initialLoadOptions = { silentUnauthorized: true };
         const [nextRecords, nextProfile] = await Promise.allSettled([
           getRecords(initialLoadOptions),
-          getProfile(initialLoadOptions)
+          event && profileLoaded.current ? Promise.resolve(null) : getProfile(initialLoadOptions)
         ]);
 
         if (!active || sequence !== loadSequence.current) {
@@ -37,7 +38,10 @@ function useStoreState() {
         }
 
         if (nextRecords.status === "fulfilled") setRecords(nextRecords.value);
-        if (nextProfile.status === "fulfilled") setProfile(nextProfile.value);
+        if (nextProfile.status === "fulfilled" && nextProfile.value) {
+          profileLoaded.current = true;
+          setProfile(nextProfile.value);
+        }
         setError(nextRecords.status === "rejected" || nextProfile.status === "rejected" ? "Não foi possível carregar todos os dados. Tente novamente." : null);
       } catch {
         if (active && sequence === loadSequence.current) {
@@ -107,6 +111,7 @@ function useStoreState() {
 
     try {
       const savedProfile = await saveProfile(nextProfile);
+      profileLoaded.current = true;
       setProfile(savedProfile);
       setError(null);
       return savedProfile;

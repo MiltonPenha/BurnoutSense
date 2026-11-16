@@ -2,6 +2,7 @@ import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from './notifications.service';
+import { readFileSync } from 'node:fs';
 
 jest.mock('nodemailer', () => ({ createTransport: jest.fn() }));
 
@@ -52,10 +53,56 @@ describe('ESB-eu daily reminders', () => {
     jest.setSystemTime(new Date('2026-11-03T14:59:00Z'));
     await tick(); expect(database.user.findMany).not.toHaveBeenCalled();
   });
+  it('does not start a scheduler when the global flag is disabled', () => {
+    const interval = jest.spyOn(global, 'setInterval');
+    service.onModuleInit();
+    expect(interval).not.toHaveBeenCalled();
+    interval.mockRestore();
+  });
+  it('starts the enabled scheduler at noon in Sao Paulo and clears its timer on shutdown', async () => {
+    service = new NotificationsService(databaseConfig({ DAILY_REMINDER_ENABLED: 'true', DAILY_REMINDER_TIMEZONE: 'America/Sao_Paulo' }), database as unknown as PrismaService);
+    const interval = jest.spyOn(global, 'setInterval'), clear = jest.spyOn(global, 'clearInterval');
+    service.onModuleInit();
+    expect(interval).toHaveBeenCalledWith(expect.any(Function), 60000);
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+    expect(database.user.findMany).toHaveBeenCalledTimes(1);
+    service.onModuleDestroy(); expect(clear).toHaveBeenCalled();
+    interval.mockRestore(); clear.mockRestore();
+  });
+  it('keeps the noon default if the optional schedule settings are blank', async () => {
+    const base = settings;
+    settings = { get: (key: string) => ['DAILY_REMINDER_HOUR', 'DAILY_REMINDER_MINUTE'].includes(key) ? '' : base.get(key),
+      getOrThrow: (key: string) => base.getOrThrow(key) } as ConfigService;
+    service = new NotificationsService(settings, database as unknown as PrismaService);
+    await tick();
+    expect(sendMail).toHaveBeenCalledTimes(1);
+  });
   it('skips reminders when today already has a daily check-in', async () => {
     database.user.findMany.mockResolvedValue([]);
     await tick(); expect(sendMail).not.toHaveBeenCalled();
     expect(database.dailyReminderDelivery.createMany).not.toHaveBeenCalled();
+  });
+  it('uses the configured BurnoutSense sender instead of the recipient address', async () => {
+    const base = settings;
+    const values: Record<string, string> = { SMTP_HOST: 'smtp.hostinger.com', SMTP_PORT: '465', SMTP_SECURE: 'true',
+      SMTP_USER: 'lembrete@burnoutsense.online', SMTP_FROM: 'BurnoutSense <lembrete@burnoutsense.online>' };
+    const config = { get: (key: string) => values[key] ?? base.get(key), getOrThrow: (key: string) => values[key] ?? base.getOrThrow(key) } as ConfigService;
+    service = new NotificationsService(config, database as unknown as PrismaService);
+    await tick();
+    expect(nodemailer.createTransport).toHaveBeenLastCalledWith(expect.objectContaining({ host: 'smtp.hostinger.com', port: 465, secure: true,
+      auth: expect.objectContaining({ user: 'lembrete@burnoutsense.online' }) }));
+    expect(sendMail).toHaveBeenCalledWith(expect.objectContaining({ from: 'BurnoutSense <lembrete@burnoutsense.online>', to: profile.email }));
+  });
+  it('packages the logo inline and uses production links without test wording', async () => {
+    await tick();
+    const mail = sendMail.mock.calls[0][0];
+    expect(mail.subject).not.toContain('[Teste');
+    expect(mail.html).toContain('src="cid:burnoutsense-logo"');
+    expect(mail.html).toContain('href="https://burnoutsense.online/registro"');
+    expect(mail.html).toContain('href="https://burnoutsense.online/perfil"');
+    expect(mail.text).toContain('https://burnoutsense.online/registro');
+    expect(mail.attachments).toEqual([expect.objectContaining({ cid: 'burnoutsense-logo', contentType: 'image/png', contentDisposition: 'inline' })]);
+    expect(readFileSync(mail.attachments[0].path).subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a');
   });
   it('allows retry after SMTP fails without marking delivery as sent', async () => {
     sendMail.mockRejectedValueOnce(Object.assign(new Error('fictional SMTP failure'), { responseCode: 451, command: 'DATA' }));

@@ -3,6 +3,7 @@ import { AiService } from '../ai/ai.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ESBEU_CONSENT_VERSION } from '../esbeu-assessments/esbeu-contract';
 import { ContextEvolutionService } from './context-evolution.service';
+import { DailyCheckIn } from '@prisma/client';
 
 describe('Experimental predictions are real and independently traceable', () => {
   const baseline = { sleep_hours: 8, sleep_quality: 4, assessment_pressure: 0, study_rest_difficulty: 0, personal_support: 4 };
@@ -39,6 +40,26 @@ describe('Experimental predictions are real and independently traceable', () => 
     ai.predict.mockRejectedValue(new Error('private-upstream-marker'));
     expect((await service.recalculate('owner')).status).toBe('unavailable'); expect(table.create).not.toHaveBeenCalled();
     expect(daily.updateMany).not.toHaveBeenCalled();
+  });
+  it('reuses the overview calendar window without rereading days or changing pending results', async () => {
+    const expected = await service.status('owner');
+    daily.findMany.mockClear(); daily.findFirst.mockClear();
+    expect(await service.status('owner', { today: '2026-11-04', since: new Date('2026-10-08T00:00:00Z'), rows: rows as DailyCheckIn[] })).toEqual(expected);
+    expect(daily.findMany).not.toHaveBeenCalled();
+    expect(daily.findFirst).not.toHaveBeenCalled();
+  });
+  it('ignores evidence older than the confirmed context when reusing the calendar window', async () => {
+    const old = { ...rows[0], id: 'before-context', updatedAt: new Date('2026-10-31T12:00:00Z') };
+    const status = await service.status('owner', { today: '2026-11-04', since: new Date('2026-10-08T00:00:00Z'), rows: [rows[0], old] as DailyCheckIn[] });
+    expect(status.recordedDays).toBe(1);
+  });
+  it('returns the same expired-evidence status even if the newest day is outside the calendar window', async () => {
+    rows = [];
+    table.findFirst.mockImplementation(({ where }) => Promise.resolve(where.source ? anchor : { ...anchor, context: { ...baseline, sleep_hours: 5 } }));
+    daily.findFirst.mockResolvedValue({ date: new Date('2026-09-01T00:00:00Z') });
+    const expected = await service.status('owner');
+    expect(await service.status('owner', { today: '2026-11-04', since: new Date('2026-10-08T00:00:00Z'), rows: [] })).toEqual(expected);
+    expect(expected.pending).toBe(true);
   });
   it('links a derived index to its triggering day with separate registration and revision timestamps', async () => {
     const trigger = { ...rows[0], createdAt: new Date('2026-11-04T11:00:00Z') };

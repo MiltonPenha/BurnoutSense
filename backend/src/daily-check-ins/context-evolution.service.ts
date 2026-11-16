@@ -1,11 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Prisma } from '@prisma/client';
+import { DailyCheckIn, Prisma } from '@prisma/client';
 import { AiService } from '../ai/ai.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ESBEU_CONSENT_VERSION, ESBEU_FORM_VERSION } from '../esbeu-assessments/esbeu-contract';
 import { aggregateContext, contextKey, EVOLUTION_VERSION } from './context-aggregation';
 import { calendarDay, utcDay } from './calendar-day';
+
+type CheckInWindow = { today: string; since: Date; rows: DailyCheckIn[] };
 
 @Injectable()
 export class ContextEvolutionService {
@@ -16,15 +18,24 @@ export class ContextEvolutionService {
       && this.config.get<string>('ESBEU_ASSESSMENTS_ENABLED') !== 'false';
   }
 
-  private async snapshot(db: Prisma.TransactionClient, userId: string) {
-    const today = calendarDay(new Date(), this.config.get<string>('DAILY_REMINDER_TIMEZONE') ?? 'America/Sao_Paulo');
-    const since = utcDay(today); since.setUTCDate(since.getUTCDate() - 27);
+  private async snapshot(db: Prisma.TransactionClient, userId: string, window?: CheckInWindow) {
+    const today = window?.today ?? calendarDay(new Date(), this.config.get<string>('DAILY_REMINDER_TIMEZONE') ?? 'America/Sao_Paulo');
+    const since = window?.since ?? utcDay(today);
+    if (!window) since.setUTCDate(since.getUTCDate() - 27);
     const orderBy = [{ createdAt: 'desc' as const }, { id: 'desc' as const }];
-    const anchor = await db.esbeuAssessment.findFirst({ where: { userId, source: { in: ['context', 'guided_review'] } }, orderBy });
-    const latest = await db.esbeuAssessment.findFirst({ where: { userId }, orderBy });
+    const [anchor, latest] = await Promise.all([
+      db.esbeuAssessment.findFirst({ where: { userId, source: { in: ['context', 'guided_review'] } }, orderBy }),
+      db.esbeuAssessment.findFirst({ where: { userId }, orderBy }),
+    ]);
     if (!anchor || !latest) return null;
-    const rows = await db.dailyCheckIn.findMany({ where: { userId, date: { gte: since, lte: utcDay(today) }, updatedAt: { gte: anchor.dailyEvidenceSince ?? anchor.createdAt } }, orderBy: { date: 'asc' }, take: 28 });
-    const newest = await db.dailyCheckIn.findFirst({ where: { userId, date: { lte: utcDay(today) } }, orderBy: { date: 'desc' } });
+    const evidenceSince = anchor.dailyEvidenceSince ?? anchor.createdAt;
+    const [rows, newest] = window
+      // The overview already read this owner's complete calendar window, newest first.
+      ? [window.rows.filter(row => row.updatedAt >= evidenceSince).slice().reverse(), window.rows[0] ?? null]
+      : await Promise.all([
+        db.dailyCheckIn.findMany({ where: { userId, date: { gte: since, lte: utcDay(today) }, updatedAt: { gte: evidenceSince } }, orderBy: { date: 'asc' }, take: 28 }),
+        db.dailyCheckIn.findFirst({ where: { userId, date: { lte: utcDay(today) } }, orderBy: { date: 'desc' } }),
+      ]);
     return { anchor, latest, newest, today, since, aggregate: aggregateContext(anchor.dailyBaseline ?? anchor.context, rows) };
   }
 
@@ -44,9 +55,9 @@ export class ContextEvolutionService {
     return result.count === 1;
   }
 
-  async status(userId: string) {
+  async status(userId: string, window?: CheckInWindow) {
     if (!this.enabled()) return { enabled: false, pending: false, recordedDays: 0 };
-    const snapshot = await this.snapshot(this.prisma, userId);
+    const snapshot = await this.snapshot(this.prisma, userId, window);
     return { enabled: true, experimental: true, version: EVOLUTION_VERSION,
       pending: snapshot ? this.needsCalculation(snapshot) : false,
       recordedDays: snapshot?.aggregate.recordedDays ?? 0 };

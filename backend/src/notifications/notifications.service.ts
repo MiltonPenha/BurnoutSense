@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
+import { join } from 'node:path';
 import { PrismaService } from '../prisma/prisma.service';
 import { utcDay } from '../daily-check-ins/calendar-day';
 
@@ -182,6 +183,10 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
         subject,
         text,
         html: html ?? `<p>${escapeHtml(text).replace(/\n/g, '<br>')}</p>`,
+        ...(html?.includes('cid:burnoutsense-logo') ? { attachments: [{
+          filename: 'logo-BurnoutSense.png', path: join(__dirname, 'assets', 'logo-BurnoutSense.png'),
+          cid: 'burnoutsense-logo', contentType: 'image/png', contentDisposition: 'inline' as const,
+        }] } : {}),
       });
 
       return {
@@ -218,6 +223,7 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
       '',
       'Que tal reservar um momento para acompanhar sua rotina no BurnoutSense?',
       'Registre como foi seu dia: sono, demandas dos estudos, descanso e apoio. Um registro breve já ajuda a acompanhar sua rotina.',
+      this.appLink('/registro'),
       '',
       'A porcentagem exibida é uma posição na escala ESB-eu, não uma probabilidade de burnout ou diagnóstico.',
       '',
@@ -227,6 +233,7 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
       '- O que gostaria de conversar com alguém de confiança?',
       '',
       'BurnoutSense é uma ferramenta de apoio preventivo e não substitui acompanhamento médico ou psicológico.',
+      `Para desativar os lembretes, acesse seu perfil e salve a preferência: ${this.appLink('/perfil')}`,
     ].join('\n');
   }
 
@@ -237,6 +244,7 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
       intro:
         'Reserve um momento para contar como foi seu dia. Sono, demandas, descanso e apoio ajudam a acompanhar sua rotina.',
       tone: 'mint',
+      action: { label: 'Fazer meu check-in', url: this.appLink('/registro') },
       sections: [
         {
           title: 'Por que registrar hoje?',
@@ -252,7 +260,12 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
         },
       ],
       note: 'O índice é uma posição na escala ESB-eu. Não indica probabilidade de burnout e não substitui avaliação profissional.',
+      preferencesUrl: this.appLink('/perfil'),
     });
+  }
+
+  private appLink(path: string) {
+    return new URL(path, this.configService.get<string>('FRONTEND_URL') ?? 'https://burnoutsense.online').href;
   }
 
   private getDailyReminderHour() {
@@ -314,9 +327,10 @@ interface BaseEmailTemplateOptions {
   sections: EmailSection[];
   note: string;
   action?: { label: string; url: string };
+  preferencesUrl?: string;
 }
 
-function baseEmailTemplate({ badge, title, intro, tone, metrics = [], sections, note, action }: BaseEmailTemplateOptions) {
+function baseEmailTemplate({ badge, title, intro, tone, metrics = [], sections, note, action, preferencesUrl }: BaseEmailTemplateOptions) {
   const accent = tone === 'mint' ? '#34D399' : '#FDBA74';
   const soft = tone === 'mint' ? '#ECFDF5' : '#FFF7ED';
   const border = tone === 'mint' ? '#A7F3D0' : '#FED7AA';
@@ -326,6 +340,10 @@ function baseEmailTemplate({ badge, title, intro, tone, metrics = [], sections, 
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;margin:0 auto;background:#FFFFFF;border:1px solid #DBEAFE;border-radius:22px;overflow:hidden;">
         <tr>
           <td style="padding:28px 30px;background:linear-gradient(135deg,#EFF6FF 0%,${soft} 100%);">
+            <table role="presentation" cellspacing="0" cellpadding="0" style="margin-bottom:20px;"><tr>
+              <td style="vertical-align:middle;padding-right:12px;"><img src="cid:burnoutsense-logo" alt="" width="44" height="44" style="display:block;border:0;width:44px;height:44px;" /></td>
+              <td style="vertical-align:middle;color:#082F49;font-size:18px;font-weight:700;">BurnoutSense</td>
+            </tr></table>
             <span style="display:inline-block;padding:7px 12px;border-radius:999px;background:#FFFFFF;border:1px solid ${border};color:#0F4C81;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">${escapeHtml(badge)}</span>
             <h1 style="margin:18px 0 10px;font-size:26px;line-height:1.2;color:#082F49;">${escapeHtml(title)}</h1>
             <p style="margin:0;font-size:15px;line-height:1.7;color:#475569;">${escapeHtml(intro)}</p>
@@ -370,6 +388,7 @@ function baseEmailTemplate({ badge, title, intro, tone, metrics = [], sections, 
         <tr>
           <td style="padding:18px 30px 26px;color:#64748B;font-size:12px;line-height:1.6;border-top:1px solid #E2E8F0;">
             BurnoutSense é uma ferramenta de apoio preventivo ao estudante. Esta mensagem não substitui orientação médica ou psicológica.
+            ${preferencesUrl ? `<p style="margin:12px 0 0;">Você recebe este lembrete porque ativou essa opção no seu perfil. <a href="${escapeHtml(preferencesUrl)}" style="color:#2563EB;">Gerenciar lembretes</a></p>` : ''}
           </td>
         </tr>
       </table>
@@ -398,6 +417,7 @@ function firstName(name: string) {
 }
 
 function clampScheduleNumber(value: string | undefined, fallback: number, min: number, max: number) {
+  if (value === undefined || value.trim() === '') return fallback;
   const parsedValue = Number(value);
 
   if (!Number.isInteger(parsedValue)) {

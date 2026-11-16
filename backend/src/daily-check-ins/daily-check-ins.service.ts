@@ -30,7 +30,7 @@ export class DailyCheckInsService {
       const recentCheckIns = await this.prisma.dailyCheckIn.findMany({ where: { userId, date: { gte: since, lte: utcDay(today) } }, orderBy: { date: 'desc' }, take: 28 });
       return { today, timeZone, completedDays: recentCheckIns.length, recentCheckIns, windowStart: since.toISOString().slice(0, 10),
         todayCheckIn: recentCheckIns.find(item => item.date.toISOString().slice(0, 10) === today) ?? null,
-        evolution: await this.evolution.status(userId) };
+        evolution: await this.evolution.status(userId, { today, since, rows: recentCheckIns }) };
     } catch {
       throw new ServiceUnavailableException('Não foi possível consultar seu acompanhamento diário.');
     }

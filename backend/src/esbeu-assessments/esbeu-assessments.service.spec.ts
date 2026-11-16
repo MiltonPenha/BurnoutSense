@@ -156,6 +156,24 @@ describe('Private ESB-eu application assessments', () => {
     await expect(service.guidedReview('owner', { topic: 'apoio', sourceAssessmentId: 'latest', confirmed: true, changes: { academic_support: 4 } })).rejects.toBeInstanceOf(ConflictException);
     expect(ai.predict).not.toHaveBeenCalled();
   });
+  it('loads topic confirmations in one owned query and keeps the newest valid confirmation per topic', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-11-16T15:00:00Z'));
+    try {
+      const base = new Date('2026-11-01T15:00:00Z');
+      repository.findFirst.mockResolvedValueOnce({ adultConfirmed: true, enrolledConfirmed: true,
+        consentVersion: ESBEU_CONSENT_VERSION, context: { employment: 'Não, apenas estudo' } }).mockResolvedValueOnce({ createdAt: base });
+      repository.findMany.mockResolvedValue([
+        { createdAt: new Date('2026-11-16T12:00:00Z'), evolution: { topic: 'demandas' } },
+        { createdAt: new Date('2026-11-02T12:00:00Z'), evolution: { topic: 'demandas' } },
+        { createdAt: new Date('2026-11-01T16:00:00Z'), evolution: { topic: 'unknown' } },
+      ]);
+      const result = await service.reviewTopics('owner');
+      expect(result.suggested).not.toBe('demandas');
+      expect(repository.findMany).toHaveBeenCalledTimes(1);
+      expect(repository.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: 'owner', source: 'guided_review', createdAt: { gte: base } } }));
+      expect(ai.predict).not.toHaveBeenCalled();
+    } finally { jest.useRealTimers(); }
+  });
 
   it('does not recalculate or persist when a confirmed topic has no changed answers', async () => {
     const latest = { id: 'latest', adultConfirmed: true, enrolledConfirmed: true, consentVersion: ESBEU_CONSENT_VERSION,

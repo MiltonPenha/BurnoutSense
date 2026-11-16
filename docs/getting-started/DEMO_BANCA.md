@@ -161,9 +161,14 @@ Não teste login pelo preview `vercel.app`: a origem autorizada é o domínio fi
    e contas de terceiros não são necessários para validar o sistema.
 5. Valide as dicas do Gemini separadamente; sua chave e quota ficam no backend.
 6. Para o lembrete, mantenha hora 12, minuto 0 e fuso America/Sao_Paulo. Ative
-   `DAILY_REMINDER_ENABLED=true` no arquivo privado, reinicie o supervisor,
+   `DAILY_REMINDER_ENABLED=true` em `.demo/backend.env` (nao em `backend/.env`).
+   Confira `node scripts/demo.mjs check-email`, que testa TLS/autenticacao sem
+   enviar mensagens. Depois reinicie o supervisor,
    atualize a URL do túnel na Vercel e faça redeploy. O usuário também precisa
    ativar e salvar a preferência. Quem já tem check-in de hoje não recebe.
+   O backend precisa estar ativo das 12h as 12h10; iniciar depois disso nao
+   recupera o lembrete daquele dia. Na inicializacao e em `check`, confira a
+   mensagem `Lembrete diario: ATIVO` e o horario configurado.
    Não mude a hora para disparar para todos; teste horários alternativos somente
    em ambiente isolado com destinatários controlados.
 

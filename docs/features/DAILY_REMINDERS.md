@@ -1,6 +1,14 @@
 # Lembretes de check-in
 
 No acompanhamento da rotina, somente lembretes diários são enviados por e-mail.
+O remetente da demonstracao e `BurnoutSense <lembrete@burnoutsense.online>`.
+A mensagem inclui a logo em PNG como imagem inline (CID), acesso ao check-in
+e um link para gerenciar a preferencia no perfil. O assunto de producao nao
+inclui a palavra teste. A imagem inline nao define a foto externa do remetente
+no Gmail; essa exibicao depende do provedor destinatario e de configuracoes de
+identidade externas, como BIMI. O PNG reutiliza a mesma identidade do favicon
+e fica em `backend/src/notifications/assets/logo-BurnoutSense.png`; o build
+NestJS copia esse arquivo para `dist`.
 Mensagens transacionais de [recuperação de senha](PASSWORD_RECOVERY.md) são
 independentes dessa preferência. A preferência do lembrete vem do perfil
 salvo. Os disparos ocorrem pelo agendador. A aba Notificações permite
@@ -48,6 +56,27 @@ Configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS` e
 durante a instalação e habilite com `true` depois de validar o SMTP. O NestJS
 precisa estar ativo na janela de envio. Veja o [guia de implantação](../deployment/DEPLOY_BURNOUTSENSE_ONLINE.md#e-mail-e-lembrete).
 
+No modo hibrido da banca, o arquivo usado e `.demo/backend.env`, nao
+`backend/.env`. A preferencia salva no perfil autoriza aquele usuario; ela nao
+habilita o agendador global. `node scripts/demo.mjs check` e a inicializacao
+mostram explicitamente se esse agendador esta ativo. Para verificar TLS e
+autenticacao da caixa postal, sem enviar mensagens, use:
+
+```powershell
+node scripts/demo.mjs check-email
+```
+
+Depois de alterar `DAILY_REMINDER_ENABLED`, reinicie o backend. Se ele iniciar
+depois das 12h10, nao envia o lembrete atrasado daquele dia: aguarda a proxima
+janela. Nao altere o horario de producao nem remova marcas de envio para forcar
+testes, pois isso pode disparar mensagens duplicadas para usuarios reais.
+
+Auxiliares de teste que criam o Prisma Client podem carregar `backend/.env`.
+O `ConfigService` da versao instalada prioriza `process.env` sobre os valores
+passados ao construtor. Para testes com configuracao explicita, isole essa
+leitura ou prepare o ambiente correto antes de criar os servicos. O supervisor
+da banca passa `.demo/backend.env` explicitamente ao processo do NestJS.
+
 Pare as instâncias antigas do agendador antes de aplicar a migração
 `20261113010000_harden_daily_reminders`, que renomeia `claimedAt` para
 `submissionStartedAt`. A migração bloqueia retentativas de tentativas antigas
@@ -57,3 +86,17 @@ Para testar, use os testes unitários com nodemailer simulado. O teste de
 navegador valida a preferência e a ausência da rota manual. Durante a verificação
 local, o processo pode usar DAILY_REMINDER_ENABLED=false sem alterar o .env.
 Não envie e-mails reais nem exponha configurações privadas sem autorização.
+
+O teste integrado `backend/test/verify-daily-reminders.cjs` valida consultas e
+marcas persistidas em banco autorizado, com contas ficticias temporarias e
+SMTP interceptado. Compile o backend e execute em `backend/`:
+
+```powershell
+$env:BURNOUTSENSE_DEMO_TEST_AUTHORIZED='true'
+node test/verify-daily-reminders.cjs
+```
+
+Ele confirma o envio ao meio-dia em Sao Paulo, opt-in/opt-out, exclusao de quem
+fez o check-in de hoje, preservacao de dias retroativos, ausencia de duplicatas
+apos reinicio e a nova elegibilidade no dia seguinte. Remove somente as contas
+que criou e nao envia mensagens reais.

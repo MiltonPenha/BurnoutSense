@@ -13,6 +13,7 @@ O [README principal](../README.md) apresenta o projeto, a arquitetura e o iníci
 
 - [Integração NestJS–FastAPI](architecture/BACKEND_INSTRUCTIONS.md) — contratos HTTP, esquema dos campos e erros de inferência.
 - [Sessão por cookies e proteção CSRF](architecture/COOKIE_AUTH.md) — autenticação, renovação e configuração do navegador.
+- [Desempenho e medições](architecture/PERFORMANCE.md) — otimizações, limites da infraestrutura híbrida e teste reproduzível.
 - [Persistência, homologação e rollback](architecture/ETAPA_10_INTEGRATION.md) — consentimento, banco e testes integrados.
 - [Frontend](../frontend/README.md) — rotas, organização de componentes e testes da interface.
 - [Serviço de IA](../ai-service/README.md) — configuração e API Python, com inferência separada do treinamento.

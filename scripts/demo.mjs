@@ -100,7 +100,32 @@ async function check() {
   const { backend, ai } = settings(); validate(backend, ai);
   await waitReady('http://127.0.0.1:4800/ready', { 'X-API-Key': ai.BURNOUTSENSE_API_KEY });
   await waitReady('http://127.0.0.1:4301/health', { 'X-Demo-Gateway': backend.DEMO_GATEWAY_SECRET });
-  console.log('IA real pronta e backend conectado ao banco. SMTP precisa de teste de entrega separado.');
+  console.log('IA real pronta e backend conectado ao banco.');
+  reminderStatus(backend);
+  console.log('Confira autenticacao SMTP com: node scripts/demo.mjs check-email. Aceite SMTP nao garante caixa de entrada.');
+}
+function reminderStatus(backend) {
+  const enabled = backend.DAILY_REMINDER_ENABLED === 'true';
+  const configured = Boolean(backend.SMTP_HOST && backend.SMTP_USER && backend.SMTP_PASS);
+  const number = (value, fallback, max) => value?.trim() && Number.isInteger(Number(value)) ? Math.min(max, Math.max(0, Number(value))) : fallback;
+  const hour = number(backend.DAILY_REMINDER_HOUR, 12, 23), minute = number(backend.DAILY_REMINDER_MINUTE, 0, 59);
+  const time = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  console.log(`Lembrete diario: ${enabled ? 'ATIVO' : 'DESLIGADO'} em .demo/backend.env; ${time} (${backend.DAILY_REMINDER_TIMEZONE || 'America/Sao_Paulo'}).`);
+  console.log(`SMTP: ${configured ? 'credenciais preenchidas (ainda precisam ser verificadas)' : 'configuracao incompleta'}.`);
+  if (!enabled) console.log('A preferencia no perfil nao liga o agendador. Para envio automatico, habilite DAILY_REMINDER_ENABLED e reinicie o backend.');
+  if (enabled && !configured) console.log('ATENCAO: o agendador esta habilitado, mas falta configuracao SMTP.');
+  console.log('O PC e o backend precisam estar ativos entre 12h e 12h10 para o horario padrao. Nao ha envio retroativo apos essa janela.');
+}
+async function checkEmail() {
+  const { backend } = settings();
+  reminderStatus(backend);
+  if (!backend.SMTP_HOST || !backend.SMTP_USER || !backend.SMTP_PASS) fail('Preencha SMTP_HOST, SMTP_USER e SMTP_PASS em .demo/backend.env.');
+  const smtp = req('nodemailer').createTransport({ host: backend.SMTP_HOST, port: Number(backend.SMTP_PORT || 587),
+    secure: backend.SMTP_SECURE === 'true', connectionTimeout: 15000, greetingTimeout: 15000, socketTimeout: 20000,
+    auth: { user: backend.SMTP_USER, pass: backend.SMTP_PASS } });
+  try { await smtp.verify(); console.log('Conexao TLS e autenticacao SMTP confirmadas. Nenhum e-mail foi enviado.'); }
+  catch { fail('Nao foi possivel autenticar no SMTP. Confira servidor, porta, TLS e senha da caixa postal; detalhes privados omitidos.'); }
+  finally { smtp.close(); }
 }
 function vercelEnv(backend, url) {
   if (!/^https:\/\/[a-z0-9-]+\.trycloudflare\.com$/.test(url)) fail('Endereco do tunel invalido.');
@@ -111,6 +136,7 @@ function vercelEnv(backend, url) {
 }
 async function run() {
   const { backend, ai } = settings(); validate(backend, ai);
+  reminderStatus(backend);
   if (!fs.existsSync(bin)) fail('Execute install antes.');
   if (!fs.existsSync(path.join(root, 'backend/dist/main.js'))) fail('Compile o backend antes de iniciar.');
   await freePort(4301); await freePort(4800);
@@ -172,7 +198,8 @@ try {
   else if (command === 'migrate') await migrate();
   else if (command === 'run') await run();
   else if (command === 'check') await check();
+  else if (command === 'check-email') await checkEmail();
   else if (command === 'vercel-env') { const { backend } = settings(); vercelEnv(backend, fs.readFileSync(path.join(dir, 'tunnel-url.txt'), 'utf8').trim()); console.log('Arquivo privado .demo/vercel.env atualizado. Nao o envie ao Git.'); }
   else if (command === 'stop') stopBackground();
-  else console.log('Uso: node scripts/demo.mjs init --ai-env CAMINHO | install | migrate --confirm | run | check | stop');
+  else console.log('Uso: node scripts/demo.mjs init --ai-env CAMINHO | install | migrate --confirm | run | check | check-email | stop');
 } catch (error) { console.error(error.code ? 'Falha ao preparar a demonstracao. Confira os arquivos privados, dependencias e conexao.' : error.message); process.exitCode = 1; }

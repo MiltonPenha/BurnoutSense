@@ -27,7 +27,12 @@ async function main() {
   const origin = 'https://localhost:3443', tag = randomBytes(8).toString('hex'), gateway = randomBytes(32).toString('hex');
   Object.assign(process.env, cfg, { FRONTEND_URL: origin, DEMO_GATEWAY_SECRET: gateway, DAILY_REMINDER_ENABLED: 'false' });
   const mail = { sendPasswordReset: async (_email, url) => { mail.url = url; }, sendPasswordChanged: async () => {} };
-  const module = await Test.createTestingModule({ imports: [AppModule] }).overrideProvider(NotificationsService).useValue(mail).compile();
+  let queryCount = 0;
+  const measuredDb = new PrismaService({ log: [{ emit: 'event', level: 'query' }] });
+  measuredDb.$on('query', () => { queryCount++; });
+  const module = await Test.createTestingModule({ imports: [AppModule] })
+    .overrideProvider(PrismaService).useValue(measuredDb)
+    .overrideProvider(NotificationsService).useValue(mail).compile();
   const app = module.createNestApplication({ logger: false }), security = app.get(SessionSecurityService), db = app.get(PrismaService);
   app.use(cookieParser()); app.use(security.protect);
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true, validationError: { target: false, value: false } }));
@@ -79,10 +84,83 @@ async function main() {
     const form = await json('/esbeu-assessments/form');
     const example = await (await fetch(cfg.AI_SERVICE_URL + '/v1/examples', { headers: { 'X-API-Key': cfg.AI_SERVICE_API_KEY } })).json();
     const first = await json('/esbeu-assessments', 'POST', { context: example.prediction_request.context, consent: true, adult: true, enrolled: true, consentVersion: form.consent.version });
-    check('the original RF/A saves an initial index behind the proxy', Number.isFinite(first.estimatedOverall));
+    check('the original RF/A saves an initial index behind the proxy', Number.isFinite(first.estimatedOverall) && first.modelName === 'random_forest' && first.datasetVersion === 'rf-a-candidate-v1');
     const today = (await json('/daily-check-ins/overview')).today;
     const daily = await json('/daily-check-ins', 'PUT', { date: today, mood: 'Calmo', sleepHours: 8, observations: { sleep_quality: 3, assessment_pressure: 2, study_rest_difficulty: 1, personal_support: 3 } });
     check('daily check-in uses real recalculation', ['updated', 'unchanged'].includes(daily.indexUpdate.status));
+    const performance = { endpoints: {}, dashboard: [] };
+    for (const route of ['/auth/session', '/users/me', '/daily-check-ins/overview', '/esbeu-assessments/review-topics']) {
+      const samples = [];
+      for (let sample = 0; sample < 3; sample++) {
+        const before = queryCount, start = Date.now();
+        await json(route);
+        samples.push({ milliseconds: Date.now() - start, queries: queryCount - before });
+      }
+      performance.endpoints[route] = samples;
+    }
+    for (let sample = 0; sample < 3; sample++) {
+      const requests = [], start = Date.now();
+      const capture = request => { if (new URL(request.url()).pathname.startsWith('/api/')) requests.push(new URL(request.url()).pathname); };
+      page.on('request', capture);
+      await page.goto(origin + '/dashboard');
+      await page.getByRole('heading', { name: 'Calendário de check-ins' }).waitFor();
+      await page.locator('.index-chart-value').waitFor();
+      await page.waitForFunction(() => document.querySelectorAll('.tracking-days li').length === 28);
+      const coreMilliseconds = Date.now() - start;
+      await page.waitForFunction(() => document.querySelector('.guidance-panels [aria-busy]')?.getAttribute('aria-busy') === 'false');
+      const loadedMs = Date.now() - start;
+      // Include requests scheduled by effects after the first frame.
+      await page.waitForTimeout(100);
+      page.off('request', capture);
+      performance.dashboard.push({ coreMilliseconds, milliseconds: loadedMs, requests });
+    }
+    if (process.env.BURNOUTSENSE_PERFORMANCE_LABEL) {
+      assert.match(process.env.BURNOUTSENSE_PERFORMANCE_LABEL, /^[a-z-]+$/);
+      fs.writeFileSync(path.join(output, `performance-${process.env.BURNOUTSENSE_PERFORMANCE_LABEL}.json`), JSON.stringify(performance, null, 2));
+      console.log(JSON.stringify({ performance }));
+    }
+    const checkInRequests = [];
+    const captureCheckIn = request => { if (new URL(request.url()).pathname.startsWith('/api/')) checkInRequests.push(new URL(request.url()).pathname); };
+    page.on('request', captureCheckIn);
+    await page.getByRole('link', { name: 'Novo registro', exact: true }).last().click();
+    await page.getByRole('heading', { name: 'Como foi seu dia?', exact: true }).waitFor();
+    await page.locator('#daily-sleep').waitFor();
+    page.off('request', captureCheckIn);
+    check('recent overview data avoids a duplicate day request without hiding the check-in', !checkInRequests.some(route => route.startsWith('/api/daily-check-ins/day/')));
+    check('session restoration avoids a duplicate profile request', performance.dashboard.every(sample => !sample.requests.includes('/api/users/me')));
+    await page.locator('#daily-sleep').fill('7,5');
+    await page.getByRole('button', { name: 'Continuar', exact: true }).click();
+    const saveRequests = [];
+    const captureSave = request => { if (new URL(request.url()).pathname.startsWith('/api/')) saveRequests.push(new URL(request.url()).pathname); };
+    page.on('request', captureSave);
+    await page.getByRole('button', { name: 'Atualizar esse dia', exact: true }).click();
+    await page.waitForURL('**/dashboard');
+    await page.locator('.index-chart-value').waitFor();
+    await page.waitForFunction(() => document.querySelectorAll('.tracking-days li').length === 28);
+    page.off('request', captureSave);
+    check('updating the index does not reload the unchanged profile', !saveRequests.includes('/api/users/me'));
+    await page.screenshot({ path: path.join(output, 'dashboard-desktop.png'), fullPage: true });
+    await page.setViewportSize({ width: 390, height: 844 });
+    check('mobile dashboard has no horizontal overflow', await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+    await page.screenshot({ path: path.join(output, 'dashboard-mobile.png'), fullPage: true });
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    const stable = (await json('/esbeu-assessments/current')).assessment;
+    const direct = await (await fetch(cfg.AI_SERVICE_URL + '/v1/predict', { method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': cfg.AI_SERVICE_API_KEY }, body: JSON.stringify({ context: stable.context }) })).json();
+    check('the saved index still matches direct inference with the original RF/A', Math.abs(direct.esbeu_overall - stable.estimatedOverall) < 1e-10);
+    const oldDate = new Date(today + 'T12:00:00Z'); oldDate.setUTCDate(oldDate.getUTCDate() - 1);
+    const historical = await json('/daily-check-ins', 'PUT', { date: oldDate.toISOString().slice(0, 10), mood: 'Cansado', sleepHours: 4,
+      observations: { sleep_quality: 0, assessment_pressure: 4, study_rest_difficulty: 4, personal_support: 0 } });
+    check('historical saves still do not recalculate the current index', historical.indexUpdate.status === 'historical' && (await json('/esbeu-assessments/current')).assessment.id === stable.id);
+    check('historical evidence does not become a pending calculation', !(await json('/daily-check-ins/overview')).evolution.pending);
+    const anonymous = await browser.newContext({ ignoreHTTPSErrors: true });
+    try {
+      const anonymousPage = await anonymous.newPage(), authRequests = [];
+      anonymousPage.on('request', request => { if (new URL(request.url()).pathname.startsWith('/api/auth/')) authRequests.push(new URL(request.url()).pathname); });
+      await anonymousPage.goto(origin + '/login');
+      await anonymousPage.locator('#email').waitFor();
+      check('anonymous login opens without pointless refresh or CSRF requests', authRequests.length === 1 && authRequests[0] === '/api/auth/session');
+    } finally { await anonymous.close(); }
     await page.goto(origin + '/esqueci-senha'); await page.locator('#email').fill(email);
     await page.getByRole('button', { name: 'Enviar link de recuperação' }).click(); await page.getByRole('heading', { name: 'Confira seu e-mail' }).waitFor();
     await Promise.all([...app.get(PasswordResetService).pending.values()]); assert.ok(mail.url);

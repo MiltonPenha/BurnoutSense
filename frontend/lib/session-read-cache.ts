@@ -3,6 +3,14 @@ export function createSessionReadCache(ttl = 5000, now = () => Date.now()) {
   let generation = 0;
   return {
     clear() { generation++; entries.clear(); },
+    seed<T>(key: string, value: T) {
+      if (entries.size >= 64 && !entries.has(key)) entries.delete(entries.keys().next().value!);
+      entries.set(key, { expires: now() + ttl, promise: Promise.resolve(value) });
+    },
+    peek<T>(key: string): Promise<T> | null {
+      const entry = entries.get(key);
+      return entry && entry.expires > now() ? entry.promise as Promise<T> : null;
+    },
     read<T>(key: string, load: () => Promise<T>): Promise<T> {
       const cached = entries.get(key);
       if (cached && cached.expires > now()) return cached.promise as Promise<T>;

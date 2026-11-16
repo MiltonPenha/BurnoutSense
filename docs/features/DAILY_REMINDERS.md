@@ -4,7 +4,8 @@ No acompanhamento da rotina, somente lembretes diários são enviados por e-mail
 Mensagens transacionais de [recuperação de senha](PASSWORD_RECOVERY.md) são
 independentes dessa preferência. A preferência do lembrete vem do perfil
 salvo. Os disparos ocorrem pelo agendador. A aba Notificações permite
-habilitar ou desabilitar o lembrete diário.
+habilitar ou desabilitar o lembrete diário e salvar a preferência. O botão
+**Testar lembrete** e a rota `POST /notifications/test` foram removidos.
 Notificações visuais de conclusão, erro e sessão expirada continuam existindo.
 
 O horário padrão é 12h em America/Sao_Paulo. O agendador aceita uma janela de
@@ -42,8 +43,14 @@ sentAt está vazio. Revise o evento com o provedor, se disponível. Aceite SMTP
 não confirma entrega na caixa. O agendador verifica a janela também antes de
 autorizar cada envio. Não há recuperação automática após a janela.
 
-Pare as instâncias antigas do agendador antes de aplicar a migração que
-renomeia claimedAt. A migração bloqueia retentativas de tentativas antigas
+Configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS` e
+`SMTP_FROM` no ambiente privado do backend. Mantenha `DAILY_REMINDER_ENABLED=false`
+durante a instalação e habilite com `true` depois de validar o SMTP. O NestJS
+precisa estar ativo na janela de envio. Veja o [guia de implantação](../deployment/DEPLOY_BURNOUTSENSE_ONLINE.md#e-mail-e-lembrete).
+
+Pare as instâncias antigas do agendador antes de aplicar a migração
+`20261113010000_harden_daily_reminders`, que renomeia `claimedAt` para
+`submissionStartedAt`. A migração bloqueia retentativas de tentativas antigas
 sem aceite registrado e preserva confirmações e preferências existentes.
 
 Para testar, use os testes unitários com nodemailer simulado. O teste de

@@ -28,7 +28,7 @@ O envio usa o mesmo `SMTP_*` dos lembretes, com o remetente configurado como
 ## Configuração
 
 1. Configure a caixa e os `SMTP_*` conforme o
-   [guia de publicação](DEPLOY_BURNOUTSENSE_ONLINE.md). Preencher `.env.example`
+   [guia de publicação](../deployment/DEPLOY_BURNOUTSENSE_ONLINE.md). Preencher `.env.example`
    não substitui seu `.env` privado. Não use senha administrativa da Hostinger.
 2. Em produção, use `FRONTEND_URL=https://burnoutsense.online`, com HTTPS válido.
    Em desenvolvimento, use a URL local. Não crie variável pública com a senha SMTP.
@@ -51,8 +51,10 @@ senha fraca; confirmação divergente; login com a nova senha e rejeição da an
 revogação de sessões existentes; resposta igual para conta desconhecida; CSRF e
 limites. Não envie para usuários reais como teste e não escreva tokens em prints.
 
-Com o frontend local na porta 3000, backend compilado e migrações aplicadas,
-execute `node backend/test/verify-password-recovery.cjs` a partir da raiz, com
+O script lê `DATABASE_URL` de `backend/.env`. Antes de executá-lo, confirme que
+esse arquivo aponta para PostgreSQL local exclusivo de QA: uma porta ou um host
+local, por si só, não identifica a base. Com o frontend local na porta 3000,
+backend compilado e migrações aplicadas no QA, execute `node backend/test/verify-password-recovery.cjs` a partir da raiz, com
 `BURNOUTSENSE_PLAYWRIGHT_MODULE` apontando para o Playwright instalado. A porta
 3001 precisa estar livre: o teste cria uma API temporária com SMTP substituído
 em memória, usa uma conta fictícia e a remove ao final. Não rode outro NestJS

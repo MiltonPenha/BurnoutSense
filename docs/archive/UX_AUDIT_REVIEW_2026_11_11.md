@@ -185,7 +185,7 @@ O teste de aceite específico concluiu 70 verificações. Em cinco navegações
 internas por links, não houve novas chamadas de perfil/lista compartilhada.
 O fluxo completo ainda enviou exatamente 22 campos ao modelo. Os testes usam
 somente contas fictícias, removidas ao final. Consulte [as convenções de
-interface](DESIGN.md) para manutenção e critérios de regressão.
+interface](../design/DESIGN.md) para manutenção e critérios de regressão.
 
 A varredura posterior das seis telas nos dois temas passou em 37 verificações
 e gerou 24 capturas. Confirmou botões brancos sobre `#2563EB`, quatro abas
@@ -201,4 +201,4 @@ checagem de tipos e build de produção também passaram.
 - [WAI-ARIA APG: abas](https://www.w3.org/WAI/ARIA/apg/patterns/tabs/).
 - [WAI-ARIA APG: diálogos modais](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/).
 - [Gemini: geração de conteúdo](https://ai.google.dev/api/generate-content).
-- [Configuração da integração](GEMINI_GUIDANCE.md).
+- [Configuração da integração](../features/GEMINI_GUIDANCE.md).

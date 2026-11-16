@@ -1,251 +1,82 @@
 # BurnoutSense
 
-Demonstração do TCC sem servidores pagos: [guia híbrido da banca](docs/DEMO_BANCA.md).
+O BurnoutSense é um projeto de TCC de Engenharia da Computação da FACENS. A
+plataforma acompanha a rotina universitária e investiga quanto desse contexto
+ajuda a estimar o escore global da ESB-eu, a Escala de Burnout em Estudantes
+Universitários.
 
-Publicação: [Vercel, Render e burnoutsense.online](docs/DEPLOY_BURNOUTSENSE_ONLINE.md).
-Autenticação: [cookies HttpOnly, sessão e CSRF](docs/COOKIE_AUTH.md).
-Recuperação de senha: [fluxo, SMTP e validação](docs/PASSWORD_RECOVERY.md).
+## O que a aplicação faz
 
-Plataforma acadêmica desenvolvida no TCC de Engenharia da Computação da FACENS
-para acompanhar a rotina universitária e investigar a estimativa do escore
-global ESB-eu a partir de informações contextuais.
+- Cadastro, login, recuperação de senha e acesso ao histórico da própria conta.
+- Formulário inicial com **22 variáveis contextuais** sobre as últimas quatro semanas.
+- **Estimativa experimental de 0 a 4** pelo Random Forest do conjunto A
+  (`rf-a-candidate-v1`). Os **14 itens ESB-eu** são opcionais na aplicação e
+  calculam separadamente a média global observada e as três dimensões. No
+  treinamento, esses itens definem o desfecho e ficam fora dos preditores.
+- Check-ins com calendário, histórico e gráficos. Quando habilitada, a ponte
+  experimental agrega observações elegíveis na janela de 28 dias e atualiza cinco
+  entradas do RF/A. A revisão guiada permite confirmar mudanças no contexto.
+- Dicas gerais com Gemini, quando configurado, e lembretes por e-mail mediante
+  adesão no perfil. O horário padrão do lembrete é 12h em `America/Sao_Paulo`,
+  para quem ainda não registrou o check-in do dia.
 
-A aplicação utiliza **22 variáveis contextuais** e apresenta uma estimativa
-experimental contínua de **0 a 4**. Os 14 itens ESB-eu definem o desfecho nos
-estudos e podem ser respondidos opcionalmente na aplicação para calcular uma
-medição observada separada. Eles nunca são preditores do modelo.
-
-A interface apresenta esse escore também como **posição percentual na escala**:
-`escore / 4 * 100`. Por exemplo, 2 de 4 corresponde a 50% da escala, não a 50%
-de probabilidade de burnout. API, banco, treinamento e métricas mantêm 0–4.
-O acompanhamento começa com um contexto completo sobre as últimas quatro
-semanas. Os check-ins descrevem dias específicos e podem ser retroativos. Na
-[integração experimental](docs/DAILY_TRACKING.md), salvar ou editar o check-in
-com a data mais recente pode recalcular o índice com os registros elegíveis dos
-últimos 28 dias. Registros com data anterior ficam no histórico e podem entrar
-no próximo recálculo. O RF/A continua usando o mesmo artefato treinado.
-
-O BurnoutSense não fornece diagnóstico, classificação clínica, porcentagem de
-risco ou confiança individual. Os modelos ainda não possuem validação
-independente em novos participantes.
-
-## Funcionalidades implementadas
-
-- Cadastro, login e acesso autenticado às informações da própria conta.
-- Formulário contextual com tipos e alternativas fornecidos pelo serviço de IA.
-- Check-in diário em duas etapas, com seleção de data e histórico separado dos índices.
-- Estimativa pelo Random Forest (RF/A), com a versão registrada em cada avaliação.
-- Medição direta ESB-eu opcional, com média global e três dimensões.
-- Painel com calendário de check-ins, gráfico diário, semanal e mensal e comparação
-  dos sete check-ins mais recentes com os sete anteriores quando há dados suficientes.
-- Revisão de rotina por tema, disponível a qualquer momento, com sugestão após sete dias sem revisão.
-- Dicas e recomendações opcionais do Gemini, disponíveis após o primeiro índice.
-- Histórico paginado de check-ins e índices, perfil e temas claro e escuro.
-- Endpoints de saúde, prontidão, esquema e métricas agregadas do serviço Python.
-
-Novas avaliações não são incorporadas automaticamente ao treinamento.
-
-## Arquitetura
+## Tecnologias e arquitetura
 
 ```mermaid
 flowchart LR
   U[Navegador] --> F[Next.js e React]
-  F --> B[NestJS: autenticação e avaliações]
+  F -->|Sessão por cookies e proteção CSRF| B[NestJS]
   B --> P[Prisma e PostgreSQL]
-  B --> A[FastAPI: validação e inferência]
+  B -->|Chave de serviço| A[FastAPI]
   A --> M[Pipeline RF/A privado]
-  B -. orientações opcionais .-> G[Google Gemini]
-  L[Cliente local autorizado] -. comparação opcional .-> A
-  A -. endpoint local separado .-> S[Ridge candidato privado]
+  B -. orientações opcionais .-> G[Gemini]
+  B -. e-mail .-> S[SMTP]
 ```
 
-| Componente | Responsabilidade |
-|---|---|
-| Next.js, React e TypeScript | App Router, interface, formulários, dashboard e histórico |
-| NestJS | API autenticada, autorização por usuário e integração HTTP com a IA |
-| Prisma e PostgreSQL | Persistência de contas e avaliações |
-| Python, FastAPI e scikit-learn | Contratos, cálculo observado e inferência do pipeline |
+O frontend usa Next.js, React e TypeScript. Em Python, o FastAPI valida o
+contexto e executa o pipeline scikit-learn. O NestJS persiste
+a avaliação e a versão do modelo. A integração opcional com o Gemini recebe o
+percentual do índice e instruções para gerar orientações gerais; respostas e
+notas ficam na aplicação.
 
-O backend envia ao FastAPI o contexto necessário para a estimativa, sem
-identificador da conta. Quando habilitado, o Gemini recebe o percentual do índice
-e instruções para gerar orientações gerais de autocuidado.
-O CSV de pesquisa não participa da inferência e não é distribuído pelo Git.
+## Início rápido
 
-## Modelos e limites de uso
-
-**RF/A (`rf-a-candidate-v1`)** é o modelo oficial do fluxo atual da aplicação,
-mantendo caráter científico experimental. O pacote treinado é privado e deve
-ser recebido separadamente de um responsável autorizado.
-
-O projeto preserva dois usos do Ridge na pesquisa: o
-[artefato histórico v1](ai-service/MODEL_CARD.md) e o
-[candidato experimental](docs/RIDGE_SHADOW.md) para comparação local opcional.
-A rota de comparação fica desativada por padrão. Para a demonstração do TCC,
-use o pacote RF/A e confirme o modelo ativo antes de criar avaliações.
-
-As versões científicas e seus protocolos são preservados. Métricas e métodos
-estão nos documentos técnicos; não representam precisão individual ou validação clínica.
-
-## Estrutura
-
-```text
-frontend/             Interface Next.js/React em TypeScript estrito
-backend/              API NestJS, Prisma e migrações
-ai-service/app/       FastAPI e carregadores de modelos
-ai-service/training/ Esquemas, pipelines e procedimentos de pesquisa
-ai-service/tests/    Testes Python com fixtures fictícias
-docs/                Contratos, ambiente, protocolos e guias
-```
-
-## Pré-requisitos
-
-- Git, Node.js compatível com Next.js 16 (`>=20.9.0`), npm e pnpm compatível
-  com o lockfile do backend.
-- PostgreSQL de desenvolvimento, separado de qualquer banco de produção.
-- Python 3.12 em ambiente virtual. Referência auditada: CPython 3.12.14,
-  Windows AMD64; bibliotecas devem coincidir com o pacote recebido.
-- Pacote RF/A privado e chave própria para comunicação backend → FastAPI.
-
-Sem o pacote, `/health` pode responder, mas prontidão e previsão ficam
-indisponíveis. Não há pontuação alternativa ou treinamento automático.
-
-## Instalação local
-
-Para rodar o fluxo completo do TCC, incluindo o recálculo pelos check-ins,
-comece pelo [guia de execução local do acompanhamento diário](docs/DAILY_TRACKING_LOCAL_SETUP.md).
+Use Git, Node.js 22 (versão indicada nos subprojetos), npm, pnpm 9.15.0,
+PostgreSQL de desenvolvimento e Python 3.12 em ambiente virtual compatível
+com o pacote RF/A privado.
 
 ```powershell
 git clone https://github.com/MiltonPenha/BurnoutSense.git
 cd BurnoutSense
 ```
 
-Para uma entrega em revisão, selecione a branch indicada no Pull Request antes
-de instalar. Preserve alterações locais ao atualizar; não use reset ou clean.
+1. Receba da equipe os quatro arquivos do RF/A e valide a origem e os hashes. O
+   pacote fica fora do Git e **o CSV da pesquisa não é necessário para inferência**.
+   [Instalação do RF/A](docs/getting-started/RF_A_TEAM_SETUP.md)
+2. Configure o PostgreSQL local e inicie FastAPI, NestJS e Next.js conforme o guia.
+   Os modelos de configuração estão em [IA](ai-service/.env.example),
+   [backend](backend/.env.example) e [frontend](frontend/.env.example).
+   [Executar o fluxo diário](docs/getting-started/DAILY_TRACKING_LOCAL_SETUP.md)
+3. Abra [localhost:3000](http://localhost:3000) com os serviços ativos e use uma
+   conta fictícia de desenvolvimento. Antes da primeira avaliação, confirme
+   `random_forest` e `rf-a-candidate-v1` no `GET /v1/model`. No FastAPI, `/health`
+   verifica o processo, e `/ready`, autenticado, verifica a disponibilidade do modelo.
 
-### Serviço de IA
+Veja os [comandos de teste](docs/getting-started/DEVELOPMENT_GUIDE.md#testes). A homologação com navegador
+e banco usa ambiente e contas isolados. Mantenha credenciais, respostas de pesquisa
+e artefatos treinados fora do Git.
 
-Siga o [guia RF/A da equipe](docs/RF_A_TEAM_SETUP.md) para criar o ambiente,
-receber os quatro arquivos privados e conferir seus hashes. A referência de
-reprodução está em [ambiente v2](docs/ML_OPTIMIZATION_V2_ENVIRONMENT.md).
+## Limitações científicas
 
-Configure as variáveis abaixo no processo ou em arquivo privado externo.
-[`ai-service/.env.example`](ai-service/.env.example) não provisiona modelo ou chave
-automaticamente. Não carregue pickle/joblib desconhecido nem atualize bibliotecas
-silenciosamente.
-
-### Backend e PostgreSQL
-
-```powershell
-cd backend
-pnpm install --frozen-lockfile
-if (-not (Test-Path .env)) { Copy-Item .env.example .env }
-```
-
-Configure um banco **de desenvolvimento** e substitua os segredos de exemplo.
-Em banco novo ou de desenvolvimento previamente conferido:
-
-```powershell
-pnpm exec prisma generate
-pnpm exec prisma migrate deploy
-pnpm start:dev
-```
-
-As migrações não importam o CSV de pesquisa. Não execute reset nem aponte esses
-comandos indiscriminadamente à produção. Para bancos existentes, consulte
-[integração e rollback](docs/ETAPA_10_INTEGRATION.md).
-
-### Frontend
-
-Em outro terminal, a partir da raiz:
-
-```powershell
-cd frontend
-npm ci
-if (-not (Test-Path .env.local)) { Copy-Item .env.example .env.local }
-npm run dev
-```
-
-### Variáveis principais
-
-| Serviço | Configuração |
-|---|---|
-| Frontend | `NEXT_PUBLIC_API_URL=http://localhost:3001` |
-| Backend | `DATABASE_URL`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `PORT=3001`, `FRONTEND_URL=http://localhost:3000` |
-| Backend → IA | `AI_SERVICE_URL=http://127.0.0.1:8000`, `AI_SERVICE_API_KEY` |
-| Recálculo diário no TCC | `DAILY_CONTEXT_EVOLUTION_ENABLED=true` e `ESBEU_ASSESSMENTS_ENABLED=true` no `backend/.env` local |
-| Orientações opcionais | `GEMINI_GUIDANCE_ENABLED=true`, `GEMINI_API_KEY` e `GEMINI_MODEL` no `backend/.env` local. Veja o [guia Gemini](docs/GEMINI_GUIDANCE.md). |
-| FastAPI RF/A | `BURNOUTSENSE_MODEL_DIR`, `BURNOUTSENSE_DATASET_VERSION=rf-a-candidate-v1`, `BURNOUTSENSE_TRUST_LOCAL_MODEL=true`, `BURNOUTSENSE_EXPERIMENTAL_MODEL=true`, `BURNOUTSENSE_API_KEY` |
-| Ridge opcional | `BURNOUTSENSE_SHADOW_RIDGE_ENABLED=false` por padrão; demais condições no [guia](docs/RIDGE_SHADOW.md) |
-
-As duas variáveis de chave da comunicação IA devem ter o mesmo segredo local,
-com pelo menos 24 caracteres. Nunca use `NEXT_PUBLIC_` para segredos.
-SMTP e lembretes são opcionais para o teste de previsão.
-
-### Iniciar e conferir
-
-No terminal Python configurado, dentro de `ai-service`, com `$Python` apontando
-ao executável do venv e as variáveis RF/A definidas:
-
-```powershell
-& $Python -B -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --no-access-log
-```
-
-Mantenha PostgreSQL, FastAPI, NestJS e Next.js ativos. Acesse
-`http://localhost:3000`; backend em `http://localhost:3001`; Swagger em
-`http://127.0.0.1:8000/docs`. `/health` verifica o processo; `/ready` exige
-`X-API-Key` e confirma que o artefato configurado carregou. Para a demonstração,
-confira em `GET /v1/model`, com a mesma chave, se `model_name` é
-`random_forest` e `dataset_version` é `rf-a-candidate-v1`.
-`/v1/examples` fornece entradas fictícias.
-
-## Testes
-
-Execute no respectivo subprojeto, com dependências instaladas:
-
-```powershell
-# ai-service
-& $Python -B -m unittest discover -s tests
-& $Python -B -m unittest discover -s tests -p test_ridge_shadow.py
-& $Python -m pip check
-
-# backend
-pnpm test --runInBand
-pnpm build
-
-# frontend
-npm run typecheck
-npm run lint
-node --test tests/*.test.mjs
-npm run build
-```
-
-Testes unitários usam fixtures fictícias. A homologação com navegador e banco tem
-preparação própria na [Etapa 10](docs/ETAPA_10_INTEGRATION.md); não a aponte ao banco
-da aplicação.
-
-## Segurança e privacidade
-
-- Dados de pesquisa, questionários preenchidos, modelos treinados e relatórios
-  privados permanecem fora do Git; a base real não é versionada.
-- `.gitignore` não protege arquivo já rastreado: revise o conteúdo e o índice.
-- Avaliações são isoladas por conta; a comunicação de serviço é autenticada.
-- As respostas e notas dos check-ins ficam na aplicação. A integração opcional
-  com o Gemini envia o percentual do índice, sem identificadores diretos.
-- Hash confirma integridade, não confiança ou anonimização do modelo.
-- O Ridge não é habilitado automaticamente em produção nem substitui o RF/A.
+O percentual é a posição da estimativa na escala (`escore / 4 × 100`). Um escore
+estimado de 2 equivale a 50% da escala. A aplicação não fornece probabilidade de
+burnout nem diagnóstico. O RF/A e a adaptação dos check-ins têm finalidade
+exploratória e ainda não têm validação independente em novos participantes.
+As avaliações ficam vinculadas à conta e não alimentam o treinamento automaticamente.
 
 ## Documentação
 
-- [Desenvolvimento local](DEVELOPMENT_GUIDE.md)
-- [Acompanhamento diário](docs/DAILY_TRACKING.md)
-- [Dicas e recomendações com Gemini](docs/GEMINI_GUIDANCE.md)
-- [Convenções da interface](docs/DESIGN.md)
-- [Contrato NestJS e persistência](BACKEND_INSTRUCTIONS.md)
-- [API Python e treinamento](ai-service/README.md)
-- [Instalação e pacote RF/A](docs/RF_A_TEAM_SETUP.md)
-- [Procedimento RF/A](docs/RF_A_EXPERIMENTAL_CANDIDATE.md)
-- [Ridge shadow](docs/RIDGE_SHADOW.md)
-- [Protocolo v2 congelado](docs/ML_OPTIMIZATION_V2_PROTOCOL.md)
-- [Modelo histórico v1](ai-service/MODEL_CARD.md)
-- [Métricas históricas](docs/ESBEU_METRICS.md)
-- [Integração, migrações e rollback](docs/ETAPA_10_INTEGRATION.md)
+- [Índice da documentação](docs/README.md)
+- [Demonstração híbrida para a banca](docs/getting-started/DEMO_BANCA.md)
+- [Implantação online](docs/deployment/DEPLOY_BURNOUTSENSE_ONLINE.md)
+- [Protocolo científico v2 congelado](docs/ML_OPTIMIZATION_V2_PROTOCOL.md)

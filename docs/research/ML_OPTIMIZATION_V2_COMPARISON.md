@@ -1,6 +1,6 @@
 # Comparação descritiva A/B/C da v2
 
-Implementa a derivação prevista na seção 9.2 de `ML_OPTIMIZATION_V2_PROTOCOL.md`,
+Implementa a derivação prevista na [seção 9.2 do protocolo v2](../ML_OPTIMIZATION_V2_PROTOCOL.md#92-abc-dentro-da-v2),
 sem alterar esse documento congelado ou o experimento. A função não lê arquivos,
 não ajusta modelos, não habilita execução real e não escolhe um vencedor.
 

@@ -12,7 +12,7 @@
   e limpa cookies, mesmo quando o JWT de acesso venceu.
 - POST `/auth/forgot-password`: solicita a recuperação com resposta genérica.
 - POST `/auth/reset-password`: consome o link de uso único e redefine a senha,
-  revogando todas as sessões da conta. Veja [o fluxo completo](PASSWORD_RECOVERY.md).
+  revogando todas as sessões da conta. Veja [o fluxo completo](../features/PASSWORD_RECOVERY.md).
 
 As operações de alteração exigem Origin igual a FRONTEND_URL e X-CSRF-Token válido.
 Clientes de teste/CLI também precisam seguir o bootstrap CSRF e usar cookie jar.
@@ -61,7 +61,7 @@ bootstrap CSRF, não a exclusão da conta.
 
 ## Validação local
 
-Leia primeiro [o guia de execução](DAILY_TRACKING_LOCAL_SETUP.md). Com os quatro
+Leia primeiro [o guia de execução](../getting-started/DAILY_TRACKING_LOCAL_SETUP.md). Com os quatro
 serviços locais ativos e envio automático de e-mails desligado:
 
 ```powershell
@@ -77,4 +77,4 @@ inatividade e rejeição de uma sessão revogada. Os atributos de produção e a
 de rotação têm testes unitários. Validar em HTTPS real continua obrigatório após
 o deploy; testes HTTP locais não comprovam DNS/TLS ou configuração dos provedores.
 
-Veja [o passo a passo de publicação](DEPLOY_BURNOUTSENSE_ONLINE.md).
+Veja [o passo a passo de publicação](../deployment/DEPLOY_BURNOUTSENSE_ONLINE.md).

@@ -138,7 +138,7 @@ desempenho do refit final.
 
 ## Ativar e desativar a comparação
 
-Mantenha as variáveis RF/A descritas em `RF_A_TEAM_SETUP.md`, inclusive diretório,
+Mantenha as variáveis RF/A descritas no [guia de instalação do RF/A](../getting-started/RF_A_TEAM_SETUP.md), inclusive diretório,
 versão, confiança e chave. O CSV não é necessário para inferência.
 
 Somente em um processo local dedicado, configure adicionalmente:

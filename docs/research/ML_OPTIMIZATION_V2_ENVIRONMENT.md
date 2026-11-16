@@ -168,7 +168,7 @@ uma futura máquina. A suíte inclui duas avaliações integrais sintéticas; n�
 executar outra demonstração de treinamento apenas para verificar o ambiente.
 Temporários dos testes devem ficar fora do repositório, em diretório controlado.
 
-O protocolo em `docs/ML_OPTIMIZATION_V2_PROTOCOL.md` deve permanecer idêntico ao
+O [protocolo científico v2](../ML_OPTIMIZATION_V2_PROTOCOL.md) deve permanecer idêntico ao
 commit94afa61. Conferir com Git e `validate_protocol_bytes()` antes de qualquer
 execução futura. O snapshot não muda conjuntos, catálogo, seeds ou pipelines.
 Uma atualização de biblioteca exige ambiente novo, justificativa e revisão dos

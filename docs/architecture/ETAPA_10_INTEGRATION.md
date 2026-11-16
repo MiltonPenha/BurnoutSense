@@ -4,7 +4,7 @@
 
 ```mermaid
 flowchart LR
-  A[Next.js: conta autenticada] -->|JWT, contexto e consentimento| B[NestJS]
+  A[Next.js: conta autenticada] -->|Sessão por cookies, CSRF, contexto e consentimento| B[NestJS]
   B -->|HTTP e chave de serviço: somente contexto| C[FastAPI independente]
   B -->|HTTP separado: itens opcionais| C
   C --> D[Pipeline privado de regressão]
@@ -27,7 +27,7 @@ As avaliações são imutáveis: não há PATCH. Um novo contexto gera outro reg
 
 ## Contrato HTTP do backend
 
-Todas as rotas exigem JWT:
+As rotas exigem [sessão por cookies](COOKIE_AUTH.md). Nas requisições de alteração, envie também o token CSRF.
 
 | Rota | Comportamento |
 |---|---|
@@ -38,13 +38,13 @@ Todas as rotas exigem JWT:
 | GET `/esbeu-assessments/:id` | Detalhe privado do dono |
 | DELETE `/esbeu-assessments/:id` | Exclusão do dono, HTTP 204 |
 
-POST recebe `context` (exatamente os 22 campos), `consent=true`, `adult=true`, `enrolled=true`, `consentVersion="esbeu-app/1"` e opcionalmente `items` (todos os 14 itens inteiros 0–4). Omitir items representa ausência de medição direta; null ou objeto incompleto são rejeitados. Não envie userId: o dono vem do JWT. Não envie resultados calculados pelo cliente; os escores vêm do FastAPI.
+POST recebe `context` (exatamente os 22 campos), `consent=true`, `adult=true`, `enrolled=true`, `consentVersion="esbeu-app/1"` e opcionalmente `items` (todos os 14 itens inteiros 0–4). Omitir items representa ausência de medição direta; null ou objeto incompleto são rejeitados. Não envie userId: o dono vem da sessão autenticada. Não envie resultados calculados pelo cliente; os escores vêm do FastAPI.
 
 400 indica contrato da aplicação inválido; 401, autenticação; 404, registro inexistente ou pertencente a outra conta; 422, contexto/itens inválidos ou estimativa fora do domínio; 502, resposta incompatível da IA; 503, indisponibilidade, falha de persistência ou criação desativada. Corpos nessa rota têm limite de 256 KiB, com erros de parsing/validação sanitizados. Respostas e erros usam no-store. Não se registram payloads ou exceções Prisma contendo argumentos de consultas.
 
 ## Interface
 
-`/registro` deriva perguntas, alternativas, tipos, instruções e limites de `form_schema.py` via FastAPI e NestJS. Não há cópia manual de categorias. Campos iniciam vazios e consentimentos desmarcados; zero e “Não se aplica” permanecem distintos. Respostas ficam no formulário em memória, sem armazenamento em localStorage ou telemetria. Autenticação requer backend configurado: não há login de demonstração ou salvamento fictício.
+`/contexto` carrega as definições de `form_schema.py` por meio do FastAPI e do NestJS. Em avaliações novas, as confirmações começam desmarcadas. Zero e “Não se aplica” são distintos. Um rascunho pode ficar em `sessionStorage` por até duas horas, separado por conta e avaliação de origem. Veja [estado e dados temporários](../design/DESIGN.md#estado-e-dados-temporários). `/registro` abre o check-in diário e encaminha para `/contexto` se não houver contexto inicial.
 
 `/dashboard` apresenta calendário de check-ins, gráfico de evolução e rotina recente.
 O gráfico usa o último índice de cada data de cálculo. A vista diária também marca
@@ -52,15 +52,15 @@ os check-ins na data registrada. O índice atual aparece na sidebar. `/historico
 separa check-ins de índices e rotina em abas com paginação. O detalhe distingue
 estimativa e medição observada, com dimensões quando o questionário foi respondido.
 Métricas científicas agregadas permanecem na documentação técnica.
-Veja o [guia do acompanhamento diário](DAILY_TRACKING_LOCAL_SETUP.md).
+Veja o [guia do acompanhamento diário](../getting-started/DAILY_TRACKING_LOCAL_SETUP.md).
 
 ## Implantação revisável
 
 1. Faça backup do banco atual em local privado fora do repositório e confira `pnpm exec prisma migrate status`. Não use reset ou db push sobre dados existentes. Se o banco não possui histórico Prisma compatível, reconcilie/baseline as migrações antes de deploy.
-2. Instale as dependências congeladas do backend. Express 4.22.1 agora é dependência direta porque `main.ts` o importa; é a mesma versão já usada transitivamente no lockfile, sem atualização geral de bibliotecas.
+2. Instale as dependências do backend com `pnpm install --frozen-lockfile`.
 3. Aplique as migrações revisadas no ambiente desejado: `pnpm exec prisma migrate deploy`; depois `pnpm prisma:generate` e `pnpm build`.
 4. Inicie o FastAPI em processo próprio com configuração e modelo privados externos ao repositório. Verifique `/ready` com chave de serviço e o modelo/base esperados.
-5. Configure NestJS: `AI_SERVICE_URL`, `AI_SERVICE_API_KEY`, `DATABASE_URL`, segredos JWT, `FRONTEND_URL` e `ESBEU_ASSESSMENTS_ENABLED=true`. Mantenha os serviços em rede interna/TLS quando estiverem em hosts distintos. A chave de IA nunca vai para NEXT_PUBLIC ou navegador. Mantenha lembretes desativados até revisar o fluxo de notificações.
+5. Configure NestJS: `AI_SERVICE_URL`, `AI_SERVICE_API_KEY`, `DATABASE_URL`, `JWT_ACCESS_SECRET`, `CSRF_SECRET`, `FRONTEND_URL` e `ESBEU_ASSESSMENTS_ENABLED=true`. Mantenha os serviços em rede interna/TLS quando estiverem em hosts distintos. A chave de IA nunca vai para NEXT_PUBLIC ou navegador. Mantenha lembretes desativados até revisar o fluxo de notificações.
 6. Configure `NEXT_PUBLIC_API_URL` **antes do build** do Next.js e execute `npm ci`, `npm run lint`, `npm run build`. Essa URL é embutida no frontend; mudar só o ambiente de `next start` não a altera. Execute `npm start`.
 7. Homologue com uma conta de teste e respostas artificiais: contexto sem itens, contexto com 14 itens, histórico, detalhe, exclusão, segunda conta e IA offline. Não use participantes reais em testes ou capturas de tela de revisão.
 

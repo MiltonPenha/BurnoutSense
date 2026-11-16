@@ -1,7 +1,7 @@
 # Publicar o BurnoutSense: Vercel, Render e domínio próprio
 
 Para a banca do TCC, a equipe escolheu a [demonstração híbrida sem instâncias
-pagas de backend/IA](DEMO_BANCA.md). Siga esse outro roteiro. Este documento
+pagas de backend/IA](../getting-started/DEMO_BANCA.md). Siga esse outro roteiro. Este documento
 continua como referência de hospedagem permanente, não como requisito da banca.
 
 Guia para publicar a branch `main` em `burnoutsense.online`. As configurações
@@ -10,7 +10,7 @@ um commit não configuram Vercel, Render, SMTP nem DNS automaticamente.
 
 ## Ordem da primeira publicação
 
-1. Disponibilizar o commit da `main` no GitHub por push.
+1. Confirmar que o commit aprovado para publicação está na `main` do GitHub.
 2. Preparar a caixa `lembrete@burnoutsense.online` e o DNS de e-mail na Hostinger.
 3. Criar o PostgreSQL no Render.
 4. Criar a IA privada, enviar o pacote RF/A e confirmar `/ready`.
@@ -50,11 +50,10 @@ Os links padrão `vercel.app` e `onrender.com` não são os endereços de uso fi
 1. Tenha acesso ao DNS do domínio, ao GitHub, à Vercel e ao Render.
 2. Ative MFA nas contas administrativas e limite quem acessa as variáveis privadas.
 3. Selecione **`main`** como branch de produção na Vercel e nos dois serviços de
-   código do Render. Não deixe `codex/acompanhamento-local` selecionada por engano.
-4. Confirme que o commit desejado aparece no GitHub em `main`. Se estiver apenas
-   local, publique com `git push origin main`. Não use push forçado.
+   código do Render.
+4. Confirme que o commit revisado foi integrado à `main` pelo fluxo de PR da equipe.
 5. Separe o pacote privado RF/A de origem confiável e confirme seus hashes conforme
-   [RF_A_TEAM_SETUP.md](RF_A_TEAM_SETUP.md). Não publique artefatos nem `.env` no Git.
+   [guia de instalação do RF/A](../getting-started/RF_A_TEAM_SETUP.md). Não publique artefatos nem `.env` no Git.
 6. Separe orçamento para banco, backend sempre ativo e IA. O domínio não paga esses
    serviços. Recursos gratuitos podem dormir, expirar ou ter restrições; confira os
    limites atuais antes de usar dados reais.
@@ -280,7 +279,7 @@ Render. Depois de preencher as variáveis privadas, reinicie o NestJS.
 O texto e o HTML do lembrete não dependem de usar Gmail ou domínio próprio.
 
 O mesmo remetente e SMTP também atendem a
-[recuperação de senha](PASSWORD_RECOVERY.md). Esses envios são solicitados pela
+[recuperação de senha](../features/PASSWORD_RECOVERY.md). Esses envios são solicitados pela
 pessoa no login e não dependem da preferência de lembrete diário. O link expira
 em 30 minutos, funciona uma vez e encerra as sessões anteriores após a redefinição.
 Antes de publicar, aplique também a migração `20261114010000_add_password_reset`.
@@ -313,15 +312,13 @@ diário previsível, use serviço sempre ativo; não prometa pontualidade em pla
 3. Redefina a senha, confira a confirmação por e-mail e entre com a nova senha.
    O link não pode funcionar novamente. A resposta genérica da solicitação não
    comprova entrega; confira a caixa postal e logs sanitizados do backend.
-4. Para validar o agendador, ative a preferência de lembrete dessa conta e salve.
-   Sem check-in de hoje, habilite `DAILY_REMINDER_ENABLED=true` e observe a janela
-   das **12h às 12h10, America/Sao_Paulo**. O NestJS precisa estar ativo na janela.
-5. Para testar antes desse horário, use um ambiente de homologação isolado com
-   banco e destinatários de teste e um horário alguns minutos à frente. Não
-   altere o horário de produção para disparar e-mails para todos os usuários.
-6. Na produção, restaure/mantenha hora `12`, minuto `0`, fuso `America/Sao_Paulo`.
-   Depois do teste, remova somente a conta de validação. Contas novas precisam
-   ativar e salvar a preferência; quem já registrou o dia não recebe o lembrete.
+4. Valide o agendador em homologação isolada, com banco e destinatário controlados.
+   Ative e salve a preferência da conta fictícia. Sem check-in de hoje, o NestJS
+   precisa estar ativo na janela configurada. Confira o aceite do SMTP e a caixa postal.
+5. Após validar SMTP e agendamento, mantenha em produção hora `12`, minuto `0` e
+   fuso `America/Sao_Paulo`. Habilite o agendador após revisão da equipe.
+   Contas novas precisam ativar e salvar a preferência. Quem já registrou o dia
+   não recebe o lembrete.
 
 ## 6. Configurar o domínio da API
 

@@ -19,7 +19,7 @@ instalação, clone o repositório da equipe. Para testar uma entrega ainda em P
 selecione a branch indicada no PR em vez de main; não misture trabalhos locais.
 
 O RF/A continua sendo o modelo oficial do fluxo atual, ainda experimental no
-sentido científico. A comparação [Ridge shadow](RIDGE_SHADOW.md) é opcional,
+sentido científico. A comparação [Ridge shadow](../research/RIDGE_SHADOW.md) é opcional,
 desativada por padrão e não exige substituir este pacote ou configurar o frontend.
 
 Referência: Windows AMD64, CPython 3.12.14. Criar venv externo ao repositório
@@ -37,8 +37,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Falha instalando snapshot' }
 ```
 
 Definir `$Venv` antes com um novo caminho externo. O snapshot de 48 versões não
-é um lock de hashes; seguir a documentação de ambiente para auditoria mais
-forte. NumPy 1.26.4, pandas 2.2.2, scikit-learn 1.5.1 e joblib 1.4.2 precisam
+é um lock de hashes. Veja [como verificar o ambiente](../research/ML_OPTIMIZATION_V2_ENVIRONMENT.md). NumPy 1.26.4, pandas 2.2.2, scikit-learn 1.5.1 e joblib 1.4.2 precisam
 coincidir com o artefato. Não atualizar automaticamente se houver divergência.
 
 ## Pacote privado
@@ -91,29 +90,10 @@ O exemplo é fictício e não salva avaliação. Esperado: `experimental=true`,
 
 ## Backend e frontend — terminais separados
 
-PostgreSQL deve ser exclusivamente de desenvolvimento. Configurar as variáveis
-reais de `backend/.env.example` em ambiente privado: DATABASE_URL, PORT=3001,
-FRONTEND_URL=http://localhost:3000, JWT_ACCESS_SECRET, CSRF_SECRET,
-AI_SERVICE_URL=http://127.0.0.1:8000 e AI_SERVICE_API_KEY igual ao segredo do
-FastAPI. Manter DAILY_REMINDER_ENABLED=false para teste. Não reutilizar os
-segredos ilustrativos do exemplo. Não executar migrações em produção.
-
-Dentro de `backend`:
-
-```powershell
-pnpm install --frozen-lockfile
-pnpm prisma:generate
-# Somente após conferir DATABASE_URL do banco local de desenvolvimento:
-pnpm exec prisma migrate deploy
-pnpm start:dev
-```
-
-Dentro de `frontend`, configurar NEXT_PUBLIC_API_URL=http://localhost:3001:
-
-```powershell
-npm ci
-npm run dev
-```
+Siga o [guia do fluxo diário](DAILY_TRACKING_LOCAL_SETUP.md#2-subir-os-serviços)
+para instalar dependências, preparar PostgreSQL de desenvolvimento e iniciar
+NestJS e Next.js. Use em `AI_SERVICE_API_KEY` o mesmo segredo do FastAPI
+(`BURNOUTSENSE_API_KEY`). Mantenha `DAILY_REMINDER_ENABLED=false` nesse teste.
 
 Acesse http://localhost:3000 com uma conta fictícia e use **Fazer primeiro
 registro** para preencher as 22 perguntas. A medição direta é opcional.

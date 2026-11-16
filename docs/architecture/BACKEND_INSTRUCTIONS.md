@@ -2,7 +2,7 @@
 
 ## Separação dos serviços
 
-NestJS continua responsável por autenticação JWT, usuários e banco. FastAPI é um microsserviço independente. `AiService` é exclusivamente um cliente HTTP, configurado com `AI_SERVICE_URL` e `AI_SERVICE_API_KEY`. Não existe inferência ou treinamento no processo Node, nem fallback local.
+NestJS gerencia contas, persistência e [sessões por cookies HttpOnly com proteção CSRF](COOKIE_AUTH.md). O JWT de acesso é transportado no cookie. FastAPI é um microsserviço independente. `AiService` é exclusivamente um cliente HTTP, configurado com `AI_SERVICE_URL` e `AI_SERVICE_API_KEY`. Não existe inferência ou treinamento no processo Node, nem fallback local.
 
 Rotas NestJS autenticadas:
 
@@ -26,13 +26,13 @@ Erros: 401 chave inválida na IA; 422 contrato inválido ou estimativa fora de d
 
 O fluxo legado de classificação, seus fatores heurísticos e alertas por classe foram retirados. As rotas POST/PATCH `/assessments` e GET `/results/...` respondem 410. GET/DELETE de avaliações antigas preservam o controle de propriedade. As avaliações do fluxo legado permanecem em seu formato original.
 
-A [integração opcional com Gemini](docs/GEMINI_GUIDANCE.md) gera orientações gerais a partir do percentual de uma avaliação já calculada. Ela usa uma rota autenticada separada da previsão.
+A [integração opcional com Gemini](../features/GEMINI_GUIDANCE.md) gera orientações gerais a partir do percentual de uma avaliação já calculada. Ela usa uma rota autenticada separada da previsão.
 
 Prisma mantém esquema e migrações históricos para não destruir registros. Essa retenção é armazenamento histórico, sem classificador ativo. A persistência ESB-eu usa a nova tabela `esbeu_assessments`, com migração aditiva. Não reutiliza `riskLevel`, `riskScore` ou `confidence`. As telas ESB-eu estão implementadas, com formulários e resultados distintos do armazenamento histórico.
 
 ## Métricas e validação
 
-Confira [métricas históricas e critérios](docs/ESBEU_METRICS.md). Testar um exemplo em `/v1/validation/compare` não comprova generalização. `/v1/validation/evaluate` calcula métricas somente dos exemplos enviados, sem treino; use apenas dados autorizados. `/v1/validation/metrics` informa seu escopo: no RF/A atual, as tabelas são referências exploratórias v2, não validação independente do refit candidato. Não misture esses resultados com o documento científico v1.
+Confira [métricas históricas e critérios](../research/ESBEU_METRICS.md). Testar um exemplo em `/v1/validation/compare` não comprova generalização. `/v1/validation/evaluate` calcula métricas somente dos exemplos enviados, sem treino; use apenas dados autorizados. `/v1/validation/metrics` informa seu escopo: no RF/A atual, as tabelas são referências exploratórias v2, não validação independente do refit candidato. Não misture esses resultados com o documento científico v1.
 
 ## Comparação Ridge separada
 
@@ -44,14 +44,14 @@ compatibilidade histórica. Confira `random_forest` e `rf-a-candidate-v1` em
 opcional, autenticado e desativado por padrão; não possui encaminhamento NestJS
 ou opção pública na interface. Usa as mesmas 22 entradas e retorna duas versões
 identificadas, sem gravação no banco. Falhas do Ridge não substituem o resultado
-RF/A. Consulte [Ridge shadow](docs/RIDGE_SHADOW.md) para configuração e limites.
+RF/A. Consulte [Ridge shadow](../research/RIDGE_SHADOW.md) para configuração e limites.
 
 ## Avaliações ESB-eu da aplicação
 
-Rotas JWT em `/esbeu-assessments`: GET `/form`, POST `/`, GET `/` (25 resultados e cursor), GET `/:id` e DELETE `/:id`. O servidor usa o usuário do JWT; o corpo não aceita userId. Contexto e itens são devolvidos apenas no detalhe autenticado do dono, enquanto listas usam resumos.
+Rotas autenticadas em `/esbeu-assessments`: GET `/form`, POST `/`, GET `/` (25 resultados e cursor), GET `/:id` e DELETE `/:id`. O servidor identifica o dono pela sessão autenticada; o corpo não aceita userId. Contexto e itens são devolvidos apenas no detalhe autenticado do dono, enquanto listas usam resumos.
 
 POST recebe `context`, `consent=true`, `adult=true`, `enrolled=true`, `consentVersion="esbeu-app/1"` e, opcionalmente, `items` com os 14 itens completos. O consentimento de uso da aplicação é distinto do TCLE da pesquisa. Null em items não equivale a omissão. Falhas de validação ou de IA impedem a gravação; não há resultado alternativo. Contexto e itens seguem separados para FastAPI, sem identificador da conta ou consentimento.
 
 O resultado persiste `modelVersion` como identificador SHA-256 do artefato, além de modelo, base, formulário, contrato e consentimento. O hash identifica o artefato; não contém o pipeline serializado nem representa confiança individual. Avaliações são imutáveis: mudanças geram novo registro. A exclusão da conta remove suas avaliações por cascade.
 
-Execute a migração revisada antes de habilitar as novas telas. `ESBEU_ASSESSMENTS_ENABLED=false` bloqueia criação e formulário, preservando leitura/exclusão. Consulte [guia de integração](docs/ETAPA_10_INTEGRATION.md).
+`ESBEU_ASSESSMENTS_ENABLED=false` bloqueia criação e formulário, preservando leitura/exclusão. Consulte [guia de integração](ETAPA_10_INTEGRATION.md).

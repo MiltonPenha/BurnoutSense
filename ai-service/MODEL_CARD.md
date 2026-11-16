@@ -2,8 +2,8 @@
 
 > Documento histórico da versão científica v1. Os resultados abaixo permanecem
 > inalterados e não descrevem automaticamente o candidato atualmente carregado.
-> O fluxo da aplicação utiliza o [RF/A experimental](../docs/RF_A_EXPERIMENTAL_CANDIDATE.md);
-> o [Ridge shadow](../docs/RIDGE_SHADOW.md) é um candidato posterior, separado e
+> O fluxo da aplicação utiliza o [RF/A experimental](../docs/research/RF_A_EXPERIMENTAL_CANDIDATE.md);
+> o [Ridge shadow](../docs/research/RIDGE_SHADOW.md) é um candidato posterior, separado e
 > desativado por padrão. Nenhuma dessas integrações reescreve a avaliação v1.
 
 ## Uso e procedência
@@ -16,7 +16,7 @@ Versão: `BurnoutSense-final-v1-20261030`. Foram recebidas 39 respostas: 36 eleg
 
 Grade predefinida com 24 configurações dos cinco modelos; CV aninhada 5×3 externa e 3 interna, seed 42. A seleção interna minimiza MAE, seguida de RMSE, dispersão e simplicidade em empates exatos. Foram 1.228 ajustes por execução, sem falhas. A repetição reproduziu as métricas. O reajuste final usa os 36 registros; métricas de treino não são apresentadas como teste.
 
-Random Forest teve menor MAE externo médio (0,3601), mas Ridge foi selecionado na avaliação interna final (alpha=10). Não se trocou o vencedor depois de examinar os folds externos. Veja [tabela e interpretação](../docs/ESBEU_METRICS.md).
+Random Forest teve menor MAE externo médio (0,3601), mas Ridge foi selecionado na avaliação interna final (alpha=10). Não se trocou o vencedor depois de examinar os folds externos. Veja [tabela e interpretação](../docs/research/ESBEU_METRICS.md).
 
 ## Limites
 

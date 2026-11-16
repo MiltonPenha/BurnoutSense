@@ -25,13 +25,12 @@ Há duas configurações distintas:
 O valor `false` de `backend/.env.example` evita ativação implícita em
 ambientes novos. Para testar o fluxo do TCC, use `true` no arquivo **local**
 `backend/.env`, sem mudar o exemplo versionado. O índice não é diagnóstico
-nem probabilidade de burnout. Veja [a especificação técnica](DAILY_TRACKING.md)
+nem probabilidade de burnout. Veja [a especificação técnica](../features/DAILY_TRACKING.md)
 para as regras de elegibilidade e os limites da integração.
 
 ## 2. Subir os serviços
 
-Use terminais separados no VS Code. Pré-requisitos: Node.js compatível com o
-Next.js do projeto (mínimo 20.9), npm, pnpm (versão do `backend/package.json`),
+Use terminais separados no VS Code. Pré-requisitos: Node.js 22, npm, pnpm 9.15.0,
 PostgreSQL de desenvolvimento e Python 3.12 em venv. Use uma versão do código
 que já inclua os check-ins, a revisão rápida e suas migrações. Não sobrescreva arquivos
 `.env` existentes.
@@ -72,7 +71,7 @@ Ridge, Gemini e SMTP não são requisitos para este teste.
 if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 ```
 
-Configure `DATABASE_URL` para o banco local, segredos JWT próprios e
+Configure `DATABASE_URL` para o banco local, um `JWT_ACCESS_SECRET` próprio e
 `AI_SERVICE_API_KEY` com a mesma chave privada de `BURNOUTSENSE_API_KEY`
 no FastAPI. Não use a chave em variáveis `NEXT_PUBLIC_*`. Confira:
 
@@ -116,13 +115,11 @@ Use `http://localhost:3000` no navegador. A sessão agora usa cookies e CSRF,
 não tokens no localStorage. Não misture localhost e 127.0.0.1 no mesmo fluxo.
 Se alterar as portas, atualize as URLs correspondentes no frontend e no backend.
 Abra [o painel local](http://localhost:3000) com os quatro serviços ativos.
-Leia [a autenticação por cookies](COOKIE_AUTH.md) para adaptar clientes de teste.
+Leia [a autenticação por cookies](../architecture/COOKIE_AUTH.md) para adaptar clientes de teste.
 
 ## 3. Validar sem usar dados reais
 
-1. Use uma conta fictícia nova em banco de desenvolvimento. O gráfico combina
-   resultados já calculados. Uma conta nova começa com os resultados do modelo
-   ativo na demonstração. Clique em **Fazer
+1. Use uma conta fictícia nova em banco de desenvolvimento. Clique em **Fazer
    primeiro registro**, complete o contexto com respostas fictícias e confira
    se o primeiro índice aparece no painel.
 2. Clique em **Novo registro**. Salve o check-in de hoje com respostas de sono
@@ -187,8 +184,8 @@ Registros antigos sem vínculo não recebem associações inventadas.
 O cartão de rotina recente resume o último check-in e dá acesso à revisão.
 Quando há registros suficientes, apresenta a comparação de melhora ou piora
 na própria dashboard. A conclusão do check-in aparece em notificação temporária.
-Consulte [os lembretes diários](DAILY_REMINDERS.md) para o envio por e-mail.
-As dicas gerais usam uma [integração opcional com Gemini](GEMINI_GUIDANCE.md).
+Consulte [os lembretes diários](../features/DAILY_REMINDERS.md) para o envio por e-mail.
+As dicas gerais usam uma [integração opcional com Gemini](../features/GEMINI_GUIDANCE.md).
 
 O teste de integração abaixo exige os serviços locais e uma instalação do
 Playwright indicada em BURNOUTSENSE_PLAYWRIGHT_MODULE. Ele cria e remove
